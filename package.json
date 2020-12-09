@@ -1,0 +1,17 @@
+{
+  "name": "ubi",
+  "version": "0.1.0",
+  "description": "Universal Basic Income",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Democracy Earth Foundation",
+  "license": "ISC",
+  "devDependencies": {
+    "@openzeppelin/contracts": "^3.3.0"
+  }
+}
