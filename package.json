@@ -12,6 +12,7 @@
   "author": "Democracy Earth Foundation",
   "license": "ISC",
   "devDependencies": {
-    "@openzeppelin/contracts": "^3.3.0"
+    "@openzeppelin/contracts": "^3.3.0",
+    "openzeppelin-solidity": "^3.3.0"
   }
 }
