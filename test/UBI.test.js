@@ -9,7 +9,7 @@ contract('UBI', accounts => {
   const _name = "Democracy Earth";
   const _symbol = "UBI";
   const _decimals = web3.utils.toBN('18');
-  const _supply = 10000;
+  const _supply = 10000000;
 
   beforeEach(async () => {
     this.token = await UBI.new(_supply);
