@@ -6,7 +6,7 @@
       "contentHash": "ca8d6ca8a6edf34f149a5095a8b074c9",
       "sourceName": "contracts/Migrations.sol",
       "solcConfig": {
-        "version": "0.6.0",
+        "version": "0.7.3",
         "settings": {
           "optimizer": {
             "enabled": true,
@@ -36,11 +36,11 @@
       ]
     },
     "/Users/santisiri/code/ubi/contracts/UBI.sol": {
-      "lastModificationDate": 1608728610054,
-      "contentHash": "9b791a53730553676a31c0a06c33d504",
+      "lastModificationDate": 1608760012624,
+      "contentHash": "6bd13ab9f331c2de42a1303f155a671e",
       "sourceName": "contracts/UBI.sol",
       "solcConfig": {
-        "version": "0.6.0",
+        "version": "0.7.3",
         "settings": {
           "optimizer": {
             "enabled": true,
@@ -65,9 +65,10 @@
         "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol"
       ],
       "versionPragmas": [
-        "^0.6"
+        "0.7.3"
       ],
       "artifacts": [
+        "IProofOfHumanity",
         "UBI"
       ]
     },
@@ -76,7 +77,7 @@
       "contentHash": "f4a80522fa4ffe888e0cfbd5ba56de6b",
       "sourceName": "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol",
       "solcConfig": {
-        "version": "0.6.0",
+        "version": "0.7.3",
         "settings": {
           "optimizer": {
             "enabled": true,
@@ -113,7 +114,7 @@
       "contentHash": "2adbd82f6d055a4751566d4671512b03",
       "sourceName": "@openzeppelin/contracts/GSN/Context.sol",
       "solcConfig": {
-        "version": "0.6.0",
+        "version": "0.7.3",
         "settings": {
           "optimizer": {
             "enabled": true,
@@ -147,7 +148,7 @@
       "contentHash": "1d93743f6ca9d2ecf9b3c26718faf610",
       "sourceName": "@openzeppelin/contracts/token/ERC20/ERC20.sol",
       "solcConfig": {
-        "version": "0.6.0",
+        "version": "0.7.3",
         "settings": {
           "optimizer": {
             "enabled": true,
@@ -185,7 +186,7 @@
       "contentHash": "e0a41531d159d3a32f84b7a3ecf9fabb",
       "sourceName": "@openzeppelin/contracts/token/ERC20/IERC20.sol",
       "solcConfig": {
-        "version": "0.6.0",
+        "version": "0.7.3",
         "settings": {
           "optimizer": {
             "enabled": true,
@@ -219,7 +220,7 @@
       "contentHash": "4d29a22b28b7ec0e89c3cdf1c5e72b83",
       "sourceName": "@openzeppelin/contracts/math/SafeMath.sol",
       "solcConfig": {
-        "version": "0.6.0",
+        "version": "0.7.3",
         "settings": {
           "optimizer": {
             "enabled": true,
