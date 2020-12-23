@@ -150,7 +150,7 @@ contract UBI is ERC20Burnable  {
       lastMintedSecond[human] = 0;
   }  
 
-  /** @dev Changes `accruedPerBlock` to `_accruedPerBlock`.
+  /** @dev Changes `accruedPerSecond` to `_accruedPerSecond`.
   *  @param _accruedPerSecond How much of the token is accrued per block.
   */
   function changeAccruedPerSecond(uint256 _accruedPerSecond)
