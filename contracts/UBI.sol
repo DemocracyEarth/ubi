@@ -29,10 +29,16 @@ contract UBI is ERC20Burnable  {
   
   uint256 public accruedPerSecond; /// @dev How many tokens per second will be minted for every valid human proof per second.
   IProofOfHumanity public immutable proofOfHumanity; /// @dev The Proof Of Humanity registry to reference.
+  address public governor = msg.sender;  /// @dev The contract's governor.
 
   mapping(address => uint256) public lastMintedSecond; /// @dev Persists time of last minted tokens for any given address.
 
   /* Modifiers */
+
+  modifier onlyByGovernor() {
+      require(governor == msg.sender, "The caller is not the governor.");
+      _;
+  }
 
   /** @dev is Registered as Proof of Human.
   *  @param _submissionID for the address of the human.
@@ -51,6 +57,10 @@ contract UBI is ERC20Burnable  {
       _;
   }
 
+  /** @dev is already accruing token subsidy
+  *  @param _submissionID for the address of the human.
+  *  @param _accruing if its actively accruing value.
+  */
   modifier isAccruing(address _submissionID, bool _accruing) {
       bool accruing = lastMintedSecond[human] != 0;
       require(
@@ -107,4 +117,14 @@ contract UBI is ERC20Burnable  {
   {
       lastMintedSecond[human] = now;
   }
+
+    /** @dev Changes `accruedPerBlock` to `_accruedPerBlock`.
+     *  @param _accruedPerBlock How much of the token is accrued per block.
+     */
+    function changeAccruedPerSecond(uint256 _accruedPerSecond)
+        external
+        onlyByGovernor
+    {
+        accruedPerSecond = _accruedPerSecond;
+    }
 }
