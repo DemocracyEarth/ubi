@@ -36,8 +36,8 @@
       ]
     },
     "/Users/santisiri/code/ubi/contracts/UBI.sol": {
-      "lastModificationDate": 1608760012624,
-      "contentHash": "6bd13ab9f331c2de42a1303f155a671e",
+      "lastModificationDate": 1608760599071,
+      "contentHash": "544927b184f61a70c0ef8e16894a3c33",
       "sourceName": "contracts/UBI.sol",
       "solcConfig": {
         "version": "0.7.3",
