@@ -1,3 +1,10 @@
+/**
+ *  @authors: [@epiqueras, @santisiri]
+ *  @reviewers: [@fnanni-0]
+ *  @auditors: []
+ *  @bounties: []
+ *  @deployments: []
+ */
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6;
 
