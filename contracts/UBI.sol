@@ -6,7 +6,7 @@
  *  @deployments: []
  */
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.6;
+pragma solidity 0.7.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
 
@@ -75,10 +75,10 @@ contract UBI is ERC20Burnable  {
   }
 
   /** @dev is already accruing token subsidy
-  *  @param _submissionID for the address of the human.
+  *  @param human for the address of the human.
   *  @param _accruing if its actively accruing value.
   */
-  modifier isAccruing(address _submissionID, bool _accruing) {
+  modifier isAccruing(address human, bool _accruing) {
       bool accruing = lastMintedSecond[human] != 0;
       require(
           accruing == _accruing,
@@ -97,7 +97,7 @@ contract UBI is ERC20Burnable  {
   constructor(
     uint256 initialSupply,
     uint256 _accruedPerSecond,
-    IProofOfHumanity _proofOfHumanity,
+    IProofOfHumanity _proofOfHumanity
   ) public ERC20("Democracy Earth", "UBI") {
       accruedPerSecond = _accruedPerSecond;
       proofOfHumanity = _proofOfHumanity;
@@ -110,16 +110,17 @@ contract UBI is ERC20Burnable  {
   *  @param human The submission ID.
   */
   function getBasicIncome(address human)
-    external isRegistered(human, true) 
-    external isAccruing(human, true) 
+    external 
+    isRegistered(human, true) 
+    isAccruing(human, true) 
   {
     require(human != address(0), "human cannot be 0");
     require(human == msg.sender, "human must be sender");
 
-    uint256 elapsedTime = (now - lastMintedSecond[human]);
+    uint256 elapsedTime = (block.timestamp - lastMintedSecond[human]);
     uint256 newSupply = elapsedTime * accruedPerSecond;
 
-    lastMintedSecond[human] = now;
+    lastMintedSecond[human] = block.timestamp;
 
     _mint(human, newSupply);
   }
@@ -132,7 +133,7 @@ contract UBI is ERC20Burnable  {
       isRegistered(human, true)
       isAccruing(human, false)
   {
-      lastMintedSecond[human] = now;
+      lastMintedSecond[human] = block.timestamp;
   }
 
   /** @dev Allows anyone to report a submission that
