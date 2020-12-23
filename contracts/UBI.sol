@@ -125,7 +125,7 @@ contract UBI is ERC20Burnable  {
   }
 
   /** @dev Starts accruing UBI for a registered submission.
-  *  @param _submissionID The submission ID.
+  *  @param human The submission ID.
   */
   function startAccruing(address human)
       external
@@ -135,9 +135,23 @@ contract UBI is ERC20Burnable  {
       lastMintedSecond[human] = now;
   }
 
+  /** @dev Allows anyone to report a submission that
+  *  should no longer receive UBI due to removal from the
+  *  Proof Of Humanity registry. The reporter receives any
+  *  leftover accrued UBI.
+  *  @param human The submission ID.
+  */
+  function reportRemoval(address human)
+      external
+      isRegistered(human, false)
+      isAccruing(human, true)
+  {
+      lastMintedSecond[human] = 0;
+  }  
+
   /** @dev Changes `accruedPerBlock` to `_accruedPerBlock`.
-    *  @param _accruedPerBlock How much of the token is accrued per block.
-    */
+  *  @param _accruedPerSecond How much of the token is accrued per block.
+  */
   function changeAccruedPerSecond(uint256 _accruedPerSecond)
       external
       onlyByGovernor
