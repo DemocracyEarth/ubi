@@ -26,15 +26,25 @@ interface IProofOfHumanity {
 
 
 contract UBI is ERC20Burnable  {
-  
-  uint256 public accruedPerSecond; /// @dev How many tokens per second will be minted for every valid human proof per second.
-  IProofOfHumanity public immutable proofOfHumanity; /// @dev The Proof Of Humanity registry to reference.
-  address public governor = msg.sender;  /// @dev The contract's governor.
+  /* Governable Storage */
+    
+  /// @dev How many tokens per second will be minted for every valid human proof per second.
+  uint256 public accruedPerSecond;
 
-  mapping(address => uint256) public lastMintedSecond; /// @dev Persists time of last minted tokens for any given address.
+  /* Constructor Storage */
+
+  /// @dev The Proof Of Humanity registry to reference.
+  IProofOfHumanity public immutable proofOfHumanity; 
+
+  /// @dev The contract's governor.
+  address public governor = msg.sender;
+
+  /// @dev Persists time of last minted tokens for any given address.
+  mapping(address => uint256) public lastMintedSecond;
 
   /* Modifiers */
 
+  /// @dev Verifies sender has ability to modify governed parameters.
   modifier onlyByGovernor() {
       require(governor == msg.sender, "The caller is not the governor.");
       _;
@@ -118,13 +128,13 @@ contract UBI is ERC20Burnable  {
       lastMintedSecond[human] = now;
   }
 
-    /** @dev Changes `accruedPerBlock` to `_accruedPerBlock`.
-     *  @param _accruedPerBlock How much of the token is accrued per block.
-     */
-    function changeAccruedPerSecond(uint256 _accruedPerSecond)
-        external
-        onlyByGovernor
-    {
-        accruedPerSecond = _accruedPerSecond;
-    }
+  /** @dev Changes `accruedPerBlock` to `_accruedPerBlock`.
+    *  @param _accruedPerBlock How much of the token is accrued per block.
+    */
+  function changeAccruedPerSecond(uint256 _accruedPerSecond)
+      external
+      onlyByGovernor
+  {
+      accruedPerSecond = _accruedPerSecond;
+  }
 }
