@@ -94,11 +94,7 @@ contract UBI is ERC20Burnable  {
   *  @param _accruedPerSecond How much of the token is accrued per block.
   *  @param _proofOfHumanity The Proof Of Humanity registry to reference.
   */
-  constructor(
-    uint256 initialSupply,
-    uint256 _accruedPerSecond,
-    IProofOfHumanity _proofOfHumanity
-  ) public ERC20("Democracy Earth", "UBI") {
+  constructor(uint256 initialSupply, uint256 _accruedPerSecond, IProofOfHumanity _proofOfHumanity) public ERC20("Democracy Earth", "UBI") {
     accruedPerSecond = _accruedPerSecond;
     proofOfHumanity = _proofOfHumanity;
     _mint(msg.sender, initialSupply * 10**18);
@@ -109,11 +105,7 @@ contract UBI is ERC20Burnable  {
   /** @dev Universal Basic Income mechanism
   *  @param human The submission ID.
   */
-  function getBasicIncome(address human)
-    external 
-    isRegistered(human, true) 
-    isAccruing(human, true) 
-  {
+  function getBasicIncome(address human) external isRegistered(human, true) isAccruing(human, true) {
     require(human != address(0), "human cannot be 0");
     require(human == msg.sender, "human must be sender");
 
@@ -128,11 +120,7 @@ contract UBI is ERC20Burnable  {
   /** @dev Starts accruing UBI for a registered submission.
   *  @param human The submission ID.
   */
-  function startAccruing(address human)
-    external
-    isRegistered(human, true)
-    isAccruing(human, false)
-  {
+  function startAccruing(address human) external isRegistered(human, true) isAccruing(human, false) {
     lastMintedSecond[human] = block.timestamp;
   }
 
@@ -142,21 +130,14 @@ contract UBI is ERC20Burnable  {
   *  leftover accrued UBI.
   *  @param human The submission ID.
   */
-  function reportRemoval(address human)
-    external
-    isRegistered(human, false)
-    isAccruing(human, true)
-  {
+  function reportRemoval(address human) external isRegistered(human, false) isAccruing(human, true) {
     lastMintedSecond[human] = 0;
   }  
 
   /** @dev Changes `accruedPerSecond` to `_accruedPerSecond`.
   *  @param _accruedPerSecond How much of the token is accrued per block.
   */
-  function changeAccruedPerSecond(uint256 _accruedPerSecond)
-    external
-    onlyByGovernor
-  {
+  function changeAccruedPerSecond(uint256 _accruedPerSecond) external onlyByGovernor {
     accruedPerSecond = _accruedPerSecond;
   }
 }
