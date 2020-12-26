@@ -105,7 +105,7 @@ contract UBI is ERC20Burnable  {
   /** @dev Universal Basic Income mechanism
   *  @param human The submission ID.
   */
-  function getBasicIncome(address human) external isRegistered(human, true) isAccruing(human, true) {
+  function mintBasicIncome(address human) external isRegistered(human, true) isAccruing(human, true) {
     require(human != address(0), "human cannot be 0");
     require(human == msg.sender, "human must be sender");
 
@@ -139,5 +139,18 @@ contract UBI is ERC20Burnable  {
   */
   function changeAccruedPerSecond(uint256 _accruedPerSecond) external onlyByGovernor {
     accruedPerSecond = _accruedPerSecond;
+  }
+
+  /* Getters */
+
+  /** @dev Calculates how much UBI a submission has available for withdrawal.
+  *  @param human The submission ID.
+  *  @return accrued The available UBI for withdrawal.
+  */
+  function getAccruedValue(address human) public view returns (uint256 accrued) {
+    if (lastMintedSecond[human] == 0) return 0;
+    return
+      (block.timestamp - lastMintedSecond[human]) *
+      accruedPerSecond;
   }
 }
