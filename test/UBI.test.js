@@ -38,7 +38,7 @@ contract('UBI', accounts => {
       await UBICoin.deployed();
     });
 
-    it("Allows the governor to change `accruedPerBlock`.", async () => {
+    it("Allows the governor to change `accruedPerSecond`.", async () => {
       // Check that the value passed to the constructor is set.
       expect(await UBICoin.accruedPerSecond()).to.equal(_rate);
   
@@ -69,9 +69,10 @@ contract('UBI', accounts => {
 
       // Start accruing UBI and check that the current block number was set.
       await setSubmissionIsRegistered(addresses[1], true);
-      const { blockNumber } = await UBICoin.startAccruing(addresses[1]);
+      await UBICoin.startAccruing(addresses[1]);
+      const lastMinted = await UBICoin.lastMintedSecond(addresses[1]);
       expect(await UBICoin.lastMintedSecond(addresses[1])).to.equal(
-        blockNumber
+        lastMinted
       );
 
       // Make sure it reverts if you try to accrue UBI while already accruing UBI.
