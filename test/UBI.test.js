@@ -1,7 +1,9 @@
 const BigNumber = web3.BigNumber;
 const UBI = artifacts.require('UBI');
 
-const {expect} = require("chai");
+const { expect } = require("chai")
+  .use(require('chai-bignumber')(BigNumber))
+  .should();
 
 /*
 require('chai')
@@ -14,8 +16,8 @@ contract('UBI', accounts => {
   const _name = "Democracy Earth";
   const _symbol = "UBI";
   // const _decimals = web3.utils.toBN('18');
-  const _supply = 10000000 * 10**18;
-  const _rate = 1;
+  const _supply = 10000000;
+  const _rate = 1000
 
  
 
@@ -23,7 +25,7 @@ contract('UBI', accounts => {
     this.token = await UBI.new(_supply, _name, _symbol);
   }); */
 
-  describe('UBI Coin deploy', () => {
+  describe('UBI coin deploy', () => {
 
     before(async () => {
       accounts = await ethers.getSigners();
@@ -43,7 +45,7 @@ contract('UBI', accounts => {
   
       UBICoin = await (
         await ethers.getContractFactory("UBI")
-      ).deploy(_supply, _name, _symbol, _rate, mockProofOfHumanity.address, 1);
+      ).deploy(_supply, _name, _symbol, _rate, mockProofOfHumanity.address);
   
       await UBICoin.deployed();
     });
@@ -60,6 +62,121 @@ contract('UBI', accounts => {
       // Set the value to 2.
       await UBICoin.changeAccruedPerBlock(2);
       expect(await UBICoin.accruedPerBlock()).to.equal(2);
+    });
+
+
+    it("Allows registered submissions to start accruing UBI.", async () => {
+      // Check that the initial `accruingSinceBlock` value is 0.
+      expect(await proofOfHumanityUBI.accruingSinceBlock(addresses[1])).to.equal(
+        0
+      );
+
+      // Make sure it reverts if the submission is not registered.
+      await setSubmissionIsRegistered(addresses[1], false);
+      await expect(
+        proofOfHumanityUBI.startAccruing(addresses[1])
+      ).to.be.revertedWith(
+        "The submission is not registered in Proof Of Humanity."
+      );
+
+      // Start accruing UBI and check that the current block number was set.
+      await setSubmissionIsRegistered(addresses[1], true);
+      const {blockNumber} = await proofOfHumanityUBI.startAccruing(addresses[1]);
+      expect(await proofOfHumanityUBI.accruingSinceBlock(addresses[1])).to.equal(
+        blockNumber
+      );
+
+      // Make sure it reverts if you try to accrue UBI while already accruing UBI.
+      await expect(
+        proofOfHumanityUBI.startAccruing(addresses[1])
+      ).to.be.revertedWith("The submission is already accruing UBI.");
+    });
+
+    it("Allows the withdrawal of accrued UBI.", async () => {
+      // Make sure it reverts if the submission is not registered.
+      await setSubmissionIsRegistered(addresses[1], false);
+      await expect(
+        proofOfHumanityUBI.withdrawAccrued(addresses[1])
+      ).to.be.revertedWith(
+        "The submission is not registered in Proof Of Humanity."
+      );
+
+      // Make sure it reverts if the submission is not accruing UBI.
+      await setSubmissionIsRegistered(addresses[2], true);
+      await expect(
+        proofOfHumanityUBI.withdrawAccrued(addresses[2])
+      ).to.be.revertedWith("The submission is not accruing UBI.");
+
+      // Make sure it reverts if the token transfer fails.
+      await setSubmissionIsRegistered(addresses[1], true);
+      await setTransferSuccess(false);
+      await expect(
+        proofOfHumanityUBI.withdrawAccrued(addresses[1])
+      ).to.be.revertedWith("Token transfer failed.");
+      await setTransferSuccess(true);
+
+      // Withdraw UBI and verify that `accruingSinceBlock` was reset.
+      // Also verify that the accrued UBI was sent correctly.
+      const accruingSinceBlock = await proofOfHumanityUBI.accruingSinceBlock(
+        addresses[1]
+      );
+      const withdrawal = proofOfHumanityUBI.withdrawAccrued(addresses[1]);
+      const {blockNumber} = await withdrawal;
+      expect(await proofOfHumanityUBI.accruingSinceBlock(addresses[1])).to.equal(
+        blockNumber
+      );
+      await expect(withdrawal)
+        .to.emit(proofOfHumanityUBI, "Withdrawal")
+        .withArgs(
+          addresses[1],
+          addresses[1],
+          accruingSinceBlock.sub(blockNumber).mul(-2)
+        );
+    });
+
+    it("Allows anyone to report a removed submission for their accrued UBI.", async () => {
+      // Make sure it reverts if the submission is still registered.
+      await expect(
+        proofOfHumanityUBI.reportRemoval(addresses[1])
+      ).to.be.revertedWith(
+        "The submission is still registered in Proof Of Humanity."
+      );
+
+      // Make sure it reverts if the submission is not accruing UBI.
+      await setSubmissionIsRegistered(addresses[2], false);
+      await expect(
+        proofOfHumanityUBI.reportRemoval(addresses[2])
+      ).to.be.revertedWith("The submission is not accruing UBI.");
+
+      // Make sure it reverts if the token transfer fails.
+      await setSubmissionIsRegistered(addresses[1], false);
+      await setTransferSuccess(false);
+      await expect(
+        proofOfHumanityUBI.reportRemoval(addresses[1])
+      ).to.be.revertedWith("Token transfer failed.");
+      await setTransferSuccess(true);
+
+      // Report submission and verify that `accruingSinceBlock` was reset.
+      // Also verify that the accrued UBI was sent correctly.
+      const accruingSinceBlock = await proofOfHumanityUBI.accruingSinceBlock(
+        addresses[1]
+      );
+      const withdrawal = proofOfHumanityUBI.reportRemoval(addresses[1]);
+      const {blockNumber} = await withdrawal;
+      expect(await proofOfHumanityUBI.accruingSinceBlock(addresses[1])).to.equal(
+        0
+      );
+      await expect(withdrawal)
+        .to.emit(proofOfHumanityUBI, "Withdrawal")
+        .withArgs(
+          addresses[1],
+          addresses[0],
+          accruingSinceBlock.sub(blockNumber).mul(-2)
+        );
+    });
+
+    it("Returns 0 for submissions that are not accruing UBI.", async () => {
+      expect(await proofOfHumanityUBI.getAccruedValue(addresses[1])).to.equal(0);
     });
 
 /*
