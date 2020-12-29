@@ -9,6 +9,7 @@
 pragma solidity 0.7.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20Snapshot.sol";
 
 /**
  * @title ProofOfHumanity Interface
@@ -32,7 +33,7 @@ interface IProofOfHumanity {
 }
 
 
-contract UBI is ERC20Burnable  {
+contract UBI is ERC20Burnable, ERC20Snapshot  {
   /* Governable Storage */
     
   /// @dev How many tokens per second will be minted for every valid human proof per second.
@@ -154,5 +155,10 @@ contract UBI is ERC20Burnable  {
     return
       (block.timestamp - lastMintedSecond[human]) *
       accruedPerSecond;
+  }
+
+  /** Overrides */
+  function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override(ERC20, ERC20Snapshot) {
+    ERC20Snapshot._beforeTokenTransfer(from, to, amount);
   }
 }
