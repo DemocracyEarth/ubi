@@ -96,7 +96,7 @@ contract UBI is ERC20Burnable  {
   *  @param _accruedPerSecond How much of the token is accrued per block.
   *  @param _proofOfHumanity The Proof Of Humanity registry to reference.
   */
-  constructor(uint256 _initialSupply, string _name, string _symbol, uint256 _accruedPerSecond, IProofOfHumanity _proofOfHumanity) public ERC20(_name, _symbol) {
+  constructor(uint256 _initialSupply, string memory _name, string memory _symbol, uint256 _accruedPerSecond, IProofOfHumanity _proofOfHumanity) public ERC20(_name, _symbol) {
     accruedPerSecond = _accruedPerSecond;
     proofOfHumanity = _proofOfHumanity;
     _mint(msg.sender, _initialSupply);
