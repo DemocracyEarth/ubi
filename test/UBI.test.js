@@ -1,9 +1,12 @@
 const BigNumber = web3.BigNumber;
 const UBI = artifacts.require('UBI');
 
-const { expect } = require("chai")
+const { expect } = require("chai");
+
+/*
   .use(require('chai-bignumber')(BigNumber))
   .should();
+*/
 
 /*
 require('chai')
@@ -52,16 +55,16 @@ contract('UBI', accounts => {
 
     it("Allows the governor to change `accruedPerBlock`.", async () => {
       // Check that the value passed to the constructor is set.
-      expect(await UBICoin.accruedPerBlock()).to.equal(1);
+      expect(await UBICoin.accruedPerSecond()).to.equal(_rate);
   
       // Make sure it reverts if we are not the governor.
       await expect(
-        UBICoin.connect(accounts[1]).changeAccruedPerBlock(2)
+        UBICoin.connect(accounts[1]).changeAccruedPerSecond(2)
       ).to.be.revertedWith("The caller is not the governor.");
   
       // Set the value to 2.
-      await UBICoin.changeAccruedPerBlock(2);
-      expect(await UBICoin.accruedPerBlock()).to.equal(2);
+      await UBICoin.changeAccruedPerSecond(2);
+      expect(await UBICoin.accruedPerSecond()).to.equal(2);
     });
 
 
