@@ -1,25 +1,13 @@
 const BigNumber = web3.BigNumber;
 const UBI = artifacts.require('UBI');
 
-const { expect } = require("chai")
-  .use(require('chai-bignumber')(BigNumber))
-  .should();
-
-/*
-require('chai')
-  .use(require('chai-bignumber')(BigNumber))
-  .should();
-  
-*/
+const { expect } = require("chai");
 
 contract('UBI', accounts => {
   const _name = "Democracy Earth";
   const _symbol = "UBI";
-  // const _decimals = web3.utils.toBN('18');
   const _supply = 10000000;
   const _rate = 1000
-
- 
 
   /* beforeEach(async () => {
     this.token = await UBI.new(_supply, _name, _symbol);
@@ -50,45 +38,46 @@ contract('UBI', accounts => {
       await UBICoin.deployed();
     });
 
-    it("Allows the governor to change `accruedPerBlock`.", async () => {
+    it("Allows the governor to change `accruedPerSecond`.", async () => {
       // Check that the value passed to the constructor is set.
-      expect(await UBICoin.accruedPerBlock()).to.equal(1);
+      expect(await UBICoin.accruedPerSecond()).to.equal(_rate);
   
       // Make sure it reverts if we are not the governor.
       await expect(
-        UBICoin.connect(accounts[1]).changeAccruedPerBlock(2)
+        UBICoin.connect(accounts[1]).changeAccruedPerSecond(2)
       ).to.be.revertedWith("The caller is not the governor.");
   
       // Set the value to 2.
-      await UBICoin.changeAccruedPerBlock(2);
-      expect(await UBICoin.accruedPerBlock()).to.equal(2);
+      await UBICoin.changeAccruedPerSecond(2);
+      expect(await UBICoin.accruedPerSecond()).to.equal(2);
     });
 
 
     it("Allows registered submissions to start accruing UBI.", async () => {
-      // Check that the initial `accruingSinceBlock` value is 0.
-      expect(await proofOfHumanityUBI.accruingSinceBlock(addresses[1])).to.equal(
+      // Check that the initial `lastMintedSecond` value is 0.
+      expect(await UBICoin.lastMintedSecond(addresses[1])).to.equal(
         0
       );
 
       // Make sure it reverts if the submission is not registered.
       await setSubmissionIsRegistered(addresses[1], false);
       await expect(
-        proofOfHumanityUBI.startAccruing(addresses[1])
+        UBICoin.startAccruing(addresses[1])
       ).to.be.revertedWith(
         "The submission is not registered in Proof Of Humanity."
       );
 
       // Start accruing UBI and check that the current block number was set.
       await setSubmissionIsRegistered(addresses[1], true);
-      const {blockNumber} = await proofOfHumanityUBI.startAccruing(addresses[1]);
-      expect(await proofOfHumanityUBI.accruingSinceBlock(addresses[1])).to.equal(
-        blockNumber
+      await UBICoin.startAccruing(addresses[1]);
+      const lastMinted = await UBICoin.lastMintedSecond(addresses[1]);
+      expect(await UBICoin.lastMintedSecond(addresses[1])).to.equal(
+        lastMinted
       );
 
       // Make sure it reverts if you try to accrue UBI while already accruing UBI.
       await expect(
-        proofOfHumanityUBI.startAccruing(addresses[1])
+        UBICoin.startAccruing(addresses[1])
       ).to.be.revertedWith("The submission is already accruing UBI.");
     });
 
