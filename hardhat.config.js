@@ -1,5 +1,10 @@
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-truffle5");
+require("@nomiclabs/hardhat-solhint");
+require("@nomiclabs/hardhat-waffle");
+require("hardhat-gas-reporter");
+require("solidity-coverage");
+
 /* require("./scripts/moloch-tasks");
 require("./scripts/pool-tasks"); */
 

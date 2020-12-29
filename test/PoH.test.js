@@ -1,4 +1,4 @@
-const {expect} = require("chai");
+/* const {expect} = require("chai");
 
 describe("ProofOfHumanityUBI", () => {
   let accounts;
@@ -164,3 +164,4 @@ describe("ProofOfHumanityUBI", () => {
     expect(await proofOfHumanityUBI.getAccruedValue(addresses[1])).to.equal(0);
   });
 });
+*/
