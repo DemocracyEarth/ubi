@@ -9,6 +9,7 @@
 pragma solidity 0.7.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20Snapshot.sol";
 
 /**
  * @title ProofOfHumanity Interface
@@ -32,7 +33,7 @@ interface IProofOfHumanity {
 }
 
 
-contract UBI is ERC20Burnable  {
+contract UBI is ERC20Burnable, ERC20Snapshot  {
   /* Governable Storage */
     
   /// @dev How many tokens per second will be minted for every valid human proof per second.
@@ -90,14 +91,16 @@ contract UBI is ERC20Burnable  {
   }
 
   /** @dev Constructor.
-  *  @param initialSupply for the UBI token as integer
+  *  @param _initialSupply for the UBI coin including all decimals.
+  *  @param _name for UBI coin.
+  *  @param _symbol for UBI coin ticker.
   *  @param _accruedPerSecond How much of the token is accrued per block.
   *  @param _proofOfHumanity The Proof Of Humanity registry to reference.
   */
-  constructor(uint256 initialSupply, uint256 _accruedPerSecond, IProofOfHumanity _proofOfHumanity) public ERC20("Democracy Earth", "UBI") {
+  constructor(uint256 _initialSupply, string memory _name, string memory _symbol, uint256 _accruedPerSecond, IProofOfHumanity _proofOfHumanity) public ERC20(_name, _symbol) {
     accruedPerSecond = _accruedPerSecond;
     proofOfHumanity = _proofOfHumanity;
-    _mint(msg.sender, initialSupply * 10**18);
+    _mint(msg.sender, _initialSupply);
   }
 
   /* External */
@@ -105,7 +108,7 @@ contract UBI is ERC20Burnable  {
   /** @dev Universal Basic Income mechanism
   *  @param human The submission ID.
   */
-  function mintBasicIncome(address human) external isRegistered(human, true) isAccruing(human, true) {
+  function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
     require(human != address(0), "human cannot be 0");
     require(human == msg.sender, "human must be sender");
 
@@ -152,5 +155,10 @@ contract UBI is ERC20Burnable  {
     return
       (block.timestamp - lastMintedSecond[human]) *
       accruedPerSecond;
+  }
+
+  /** Overrides */
+  function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override(ERC20, ERC20Snapshot) {
+    ERC20Snapshot._beforeTokenTransfer(from, to, amount);
   }
 }
