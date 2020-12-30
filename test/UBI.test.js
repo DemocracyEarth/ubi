@@ -3,6 +3,15 @@ const UBI = artifacts.require('UBI');
 
 const { expect } = require("chai");
 
+const delay = async (interval) => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      console.log(`Delays ${interval}ms...`);
+      resolve();
+    }, interval);
+  });
+}
+
 contract('UBI', accounts => {
   const _name = "Democracy Earth";
   const _symbol = "UBI";
@@ -81,11 +90,11 @@ contract('UBI', accounts => {
       ).to.be.revertedWith("The submission is already accruing UBI.");
     });
 
-    it("Allows the withdrawal of accrued UBI.", async () => {
+    it("Allows the minting of accrued UBI.", async () => {
       // Make sure it reverts if the submission is not registered.
       await setSubmissionIsRegistered(addresses[1], false);
       await expect(
-        proofOfHumanityUBI.withdrawAccrued(addresses[1])
+        UBICoin.mintAccrued(addresses[1])
       ).to.be.revertedWith(
         "The submission is not registered in Proof Of Humanity."
       );
@@ -93,33 +102,46 @@ contract('UBI', accounts => {
       // Make sure it reverts if the submission is not accruing UBI.
       await setSubmissionIsRegistered(addresses[2], true);
       await expect(
-        proofOfHumanityUBI.withdrawAccrued(addresses[2])
+        UBICoin.mintAccrued(addresses[2])
       ).to.be.revertedWith("The submission is not accruing UBI.");
 
+
+
       // Make sure it reverts if the token transfer fails.
-      await setSubmissionIsRegistered(addresses[1], true);
+     /* await setSubmissionIsRegistered(addresses[1], true);
       await setTransferSuccess(false);
       await expect(
-        proofOfHumanityUBI.withdrawAccrued(addresses[1])
+        UBICoin.mintAccrued(addresses[1])
       ).to.be.revertedWith("Token transfer failed.");
       await setTransferSuccess(true);
+      */
 
       // Withdraw UBI and verify that `accruingSinceBlock` was reset.
       // Also verify that the accrued UBI was sent correctly.
-      const accruingSinceBlock = await proofOfHumanityUBI.accruingSinceBlock(
-        addresses[1]
+
+      const [owner] = await ethers.getSigners();
+      await setSubmissionIsRegistered(owner.address, true);
+      await UBICoin.startAccruing(owner.address);
+      await delay(9532);
+      await UBICoin.mintAccrued(owner.address);
+      const balance = await UBICoin.balanceOf(owner.address);
+
+      const lastMintedSecond = await UBICoin.lastMintedSecond(owner.address);
+      console.log(`lastMintedSecond: ${lastMintedSecond}`);
+      // const { mintedUBI } = await withdrawal;
+
+      console.log(`UBICoin.balanceOf(addresses[1]): ${balance}`);
+
+
+      expect(await UBICoin.lastMintedSecond(addresses[1])).to.equal(
+        mintedUBI
       );
-      const withdrawal = proofOfHumanityUBI.withdrawAccrued(addresses[1]);
-      const {blockNumber} = await withdrawal;
-      expect(await proofOfHumanityUBI.accruingSinceBlock(addresses[1])).to.equal(
-        blockNumber
-      );
-      await expect(withdrawal)
-        .to.emit(proofOfHumanityUBI, "Withdrawal")
+      await expect(mintedUBI)
+        .to.emit(UBICoin, "Withdrawal")
         .withArgs(
           addresses[1],
           addresses[1],
-          accruingSinceBlock.sub(blockNumber).mul(-2)
+          lastMintedSecond.sub(blockNumber).mul(-2)
         );
     });
 

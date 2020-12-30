@@ -34,6 +34,19 @@ interface IProofOfHumanity {
 
 
 contract UBI is ERC20Burnable, ERC20Snapshot  {
+  /* Events */
+
+  /** @dev Emitted when UBI is minted or taken by a reporter.
+    *  @param _recipient The accruer of the UBI.
+    *  @param _beneficiary The withdrawer or taker.
+    *  @param _value The value withdrawn.
+    */
+  event Minted(
+      address indexed _recipient,
+      address indexed _beneficiary,
+      uint256 _value
+  );
+
   /* Governable Storage */
     
   /// @dev How many tokens per second will be minted for every valid human proof per second.
@@ -118,6 +131,8 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
     lastMintedSecond[human] = block.timestamp;
 
     _mint(human, newSupply);
+
+    emit Minted(human, human, newSupply);
   }
 
   /** @dev Starts accruing UBI for a registered submission.
