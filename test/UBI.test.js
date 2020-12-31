@@ -6,7 +6,6 @@ const { expect } = require("chai");
 const delay = async (interval) => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      console.log(`Delays ${interval}ms...`);
       resolve();
     }, interval);
   });
@@ -18,12 +17,7 @@ contract('UBI', accounts => {
   const _supply = 10000000;
   const _rate = 1000
 
-  /* beforeEach(async () => {
-    this.token = await UBI.new(_supply, _name, _symbol);
-  }); */
-
-  describe('UBI coin deploy', () => {
-
+  describe('UBICoin', () => {
     before(async () => {
       accounts = await ethers.getSigners();
   
@@ -105,44 +99,21 @@ contract('UBI', accounts => {
         UBICoin.mintAccrued(addresses[2])
       ).to.be.revertedWith("The submission is not accruing UBI.");
 
-
-
-      // Make sure it reverts if the token transfer fails.
-     /* await setSubmissionIsRegistered(addresses[1], true);
-      await setTransferSuccess(false);
-      await expect(
-        UBICoin.mintAccrued(addresses[1])
-      ).to.be.revertedWith("Token transfer failed.");
-      await setTransferSuccess(true);
-      */
-
-      // Withdraw UBI and verify that `accruingSinceBlock` was reset.
-      // Also verify that the accrued UBI was sent correctly.
-
-      const [owner] = await ethers.getSigners();
+      // Make sure it accrues value with elapsed time
+      const [ owner ] = await ethers.getSigners();
       await setSubmissionIsRegistered(owner.address, true);
       await UBICoin.startAccruing(owner.address);
-      await delay(9532);
+      const initialBalance = await UBICoin.balanceOf(owner.address);
+      const initialMintedSecond = await UBICoin.lastMintedSecond(owner.address);
+      await delay(2000);
       await UBICoin.mintAccrued(owner.address);
-      const balance = await UBICoin.balanceOf(owner.address);
-
       const lastMintedSecond = await UBICoin.lastMintedSecond(owner.address);
-      console.log(`lastMintedSecond: ${lastMintedSecond}`);
-      // const { mintedUBI } = await withdrawal;
 
-      console.log(`UBICoin.balanceOf(addresses[1]): ${balance}`);
+      expect(lastMintedSecond).to.be.above(initialMintedSecond);
+      expect(await UBICoin.balanceOf(owner.address)).to.be.above(initialBalance);
 
-
-      expect(await UBICoin.lastMintedSecond(addresses[1])).to.equal(
-        mintedUBI
-      );
-      await expect(mintedUBI)
-        .to.emit(UBICoin, "Withdrawal")
-        .withArgs(
-          addresses[1],
-          addresses[1],
-          lastMintedSecond.sub(blockNumber).mul(-2)
-        );
+      await expect(UBICoin.mintAccrued(owner.address))
+        .to.emit(UBICoin, "Minted")
     });
 
     it("Allows anyone to report a removed submission for their accrued UBI.", async () => {
@@ -187,24 +158,7 @@ contract('UBI', accounts => {
     });
 
     it("Returns 0 for submissions that are not accruing UBI.", async () => {
-      expect(await proofOfHumanityUBI.getAccruedValue(addresses[1])).to.equal(0);
+      expect(await UBICoin.getAccruedValue(addresses[5])).to.equal(0);
     });
-
-/*
-    it('has the correct name', async () => {
-      const name = await this.token.name();
-      name.should.equal(_name);
-    });
-
-    it('has the correct symbol', async () => {
-      const symbol = await this.token.symbol();
-      symbol.should.equal(_symbol);
-    });
-
-    it('has the correct decimals', async () => {
-      const decimals = await this.token.decimals();
-      decimals.should.be.bignumber.eql(_decimals);
-    });
-*/
   });
 })

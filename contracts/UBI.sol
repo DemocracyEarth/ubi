@@ -122,9 +122,6 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   *  @param human The submission ID.
   */
   function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
-    require(human != address(0), "human cannot be 0");
-    require(human == msg.sender, "human must be sender");
-
     uint256 elapsedTime = (block.timestamp - lastMintedSecond[human]);
     uint256 newSupply = elapsedTime * accruedPerSecond;
 
