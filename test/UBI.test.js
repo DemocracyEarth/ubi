@@ -1,6 +1,4 @@
-const BigNumber = web3.BigNumber;
-const UBI = artifacts.require('UBI');
-
+const BigNumber = require('bignumber.js');
 const { expect } = require("chai");
 
 const delay = async (interval) => {
@@ -118,43 +116,41 @@ contract('UBI', accounts => {
 
     it("Allows anyone to report a removed submission for their accrued UBI.", async () => {
       // Make sure it reverts if the submission is still registered.
+      const num = await UBICoin.balanceOf(addresses[0]);
+      console.log(`num`);
+      console.log(num);
+      console.log(new BigNumber(num).toNumber());
       await expect(
-        proofOfHumanityUBI.reportRemoval(addresses[1])
+        UBICoin.reportRemoval(addresses[6])
       ).to.be.revertedWith(
         "The submission is still registered in Proof Of Humanity."
       );
 
       // Make sure it reverts if the submission is not accruing UBI.
-      await setSubmissionIsRegistered(addresses[2], false);
+      await setSubmissionIsRegistered(addresses[5], false);
       await expect(
-        proofOfHumanityUBI.reportRemoval(addresses[2])
+        UBICoin.reportRemoval(addresses[5])
       ).to.be.revertedWith("The submission is not accruing UBI.");
 
       // Make sure it reverts if the token transfer fails.
-      await setSubmissionIsRegistered(addresses[1], false);
+      /*await setSubmissionIsRegistered(addresses[1], false);
       await setTransferSuccess(false);
       await expect(
         proofOfHumanityUBI.reportRemoval(addresses[1])
       ).to.be.revertedWith("Token transfer failed.");
-      await setTransferSuccess(true);
+      await setTransferSuccess(true);*/
 
       // Report submission and verify that `accruingSinceBlock` was reset.
       // Also verify that the accrued UBI was sent correctly.
-      const accruingSinceBlock = await proofOfHumanityUBI.accruingSinceBlock(
+      const lastMintedSecond = await UBICoin.lastMintedSecond(
         addresses[1]
       );
-      const withdrawal = proofOfHumanityUBI.reportRemoval(addresses[1]);
-      const {blockNumber} = await withdrawal;
-      expect(await proofOfHumanityUBI.accruingSinceBlock(addresses[1])).to.equal(
+      await UBICoin.reportRemoval(addresses[1]);
+      expect(await UBICoin.lastMintedSecond(addresses[1])).to.equal(
         0
       );
       await expect(withdrawal)
-        .to.emit(proofOfHumanityUBI, "Withdrawal")
-        .withArgs(
-          addresses[1],
-          addresses[0],
-          accruingSinceBlock.sub(blockNumber).mul(-2)
-        );
+        .to.emit(proofOfHumanityUBI, "Minted")
     });
 
     it("Returns 0 for submissions that are not accruing UBI.", async () => {
