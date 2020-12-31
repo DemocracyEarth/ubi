@@ -122,8 +122,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   *  @param human The submission ID.
   */
   function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
-    uint256 elapsedTime = (block.timestamp - lastMintedSecond[human]);
-    uint256 newSupply = elapsedTime * accruedPerSecond;
+    uint256 newSupply = getAccruedValue(human);
 
     lastMintedSecond[human] = block.timestamp;
 
@@ -146,7 +145,12 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   *  @param human The submission ID.
   */
   function reportRemoval(address human) external isRegistered(human, false) isAccruing(human, true) {
+    uint256 newSupply = getAccruedValue(human);
+
     lastMintedSecond[human] = 0;
+    _mint(msg.sender, newSupply);
+
+    emit Minted(human, msg.sender, newSupply);
   }  
 
   /** @dev Changes `accruedPerSecond` to `_accruedPerSecond`.
