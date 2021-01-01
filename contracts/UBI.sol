@@ -144,7 +144,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   *  leftover accrued UBI.
   *  @param human The submission ID.
   */
-  function reportRemoval(address human) external isRegistered(human, false) isAccruing(human, true) {
+  function reportRemoval(address human) external isAccruing(human, true) isRegistered(human, false) {
     uint256 newSupply = getAccruedValue(human);
 
     lastMintedSecond[human] = 0;
