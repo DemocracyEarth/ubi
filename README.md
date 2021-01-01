@@ -6,12 +6,14 @@
 
 A standard for Universal Basic Income tokens. 
 
+Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof of Humanity](https://github.com/Proof-Of-Humanity) project.
+
 ## Features
 
-- ERC20 token that can `mint` new supply for verified humans over time at a fixed rate. 
+- ERC20 token that can `mint` new supply for verified humans over time at a given rate. 
 - Interfaces with `ProofOfHumanity` to get curated list of verified humans.
-- Issuance rate (inflation) is subject to governance.
-- Tokens can be `burn` (deflation) either by users or a DAO.
+- Issuance rate —a. k. a. inflation— is subject to governance.
+- Token has `burn` function —a. k. a. deflation— that can be triggered by users or a DAO.
 - `Snapshot` event emitted to ease use of token for governance purposes.
 
 ## Setup
