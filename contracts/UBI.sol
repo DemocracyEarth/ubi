@@ -125,7 +125,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   *  @param human The submission ID.
   */
   function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
-    require(block.number > lastBlock[msg.sender], "Initializing UBI accrual and its minting cannot happen in the same block.");
+    require(block.number > lastBlock[msg.sender], "Accrual and minting cannot happen in the same block.");
     
     uint256 newSupply = getAccruedValue(human);
     

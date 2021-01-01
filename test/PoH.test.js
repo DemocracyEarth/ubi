@@ -131,7 +131,7 @@ contract('UBI', accounts => {
 
       // Report submission and verify that `accruingSinceBlock` was reset.
       // Also verify that the accrued UBI was sent correctly.
-      const lastMintedSecond = await UBICoin.lastMintedSecond(addresses[1]);
+      await UBICoin.lastMintedSecond(addresses[1]);
       await expect(UBICoin.reportRemoval(addresses[1])).to.emit(UBICoin, "Minted");
       expect(await UBICoin.lastMintedSecond(addresses[1])).to.equal(0);
       
