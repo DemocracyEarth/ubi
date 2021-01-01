@@ -52,6 +52,9 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   /// @dev How many tokens per second will be minted for every valid human proof per second.
   uint256 public accruedPerSecond;
 
+  /// @dev To prevent intrinsic risks of flash loan attacks it will restrict key functions to one per block.
+  mapping(address => uint256) public last;
+
   /* Constructor Storage */
 
   /// @dev The Proof Of Humanity registry to reference.
@@ -122,6 +125,8 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   *  @param human The submission ID.
   */
   function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
+    require(block.number > last[msg.sender], "Initializing UBI accrual and its minting cannot happen in the same block.");
+    
     uint256 newSupply = getAccruedValue(human);
 
     lastMintedSecond[human] = block.timestamp;
@@ -136,6 +141,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   */
   function startAccruing(address human) external isRegistered(human, true) isAccruing(human, false) {
     lastMintedSecond[human] = block.timestamp;
+    last[msg.sender] = block.number;
   }
 
   /** @dev Allows anyone to report a submission that
