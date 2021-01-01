@@ -5,8 +5,7 @@ require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 
-/* require("./scripts/moloch-tasks");
-require("./scripts/pool-tasks"); */
+require("./scripts/ubi-tasks");
 
 const INFURA_API_KEY = "";
 const MAINNET_PRIVATE_KEY = "";
