@@ -53,7 +53,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   uint256 public accruedPerSecond;
 
   /// @dev To prevent intrinsic risks of flash loan attacks it will restrict key functions to one per block.
-  mapping(address => uint256) public last;
+  mapping(address => uint256) public lastBlock;
 
   /* Constructor Storage */
 
@@ -125,10 +125,11 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   *  @param human The submission ID.
   */
   function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
-    require(block.number > last[msg.sender], "Initializing UBI accrual and its minting cannot happen in the same block.");
+    require(block.number > lastBlock[msg.sender], "Initializing UBI accrual and its minting cannot happen in the same block.");
     
     uint256 newSupply = getAccruedValue(human);
-
+    
+    lastBlock[msg.sender] = block.number;
     lastMintedSecond[human] = block.timestamp;
 
     _mint(human, newSupply);
@@ -141,7 +142,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   */
   function startAccruing(address human) external isRegistered(human, true) isAccruing(human, false) {
     lastMintedSecond[human] = block.timestamp;
-    last[msg.sender] = block.number;
+    lastBlock[msg.sender] = block.number;
   }
 
   /** @dev Allows anyone to report a submission that
