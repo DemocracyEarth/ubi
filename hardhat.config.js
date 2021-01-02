@@ -9,13 +9,13 @@ require("./scripts/tasks");
 
 // Go to https://infura.io/ and create a new project
 // Replace this with your Infura project ID
-const INFURA_API_KEY = "269a4106080549898dcc50dbb84754f3";
+const INFURA_API_KEY = "";
 
 // Replace this private key with your Kovan account private key
 // To export your private key from Metamask, open Metamask and
 // go to Account Details > Export Private Key
 // Be aware of NEVER putting real Ether into testing accounts
-const KOVAN_SECRET = "4611cc522ed9c253198bf66adb599a843c8731e617ed3261ccb755225f16335b";
+const KOVAN_SECRET = "";
 const ETHERSCAN_API_KEY = "";
 
 module.exports = {
