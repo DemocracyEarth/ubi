@@ -26,7 +26,7 @@ Latest release is [`version 0.1.1`](https://github.com/DemocracyEarth/ubi/releas
 
     ```sh
     $ git clone https://github.com/DemocracyEarth/ubi.git
-    $ cd dapp
+    $ cd ubi
     ```
 
 2. Install Dependencies
