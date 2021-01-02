@@ -1,5 +1,15 @@
 const { expect } = require("chai");
 
+const _name = "Democracy Earth";
+const _symbol = "UBI";
+const _supply = 10000000;
+const _rate = 1000
+
+/**
+ @function delay
+ @summary halts execution for a given interval of milliseconds.
+ @param {string} interval in milliseconds.
+*/
 const delay = async (interval) => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
@@ -8,34 +18,43 @@ const delay = async (interval) => {
   });
 }
 
-contract('UBI', accounts => {
-  const _name = "Democracy Earth";
-  const _symbol = "UBI";
-  const _supply = 10000000;
-  const _rate = 1000
+/**
+ @function deploy
+ @summary creates a mock proof of humanity contract and then deploys the UBI coin.
+*/
+const deploy = async () => {
+  accounts = await ethers.getSigners();
+  
+  const [_addresses, mockProofOfHumanity] = await Promise.all([
+    Promise.all(accounts.map((account) => account.getAddress())),
+    waffle.deployMockContract(
+      accounts[0],
+      require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
+    ),
+  ]);
+  addresses = _addresses;
+  setSubmissionIsRegistered = (submissionID, isRegistered) =>
+    mockProofOfHumanity.mock.getSubmissionInfo
+      .withArgs(submissionID)
+      .returns(0, 0, 0, 0, isRegistered, false, 0);
 
+  UBICoin = await (
+    await ethers.getContractFactory("UBI")
+  ).deploy(_supply, _name, _symbol, _rate, mockProofOfHumanity.address);
+
+  await UBICoin.deployed();
+
+  return UBICoin;
+}
+
+/**
+ @summary Tests for UBI.sol
+*/
+contract('UBI', accounts => {
   describe('UBI Coin and Proof of Humanity', () => {
     before(async () => {
       accounts = await ethers.getSigners();
-  
-      const [_addresses, mockProofOfHumanity] = await Promise.all([
-        Promise.all(accounts.map((account) => account.getAddress())),
-        waffle.deployMockContract(
-          accounts[0],
-          require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
-        ),
-      ]);
-      addresses = _addresses;
-      setSubmissionIsRegistered = (submissionID, isRegistered) =>
-        mockProofOfHumanity.mock.getSubmissionInfo
-          .withArgs(submissionID)
-          .returns(0, 0, 0, 0, isRegistered, false, 0);
-  
-      UBICoin = await (
-        await ethers.getContractFactory("UBI")
-      ).deploy(_supply, _name, _symbol, _rate, mockProofOfHumanity.address);
-  
-      await UBICoin.deployed();
+      UBICoin = await deploy();
     });
 
     it("Allows the governor to change `accruedPerSecond`.", async () => {

@@ -5,7 +5,7 @@ const deploymentParams = {
   ACCRUED_PER_SECOND: '100000000'  
 }
 
-task('ubi-deploy', 'Deploys a new instance of the UBI Coin')
+task('deploy', 'Deploys a new instance of the UBI Coin')
   .setAction(async () => {
     if (deploymentParams.INITIAL_SUPPLY === '') {
       console.error('Please set the deployment parameters in deployment-params.js')
