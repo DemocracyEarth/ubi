@@ -11,7 +11,7 @@ task('ubi-deploy', 'Deploys a new instance of the UBI Coin')
     // Make sure everything is compiled
     await run('compile')
 
-    console.log('Deploying a new UBI Coin to the network ' + network.name)
+    console.log('Deploying a new Universal Basic Income to the network ' + network.name)
     console.log(
       'Deployment parameters:\n',
       '  _initialSupply:', deploymentParams.INITIAL_SUPPLY, '\n',
