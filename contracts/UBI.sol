@@ -74,6 +74,12 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
     _;
   }
 
+  /// @dev Prevention of reentrancy attacks in flash loans and liquidity pools.
+  modifier isBlockApart() {
+    require(block.number > lastBlock[msg.sender], "Accrual and minting cannot happen in the same block.");
+    _;
+  }
+
   /** @dev is Registered as Proof of Human.
   *  @param _submissionID for the address of the human.
   *  @param _registered if it's registered as valid human.
@@ -124,9 +130,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   /** @dev Universal Basic Income mechanism
   *  @param human The submission ID.
   */
-  function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
-    require(block.number > lastBlock[msg.sender], "Accrual and minting cannot happen in the same block.");
-    
+  function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) isBlockApart {
     uint256 newSupply = getAccruedValue(human);
     
     lastBlock[msg.sender] = block.number;
@@ -151,10 +155,12 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   *  leftover accrued UBI.
   *  @param human The submission ID.
   */
-  function reportRemoval(address human) external isAccruing(human, true) isRegistered(human, false) {
+  function reportRemoval(address human) external isAccruing(human, true) isRegistered(human, false) isBlockApart {
     uint256 newSupply = getAccruedValue(human);
 
+    lastBlock[msg.sender] = block.number;
     lastMintedSecond[human] = 0;
+
     _mint(msg.sender, newSupply);
 
     emit Minted(human, msg.sender, newSupply);
