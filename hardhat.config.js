@@ -7,9 +7,15 @@ require("solidity-coverage");
 
 require("./scripts/tasks");
 
+// Go to https://infura.io/ and create a new project
+// Replace this with your Infura project ID
 const INFURA_API_KEY = "";
-const MAINNET_PRIVATE_KEY = "";
-const ROPSTEN_PRIVATE_KEY = "";
+
+// Replace this private key with your Kovan account private key
+// To export your private key from Metamask, open Metamask and
+// go to Account Details > Export Private Key
+// Be aware of NEVER putting real Ether into testing accounts
+const KOVAN_PRIVATE_KEY = "";
 const ETHERSCAN_API_KEY = "";
 
 module.exports = {
@@ -17,9 +23,9 @@ module.exports = {
     develop: {
       url: "http://localhost:8545",
     },
-    ropsten: {
-      url: `https://ropsten.infura.io/v3/${INFURA_API_KEY}`,
-      accounts: [`0x${ROPSTEN_PRIVATE_KEY}`]
+    kovan: {
+      url: `https://kovan.infura.io/v3/${INFURA_API_KEY}`,
+      accounts: [`0x${KOVAN_PRIVATE_KEY}`]
     },
     coverage: {
       url: "http://localhost:8555"
