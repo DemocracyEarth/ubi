@@ -5,7 +5,7 @@ require("@nomiclabs/hardhat-waffle");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 
-require("./scripts/ubi-tasks");
+require("./scripts/tasks");
 
 const INFURA_API_KEY = "";
 const MAINNET_PRIVATE_KEY = "";
@@ -16,6 +16,10 @@ module.exports = {
   networks: {
     develop: {
       url: "http://localhost:8545",
+    },
+    ropsten: {
+      url: `https://ropsten.infura.io/v3/${INFURA_API_KEY}`,
+      accounts: [`0x${ROPSTEN_PRIVATE_KEY}`]
     },
     coverage: {
       url: "http://localhost:8555"
