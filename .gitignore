@@ -10,4 +10,4 @@ allFiredEvents
 coverageEnv/
 scTopics
 .DS_Store
-
+hardhat.config.js
