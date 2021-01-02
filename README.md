@@ -16,7 +16,11 @@ Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof o
 - Token has `burn` function —a. k. a. deflation— that can be triggered by users or a DAO.
 - `Snapshot` event emitted to ease use of token for governance purposes.
 
-Built with [Hardhat](https://github.com/hardhat) and [OpenZeppelin](https://github.com/openzeppelin) contracts. 
+Built with [Hardhat](https://github.com/nomiclabs/hardhat) and [OpenZeppelin](https://github.com/openzeppelin) contracts. 
+
+**Release:**
+
+* Currently [`version 0.1`](https://github.com/DemocracyEarth/ubi/releases)
 
 ## Setup
 
