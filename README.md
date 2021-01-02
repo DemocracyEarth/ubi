@@ -63,6 +63,21 @@ AVAILABLE TASKS:
 
 You can run `npx hardhat help <task>` to get help about each tasks and their parameters. 
 
+## Deploy
+
+1. On `hardhat.config.js` configure the following constants for the `kovan` testnet:
+
+    ```
+    INFURA_API_KEY
+    KOVAN_PRIVATE_KEY
+    ```
+
+2. Deploy on Ethereum `kovan` testnet: 
+
+    ```sh
+    $ npx hardhat run scripts/deploy.js --network kovan
+    ```
+
 ## Contribute
 
 These contracts are free, open source and censorship resistant. Support us via [Open Collective](https://opencollective.com/democracyearth).
