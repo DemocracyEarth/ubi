@@ -18,9 +18,7 @@ Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof o
 
 Built with [Hardhat](https://github.com/nomiclabs/hardhat) and [OpenZeppelin](https://github.com/openzeppelin) contracts. 
 
-**Release:**
-
-* Currently [`version 0.1`](https://github.com/DemocracyEarth/ubi/releases)
+Latest release is [`version 0.1.1`](https://github.com/DemocracyEarth/ubi/releases)
 
 ## Setup
 
