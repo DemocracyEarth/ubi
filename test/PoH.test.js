@@ -129,7 +129,7 @@ contract('UBI', accounts => {
       expect(await UBICoin.balanceOf(owner.address)).to.be.above(initialBalance);
 
       await expect(UBICoin.mintAccrued(owner.address))
-        .to.emit(UBICoin, "Minted")
+        .to.emit(UBICoin, "Mint")
     });
 
     it("Allows anyone to report a removed submission for their accrued UBI.", async () => {
@@ -151,7 +151,7 @@ contract('UBI', accounts => {
       // Report submission and verify that `accruingSinceBlock` was reset.
       // Also verify that the accrued UBI was sent correctly.
       await UBICoin.lastMintedSecond(addresses[1]);
-      await expect(UBICoin.reportRemoval(addresses[1])).to.emit(UBICoin, "Minted");
+      await expect(UBICoin.reportRemoval(addresses[1])).to.emit(UBICoin, "Mint");
       expect(await UBICoin.lastMintedSecond(addresses[1])).to.equal(0);
       
     });

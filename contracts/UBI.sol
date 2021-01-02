@@ -41,7 +41,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
     *  @param _beneficiary The withdrawer or taker.
     *  @param _value The value withdrawn.
     */
-  event Minted(
+  event Mint(
       address indexed _recipient,
       address indexed _beneficiary,
       uint256 _value
@@ -138,7 +138,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
 
     _mint(human, newSupply);
 
-    emit Minted(human, human, newSupply);
+    emit Mint(human, human, newSupply);
   }
 
   /** @dev Starts accruing UBI for a registered submission.
@@ -163,7 +163,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
 
     _mint(msg.sender, newSupply);
 
-    emit Minted(human, msg.sender, newSupply);
+    emit Mint(human, msg.sender, newSupply);
   }  
 
   /** @dev Changes `accruedPerSecond` to `_accruedPerSecond`.
