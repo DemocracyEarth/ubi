@@ -16,6 +16,10 @@ Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof o
 - Token has `burn` function —a. k. a. deflation— that can be triggered by users or a DAO.
 - `Snapshot` event emitted to ease use of token for governance purposes.
 
+### Developers
+
+Built with [Hardhat](https://github.com/hardhat) and [OpenZeppelin](https://github.com/openzeppelin) contracts. 
+
 ## Setup
 
 1. Clone Repository
@@ -37,7 +41,27 @@ Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof o
     $ npx hardhat test
     ```
 
-    You can also interact with the token with `npx hardhat console`.
+    To compute their code coverage run `npx hardhat coverage`.
+
+## Tasks
+
+After following those instructions, you can run `npx hardhat` to get a list with all the tasks:
+
+```
+$ npx hardhat
+AVAILABLE TASKS:
+
+  clean                         Clears the cache and deletes all artifacts
+  compile                       Compiles the entire project, building all artifacts
+  console                       Opens a hardhat console
+  flatten                       Flattens and prints all contracts and their dependencies
+  help                          Prints this message
+  ubi-deploy                    Deploys a new instance of the UBI Coin
+  run                           Runs a user-defined script after compiling the project
+  test                          Runs mocha tests
+```
+
+You can run `npx hardhat help <task>` to get help about each tasks and their parameters. 
 
 ## Contribute
 

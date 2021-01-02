@@ -1,7 +1,11 @@
-const BN = require('bignumber.js')
-const deploymentParams = require('../deployment-params')
+const deploymentParams = {
+  INITIAL_SUPPLY: '10000000000000000000000000',
+  TOKEN_NAME: "Universal Basic Income",
+  TOKEN_SYMBOL: "UBI",
+  ACCRUED_PER_SECOND: '100000000'  
+}
 
-task('deploy', 'Deploys a new instance of the UBI Coin')
+task('ubi-deploy', 'Deploys a new instance of the UBI Coin')
   .setAction(async () => {
     if (deploymentParams.INITIAL_SUPPLY === '') {
       console.error('Please set the deployment parameters in deployment-params.js')
