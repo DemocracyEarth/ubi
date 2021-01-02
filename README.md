@@ -18,9 +18,7 @@ Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof o
 
 Built with [Hardhat](https://github.com/nomiclabs/hardhat) and [OpenZeppelin](https://github.com/openzeppelin) contracts. 
 
-**Release:**
-
-* Currently [`version 0.1`](https://github.com/DemocracyEarth/ubi/releases)
+Latest release is [`version 0.1.1`](https://github.com/DemocracyEarth/ubi/releases)
 
 ## Setup
 
@@ -58,7 +56,7 @@ AVAILABLE TASKS:
   console                       Opens a hardhat console
   flatten                       Flattens and prints all contracts and their dependencies
   help                          Prints this message
-  ubi-deploy                    Deploys a new instance of the UBI Coin
+  deploy                        Deploys a new instance of the UBI Coin
   run                           Runs a user-defined script after compiling the project
   test                          Runs mocha tests
 ```
