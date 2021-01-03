@@ -8,6 +8,8 @@ A standard for Universal Basic Income tokens.
 
 Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof of Humanity](https://github.com/Proof-Of-Humanity) project.
 
+[![CircleCI](https://circleci.com/gh/DemocracyEarth/ubi.svg?style=svg)](https://circleci.com/gh/DemocracyEarth/ubi)
+
 ## Features
 
 - ERC20 token that can `mint` new supply for verified humans over time at a given rate. 
