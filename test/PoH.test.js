@@ -1,9 +1,11 @@
 const { expect } = require("chai");
 
-const _name = "Democracy Earth";
-const _symbol = "UBI";
-const _supply = 10000000;
-const _rate = 1000
+const deploymentParams = {
+  INITIAL_SUPPLY: '10000000000000000000000000',
+  TOKEN_NAME: "Universal Basic Income",
+  TOKEN_SYMBOL: "EARTH",
+  ACCRUED_PER_SECOND: '100000000'  
+}
 
 /**
  @function delay
@@ -40,12 +42,12 @@ const deploy = async () => {
 
   UBICoin = await (
     await ethers.getContractFactory("UBI")
-  ).deploy(_supply, _name, _symbol, _rate, mockProofOfHumanity.address);
+  ).deploy(deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address);
 
   await UBICoin.deployed();
 
-  return UBICoin;
-}
+  return [UBICoin, mockProofOfHumanity];
+};
 
 /**
  @summary Tests for UBI.sol
@@ -54,12 +56,32 @@ contract('UBI', accounts => {
   describe('UBI Coin and Proof of Humanity', () => {
     before(async () => {
       accounts = await ethers.getSigners();
-      UBICoin = await deploy();
+  
+      const [_addresses, mockProofOfHumanity] = await Promise.all([
+        Promise.all(accounts.map((account) => account.getAddress())),
+        waffle.deployMockContract(
+          accounts[0],
+          require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
+        ),
+      ]);
+      addresses = _addresses;
+      setSubmissionIsRegistered = (submissionID, isRegistered) =>
+        mockProofOfHumanity.mock.getSubmissionInfo
+          .withArgs(submissionID)
+          .returns(0, 0, 0, 0, isRegistered, false, 0);
+
+      UBICoin = await (
+        await ethers.getContractFactory("UBI")
+      ).deploy(deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address);
+
+      await UBICoin.deployed();
+
+      altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
     });
 
     it("Allows the governor to change `accruedPerSecond`.", async () => {
       // Check that the value passed to the constructor is set.
-      expect(await UBICoin.accruedPerSecond()).to.equal(_rate);
+      expect(await UBICoin.accruedPerSecond()).to.equal(deploymentParams.ACCRUED_PER_SECOND);
   
       // Make sure it reverts if we are not the governor.
       await expect(
@@ -158,6 +180,17 @@ contract('UBI', accounts => {
 
     it("Returns 0 for submissions that are not accruing UBI.", async () => {
       expect(await UBICoin.getAccruedValue(addresses[5])).to.equal(0);
+    });
+
+    it("Allows the governor to change `proofOfHumanity`.", async () => {  
+      // Make sure it reverts if we are not the governor.
+      await expect(
+        UBICoin.connect(accounts[1]).changeProofOfHumanity(altProofOfHumanity.address)
+      ).to.be.revertedWith("The caller is not the governor.");
+  
+      // Set the value to an alternative proof of humanity registry
+      await UBICoin.changeProofOfHumanity(altProofOfHumanity.address);
+      expect(await UBICoin.proofOfHumanity()).to.equal(altProofOfHumanity.address);
     });
   });
 })
