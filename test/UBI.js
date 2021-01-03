@@ -1,11 +1,5 @@
 const { expect } = require("chai");
-
-const deploymentParams = {
-  INITIAL_SUPPLY: '10000000000000000000000000',
-  TOKEN_NAME: "Universal Basic Income",
-  TOKEN_SYMBOL: "EARTH",
-  ACCRUED_PER_SECOND: '100000000'  
-}
+const deploymentParams = require('../deployment-params');
 
 /**
  @function delay
@@ -19,35 +13,6 @@ const delay = async (interval) => {
     }, interval);
   });
 }
-
-/**
- @function deploy
- @summary creates a mock proof of humanity contract and then deploys the UBI coin.
-*/
-const deploy = async () => {
-  accounts = await ethers.getSigners();
-  
-  const [_addresses, mockProofOfHumanity] = await Promise.all([
-    Promise.all(accounts.map((account) => account.getAddress())),
-    waffle.deployMockContract(
-      accounts[0],
-      require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
-    ),
-  ]);
-  addresses = _addresses;
-  setSubmissionIsRegistered = (submissionID, isRegistered) =>
-    mockProofOfHumanity.mock.getSubmissionInfo
-      .withArgs(submissionID)
-      .returns(0, 0, 0, 0, isRegistered, false, 0);
-
-  UBICoin = await (
-    await ethers.getContractFactory("UBI")
-  ).deploy(deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address);
-
-  await UBICoin.deployed();
-
-  return [UBICoin, mockProofOfHumanity];
-};
 
 /**
  @summary Tests for UBI.sol
