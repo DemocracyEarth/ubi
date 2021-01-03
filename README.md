@@ -56,7 +56,7 @@ AVAILABLE TASKS:
   console                       Opens a hardhat console
   flatten                       Flattens and prints all contracts and their dependencies
   help                          Prints this message
-  deploy                        Deploys a new instance of the UBI Coin
+  deploy                        Test deploy of a new instance of the UBI Coin
   run                           Runs a user-defined script after compiling the project
   test                          Runs mocha tests
 ```
