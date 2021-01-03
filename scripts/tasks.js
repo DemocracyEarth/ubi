@@ -1,7 +1,7 @@
 const deploymentParams = {
   INITIAL_SUPPLY: '10000000000000000000000000',
   TOKEN_NAME: "Universal Basic Income",
-  TOKEN_SYMBOL: "UBI",
+  TOKEN_SYMBOL: "EARTH",
   ACCRUED_PER_SECOND: '100000000'  
 }
 
