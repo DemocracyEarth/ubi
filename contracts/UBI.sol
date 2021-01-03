@@ -58,7 +58,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   /* Constructor Storage */
 
   /// @dev The Proof Of Humanity registry to reference.
-  IProofOfHumanity public immutable proofOfHumanity; 
+  IProofOfHumanity public proofOfHumanity; 
 
   /// @dev The contract's governor.
   address public governor = msg.sender;
@@ -171,6 +171,13 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   */
   function changeAccruedPerSecond(uint256 _accruedPerSecond) external onlyByGovernor {
     accruedPerSecond = _accruedPerSecond;
+  }
+
+  /** @dev Changes `proofOfHumanity` to `_proofOfHumanity`.
+  *  @param _proofOfHumanity Registry that meets interface of Proof of Humanity
+  */
+  function changeProofOfHumanity(IProofOfHumanity _proofOfHumanity) external onlyByGovernor {
+    proofOfHumanity = _proofOfHumanity;
   }
 
   /* Getters */
