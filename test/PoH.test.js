@@ -187,10 +187,12 @@ contract('UBI', accounts => {
       await expect(
         UBICoin.connect(accounts[1]).changeProofOfHumanity(altProofOfHumanity.address)
       ).to.be.revertedWith("The caller is not the governor.");
-  
+
       // Set the value to an alternative proof of humanity registry
+      const originalProofOfHumanity = await UBICoin.proofOfHumanity();
       await UBICoin.changeProofOfHumanity(altProofOfHumanity.address);
       expect(await UBICoin.proofOfHumanity()).to.equal(altProofOfHumanity.address);
+      expect(await UBICoin.proofOfHumanity()).to.not.equal(originalProofOfHumanity);
     });
   });
 })

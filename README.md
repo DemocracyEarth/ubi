@@ -15,10 +15,11 @@ Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof o
 - Issuance rate —a. k. a. inflation— is subject to governance.
 - Token has `burn` function —a. k. a. deflation— that can be triggered by users or a DAO.
 - `Snapshot` event emitted to ease use of token for governance purposes.
+- `ProofOfHumanity` registry can be updated with governance mechanism.
 
 Built with [Hardhat](https://github.com/nomiclabs/hardhat) and [OpenZeppelin](https://github.com/openzeppelin) contracts. 
 
-Latest release is [`version 0.1.2`](https://github.com/DemocracyEarth/ubi/releases)
+Latest release is [`version 0.1.3`](https://github.com/DemocracyEarth/ubi/releases)
 
 ## Setup
 
