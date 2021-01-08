@@ -17,7 +17,7 @@ const delay = async (interval) => {
 /**
  @summary Tests for UBI.sol
 */
-contract('UBI (Proxy)', accounts => {
+contract('UBI (Upgradeable Contract)', accounts => {
   describe('UBI Coin and Proof of Humanity', () => {
     before(async () => {
       accounts = await ethers.getSigners();
