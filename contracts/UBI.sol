@@ -8,8 +8,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.3;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Snapshot.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20SnapshotUpgradeable.sol";
 
 /**
  * @title ProofOfHumanity Interface
@@ -33,7 +33,7 @@ interface IProofOfHumanity {
 }
 
 
-contract UBI is ERC20Burnable, ERC20Snapshot  {
+contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeable {
   /* Events */
 
   /** @dev Emitted when UBI is minted or taken by a reporter.
@@ -47,15 +47,13 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
       uint256 _value
   );
 
-  /* Governable Storage */
+  /* Storage */
     
   /// @dev How many tokens per second will be minted for every valid human proof per second.
   uint256 public accruedPerSecond;
 
   /// @dev To prevent intrinsic risks of flash loan attacks it will restrict key functions to one per block.
   mapping(address => uint256) public lastBlock;
-
-  /* Constructor Storage */
 
   /// @dev The Proof Of Humanity registry to reference.
   IProofOfHumanity public proofOfHumanity; 
@@ -119,9 +117,11 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
   *  @param _accruedPerSecond How much of the token is accrued per block.
   *  @param _proofOfHumanity The Proof Of Humanity registry to reference.
   */
-  constructor(uint256 _initialSupply, string memory _name, string memory _symbol, uint256 _accruedPerSecond, IProofOfHumanity _proofOfHumanity) public ERC20(_name, _symbol) {
+  function initialize(uint256 _initialSupply, string memory _name, string memory _symbol, uint256 _accruedPerSecond, IProofOfHumanity _proofOfHumanity) public initializer {
     accruedPerSecond = _accruedPerSecond;
     proofOfHumanity = _proofOfHumanity;
+    __Context_init_unchained();
+    __ERC20_init_unchained(_name, _symbol);
     _mint(msg.sender, _initialSupply);
   }
 
@@ -197,7 +197,7 @@ contract UBI is ERC20Burnable, ERC20Snapshot  {
 
   /** @dev Overrides with Snapshot mechanisms _beforeTokenTransfer functions.
   */
-  function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override(ERC20, ERC20Snapshot) {
-    ERC20Snapshot._beforeTokenTransfer(from, to, amount);
+  function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override(ERC20Upgradeable, ERC20SnapshotUpgradeable) {
+    ERC20SnapshotUpgradeable._beforeTokenTransfer(from, to, amount);
   }
 }
