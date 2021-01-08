@@ -59,7 +59,7 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
   IProofOfHumanity public proofOfHumanity; 
 
   /// @dev The contract's governor.
-  address public governor = msg.sender;
+  address public governor;
 
   /// @dev Persists time of last minted tokens for any given address.
   mapping(address => uint256) public lastMintedSecond;
@@ -118,10 +118,13 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
   *  @param _proofOfHumanity The Proof Of Humanity registry to reference.
   */
   function initialize(uint256 _initialSupply, string memory _name, string memory _symbol, uint256 _accruedPerSecond, IProofOfHumanity _proofOfHumanity) public initializer {
-    accruedPerSecond = _accruedPerSecond;
-    proofOfHumanity = _proofOfHumanity;
     __Context_init_unchained();
     __ERC20_init_unchained(_name, _symbol);
+
+    accruedPerSecond = _accruedPerSecond;
+    proofOfHumanity = _proofOfHumanity;
+    governor = msg.sender;
+
     _mint(msg.sender, _initialSupply);
   }
 
