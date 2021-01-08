@@ -1,9 +1,4 @@
-const deploymentParams = {
-  INITIAL_SUPPLY: '10000000000000000000000000',
-  TOKEN_NAME: "Universal Basic Income",
-  TOKEN_SYMBOL: "EARTH",
-  ACCRUED_PER_SECOND: '100000000'  
-}
+const deploymentParams = require('../deployment-params');
 
 task('deploy', 'Test deploy of a new instance of the UBI Coin')
   .setAction(async () => {
@@ -49,13 +44,17 @@ task('deploy', 'Test deploy of a new instance of the UBI Coin')
         .withArgs(submissionID)
         .returns(0, 0, 0, 0, isRegistered, false, 0);
 
-    UBICoin = await (
-      await ethers.getContractFactory("UBI")
-    ).deploy(deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address);
 
-    await UBICoin.deployed();
+    UBICoin = await ethers.getContractFactory("UBI");
 
+    ubi = await upgrades.deployProxy(UBICoin,
+      [deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address],
+      { initializer: 'initialize', unsafeAllowCustomTypes: true }
+    );
+
+    await ubi.deployed();
+    
     console.log("")
-    console.log('UBI Coin deployed. Address:', UBICoin.address)
+    console.log('UBI Coin deployed. Address:', ubi.address)
     console.log("Set this address in hardhat.config.js's networks section to use the other tasks")
   })

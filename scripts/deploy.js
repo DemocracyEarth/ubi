@@ -12,14 +12,24 @@ async function main() {
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
   const Token = await ethers.getContractFactory("UBI");
-  const token = await Token.deploy(
-    deploymentParams.INITIAL_SUPPLY, 
-    deploymentParams.TOKEN_NAME, 
-    deploymentParams.TOKEN_SYMBOL, 
-    deploymentParams.ACCRUED_PER_SECOND, 
-    deploymentParams.PROOF_OF_HUMANITY_KOVAN);
+  console.log("Deploying UBI Coin...");
 
-  console.log("Token address:", token.address);
+  const token = await upgrades.deployProxy(
+    Token,
+    [
+      deploymentParams.INITIAL_SUPPLY,
+      deploymentParams.TOKEN_NAME,
+      deploymentParams.TOKEN_SYMBOL,
+      deploymentParams.ACCRUED_PER_SECOND,
+      deploymentParams.PROOF_OF_HUMANITY_KOVAN
+    ],
+    {
+      initializer: 'initialize',
+      unsafeAllowCustomTypes: true 
+    }
+  );
+
+  console.log("Token deployed to:", token.address);
 }
 
 main()
