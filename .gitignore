@@ -10,4 +10,5 @@ allFiredEvents
 coverageEnv/
 scTopics
 .DS_Store
+.openzeppelin
 

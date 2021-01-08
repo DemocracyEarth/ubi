@@ -2,6 +2,8 @@ require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-solhint");
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-ethers");
+require('@openzeppelin/hardhat-upgrades');
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 
@@ -23,10 +25,13 @@ module.exports = {
     develop: {
       url: "http://localhost:8545",
     },
-    /* kovan: {
+    /* 
+    kovan: {
       url: `https://kovan.infura.io/v3/${INFURA_API_KEY}`,
-      accounts: [`0x${KOVAN_PRIVATE_KEY}`]
-    }, */
+      accounts: [`0x${KOVAN_PRIVATE_KEY}`],
+      gasMultiplier: 3
+    }, 
+    */
     coverage: {
       url: "http://localhost:8555"
     }
