@@ -26,10 +26,10 @@ contract('UBI (Proxy)', accounts => {
 
       ubi = await upgrades.deployProxy(UBICoin, 
         [deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address],
-        { initializer: 'store', unsafeAllowCustomTypes: true}
+        { initializer: 'initialize', unsafeAllowCustomTypes: true }
       );
 
-      await UBICoin.deployed();
+      await ubi.deployed();
 
       altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
     });
@@ -38,6 +38,7 @@ contract('UBI (Proxy)', accounts => {
       // Check that the value passed to the constructor is set.
       console.log(ubi);
       // expect(await ubi.accruedPerSecond()).to.equal(deploymentParams.ACCRUED_PER_SECOND);
+      expect((await ubi.accruedPerSecond()).toString()).to.equal(deploymentParams.ACCRUED_PER_SECOND.toString());
     });
 
   });
