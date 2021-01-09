@@ -81,6 +81,18 @@ You can run `npx hardhat help <task>` to get help about each tasks and their par
     ```sh
     $ npx hardhat run scripts/deploy.js --network kovan
     ```
+3. Interact with the console:
+
+    ```sh
+    $ npx hardhat console --network kovan
+    ```
+
+    Initalize the token with:
+
+    ```js
+     const UBI = await ethers.getContractFactory("UBI")
+     const ubi = await UBI.attach('0xDdAdE19B13833d1bF52c1fe1352d41A8DD9fE8C9') // Replace with your token address
+    ```
 
 ## Contribute
 
