@@ -49,7 +49,7 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
 
   /* Storage */
     
-  /// @dev How many tokens per second will be minted for every valid human proof per second.
+  /// @dev How many tokens per second will be minted for every valid human.
   uint256 public accruedPerSecond;
 
   /// @dev To prevent intrinsic risks of flash loan attacks it will restrict key functions to one per block.
@@ -183,6 +183,11 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
     proofOfHumanity = _proofOfHumanity;
   }
 
+  /** @dev External function for Snapshot event emitter only accessible by governor.  */
+  function snapshot() external onlyByGovernor {
+    _snapshot();
+  }
+
   /* Getters */
 
   /** @dev Calculates how much UBI a submission has available for withdrawal.
@@ -198,8 +203,7 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
 
   /** Overrides */
 
-  /** @dev Overrides with Snapshot mechanisms _beforeTokenTransfer functions.
-  */
+  /** @dev Overrides with Snapshot mechanisms _beforeTokenTransfer functions.  */
   function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override(ERC20Upgradeable, ERC20SnapshotUpgradeable) {
     ERC20SnapshotUpgradeable._beforeTokenTransfer(from, to, amount);
   }
