@@ -63,6 +63,16 @@ contract('UBI (Upgradeable Contract)', accounts => {
       expect((await ubi.accruedPerSecond()).toString()).to.equal('2');
     });
 
+    it("Allows the governor to emit `Snapshot` event.", async () => {
+      // Make sure it reverts if we are not the governor.
+      await expect(
+        ubi.connect(accounts[1]).snapshot()
+      ).to.be.revertedWith("The caller is not the governor.");
+
+      // Emit Snapshot from governor address
+      await expect(ubi.snapshot())
+        .to.emit(ubi, "Snapshot")
+    }); 
 
     it("Allows registered submissions to start accruing UBI.", async () => {
       // Check that the initial `lastMintedSecond` value is 0.
