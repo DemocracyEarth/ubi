@@ -49,7 +49,7 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
 
   /* Storage */
     
-  /// @dev How many tokens per second will be minted for every valid human proof per second.
+  /// @dev How many tokens per second will be minted for every valid human.
   uint256 public accruedPerSecond;
 
   /// @dev To prevent intrinsic risks of flash loan attacks it will restrict key functions to one per block.
