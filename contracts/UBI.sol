@@ -26,9 +26,7 @@ interface IProofOfHumanity {
       uint64 submissionTime,
       uint64 renewalTimestamp,
       uint64 index,
-      bool registered,
-      bool hasVouched,
-      uint256 numberOfRequests
+      bool registered
     );
 }
 
@@ -83,7 +81,7 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
   *  @param _registered if it's registered as valid human.
   */
   modifier isRegistered(address _submissionID, bool _registered) {
-    (, , , , bool registered, , ) = proofOfHumanity.getSubmissionInfo(
+    (, , , , bool registered) = proofOfHumanity.getSubmissionInfo(
       _submissionID
     );
     require(
