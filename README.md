@@ -22,7 +22,7 @@ Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof o
 
 Built with [Hardhat](https://github.com/nomiclabs/hardhat). 
 
-Latest release is [`version 0.1.4`](https://github.com/DemocracyEarth/ubi/releases)
+Latest release is [`version 0.1.5`](https://github.com/DemocracyEarth/ubi/releases)
 
 ## Setup
 
@@ -111,4 +111,4 @@ Democracy Earth Foundation is a _501 (c) 3 not for profit corporation_ in San Fr
 ## License
 
 This software is under an [MIT License](LICENSE.md).
-This is a free software built by [Democracy Earth Foundation](https://democracy.earth) between 2015 and 2021.
+This is a free software built by [Democracy Earth Foundation](https://democracy.earth) between 2020 and 2021.
