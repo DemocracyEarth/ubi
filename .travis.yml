@@ -1,0 +1,18 @@
+language: node_js
+
+node_js:
+  - "8"
+  - "10"
+  - "11"
+
+install:
+  - npm install
+
+script:
+  - npx hardhat test
+
+cache: npm
+
+branches:
+  only:
+    - master
