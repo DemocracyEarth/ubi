@@ -8,7 +8,7 @@ A standard for Universal Basic Income tokens.
 
 Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof of Humanity](https://github.com/Proof-Of-Humanity) project.
 
-[![CircleCI](https://circleci.com/gh/DemocracyEarth/ubi.svg?style=svg)](https://circleci.com/gh/DemocracyEarth/ubi)
+[![Build Status](https://travis-ci.com/DemocracyEarth/ubi.svg?branch=master)](https://travis-ci.com/DemocracyEarth/ubi)
 
 ## Features
 
