@@ -21,7 +21,7 @@ contract('UBI (Upgradeable Contract)', accounts => {
   describe('UBI Coin and Proof of Humanity', () => {
     before(async () => {
       accounts = await ethers.getSigners();
-  
+
       const [_addresses, mockProofOfHumanity] = await Promise.all([
         Promise.all(accounts.map((account) => account.getAddress())),
         waffle.deployMockContract(
@@ -33,11 +33,11 @@ contract('UBI (Upgradeable Contract)', accounts => {
       setSubmissionIsRegistered = (submissionID, isRegistered) =>
         mockProofOfHumanity.mock.getSubmissionInfo
           .withArgs(submissionID)
-          .returns(0, 0, 0, 0, isRegistered, false, 0);
+          .returns(0, 0, 0, 0, isRegistered);
 
       UBICoin = await ethers.getContractFactory("UBI");
 
-      ubi = await upgrades.deployProxy(UBICoin, 
+      ubi = await upgrades.deployProxy(UBICoin,
         [deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address],
         { initializer: 'initialize', unsafeAllowCustomTypes: true }
       );
@@ -72,7 +72,7 @@ contract('UBI (Upgradeable Contract)', accounts => {
       // Emit Snapshot from governor address
       await expect(ubi.snapshot())
         .to.emit(ubi, "Snapshot")
-    }); 
+    });
 
     it("Allows registered submissions to start accruing UBI.", async () => {
       // Check that the initial `lastMintedSecond` value is 0.
