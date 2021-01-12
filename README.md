@@ -1,5 +1,5 @@
 <p align="center">
-<img src="docs/logo/ubi_logo.png" width="150" title="Democracy Earth Dapp Screenshot 2020">
+<img src="docs/logo/ubi_token.png" width="150" title="Democracy Earth Dapp Screenshot 2020">
 </p>
 
 <p align="center">
