@@ -1,5 +1,9 @@
 <p align="center">
-<img src="docs/democracy-earth.png" width="400" title="Democracy Earth Foundation">
+<img src="docs/logo/ubi_logo.png" width="150" title="Democracy Earth Dapp Screenshot 2020">
+</p>
+
+<p align="center">
+Universal Basic Income.
 </p>
 
 # UBI Coin
@@ -100,12 +104,10 @@ These contracts are free, open source and censorship resistant. Support us via [
 
 ### About
 
-Democracy Earth Foundation is a _501 (c) 3 not for profit corporation_ in San Francisco, California with no political affiliations. Our institutional backers include:
+Democracy Earth Foundation is a _501 (c) 3 not for profit corporation_ in San Francisco, California with no political affiliations.
 
 <p align="center">
-<a href="https://ycombinator.com"><img src="docs/yc.png" width="200" style="margin-right:20px;" title="Y Combinator"></a>
-<a href="https://ffwd.org"><img src="docs/ffwd.png" width="200" style="margin-right:20px;" title="Fast Forward"></a>
-<a href="https://www.templetonworldcharity.org/"><img src="docs/templeton.png" width="200" style="margin-right:20px;" title="Templeton World Charity"></a>
+<img src="docs/democracy-earth.png" width="400" title="Democracy Earth Foundation">
 </p>
 
 ## License
