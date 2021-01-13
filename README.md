@@ -130,14 +130,9 @@ You can run `npx hardhat help <task>` to get help about each tasks and their par
 
 These contracts are free, open source and censorship resistant. Support us via [Open Collective](https://opencollective.com/democracyearth).
 
-### About
-
-Democracy Earth Foundation is a _501 (c) 3 not for profit corporation_ in San Francisco, California with no political affiliations.
-
 ## License
 
-This software is under an [MIT License](LICENSE.md).
-This is a free software built by [Democracy Earth Foundation](https://democracy.earth) between 2020 and 2021.
+This software is under an [MIT License](LICENSE.md). This is a free software built by [Democracy Earth Foundation](https://democracy.earth) between 2020 and 2021. Democracy Earth Foundation is a _501 (c) 3 not for profit corporation_ from San Francisco, California with no political affiliations.
 
 <p align="center">
 <img src="docs/democracy-earth.png" width="400" title="Democracy Earth Foundation">
