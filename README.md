@@ -98,6 +98,20 @@ You can run `npx hardhat help <task>` to get help about each tasks and their par
      const ubi = await UBI.attach('0xa12f1a7b4d88AC6dc6067B9eA4b81930bd934847') // Replace with your token address
     ```
 
+## Upgrade
+
+1. Deploy new contract in a fresh address:
+
+    ```sh
+    $ npx hardhat run scripts/prepare.js --network kovan
+    ```
+
+2. Upgrade the proxy contract with the freshly deployed address: 
+
+    ```sh
+    $ npx hardhat run scripts/upgrade.js --network kovan
+    ```
+
 ## Contribute
 
 These contracts are free, open source and censorship resistant. Support us via [Open Collective](https://opencollective.com/democracyearth).
