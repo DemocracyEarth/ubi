@@ -95,7 +95,7 @@ You can run `npx hardhat help <task>` to get help about each tasks and their par
 
     ```js
      const UBI = await ethers.getContractFactory("UBI")
-     const ubi = await UBI.attach('0xa12f1a7b4d88AC6dc6067B9eA4b81930bd934847') // Replace with your token address
+     const ubi = await UBI.attach('0xDdAdE19B13833d1bF52c1fe1352d41A8DD9fE8C9') // Replace with your token address
     ```
 
 ## Upgrade
@@ -110,6 +110,20 @@ You can run `npx hardhat help <task>` to get help about each tasks and their par
 
     ```sh
     $ npx hardhat run scripts/upgrade.js --network kovan
+    ```
+
+## Verify
+
+1. On `hardhat.config.js` configure your [Etherscan](https://kovan.etherscan.io/) API key:
+
+    ```
+    ETHERSCAN_API_KEY
+    ```
+
+2. Verify the contract by running:
+
+    ```sh
+    $ npx hardhat verify --network kovan <ADDRESS>
     ```
 
 ## Contribute
