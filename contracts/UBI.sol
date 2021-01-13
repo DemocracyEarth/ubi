@@ -30,8 +30,8 @@ interface IProofOfHumanity {
     );
 }
 
-
 contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeable {
+
   /* Events */
 
   /** @dev Emitted when UBI is minted or taken by a reporter.
@@ -108,6 +108,8 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
     _;
   }
 
+  /* Initalizer */
+
   /** @dev Constructor.
   *  @param _initialSupply for the UBI coin including all decimals.
   *  @param _name for UBI coin.
@@ -182,8 +184,8 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
   }
 
   /** @dev External function for Snapshot event emitter only accessible by governor.  */
-  function snapshot() external onlyByGovernor {
-    _snapshot();
+  function snapshot() external onlyByGovernor returns(uint256) {
+    return _snapshot();
   }
 
   /* Getters */

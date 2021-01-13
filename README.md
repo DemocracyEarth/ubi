@@ -95,22 +95,45 @@ You can run `npx hardhat help <task>` to get help about each tasks and their par
 
     ```js
      const UBI = await ethers.getContractFactory("UBI")
-     const ubi = await UBI.attach('0xa12f1a7b4d88AC6dc6067B9eA4b81930bd934847') // Replace with your token address
+     const ubi = await UBI.attach('0xDdAdE19B13833d1bF52c1fe1352d41A8DD9fE8C9') // Replace with your token address
+    ```
+
+### Upgrade
+
+1. Deploy new contract in a fresh address:
+
+    ```sh
+    $ npx hardhat run scripts/prepare.js --network kovan
+    ```
+
+2. Upgrade the proxy contract with the freshly deployed address: 
+
+    ```sh
+    $ npx hardhat run scripts/upgrade.js --network kovan
+    ```
+
+### Verify
+
+1. On `hardhat.config.js` configure your [Etherscan](https://kovan.etherscan.io/) API key:
+
+    ```
+    ETHERSCAN_API_KEY
+    ```
+
+2. Verify the contract by running:
+
+    ```sh
+    $ npx hardhat verify --network kovan <ADDRESS>
     ```
 
 ## Contribute
 
 These contracts are free, open source and censorship resistant. Support us via [Open Collective](https://opencollective.com/democracyearth).
 
-### About
+## License
 
-Democracy Earth Foundation is a _501 (c) 3 not for profit corporation_ in San Francisco, California with no political affiliations.
+This software is under an [MIT License](LICENSE.md). This is a free software built by [Democracy Earth Foundation](https://democracy.earth) between 2020 and 2021. Democracy Earth Foundation is a _501 (c) 3 not for profit corporation_ from San Francisco, California with no political affiliations.
 
 <p align="center">
 <img src="docs/democracy-earth.png" width="400" title="Democracy Earth Foundation">
 </p>
-
-## License
-
-This software is under an [MIT License](LICENSE.md).
-This is a free software built by [Democracy Earth Foundation](https://democracy.earth) between 2020 and 2021.
