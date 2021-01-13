@@ -32,7 +32,9 @@ interface IProofOfHumanity {
 
 
 contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeable {
+
   /* Imports */
+
   using CountersUpgradeable for CountersUpgradeable.Counter;
 
   /* Events */
@@ -114,6 +116,8 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
     _;
   }
 
+  /* Initalizer */
+
   /** @dev Constructor.
   *  @param _initialSupply for the UBI coin including all decimals.
   *  @param _name for UBI coin.
@@ -190,7 +194,7 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
   /** @dev External function for Snapshot event emitter only accessible by governor.  */
   function snapshot() external onlyByGovernor returns(uint256) {
      _currentSnapshotId.increment();
-     
+
     uint256 currentId = _currentSnapshotId.current();
     emit Snapshot(currentId);
     return currentId;
