@@ -134,11 +134,11 @@ These contracts are free, open source and censorship resistant. Support us via [
 
 Democracy Earth Foundation is a _501 (c) 3 not for profit corporation_ in San Francisco, California with no political affiliations.
 
-<p align="center">
-<img src="docs/democracy-earth.png" width="400" title="Democracy Earth Foundation">
-</p>
-
 ## License
 
 This software is under an [MIT License](LICENSE.md).
 This is a free software built by [Democracy Earth Foundation](https://democracy.earth) between 2020 and 2021.
+
+<p align="center">
+<img src="docs/democracy-earth.png" width="400" title="Democracy Earth Foundation">
+</p>
