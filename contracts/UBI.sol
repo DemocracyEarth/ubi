@@ -30,7 +30,6 @@ interface IProofOfHumanity {
     );
 }
 
-
 contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeable {
 
   /* Imports */
