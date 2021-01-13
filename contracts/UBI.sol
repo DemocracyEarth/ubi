@@ -32,10 +32,6 @@ interface IProofOfHumanity {
 
 contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeable {
 
-  /* Imports */
-
-  using CountersUpgradeable for CountersUpgradeable.Counter;
-
   /* Events */
 
   /** @dev Emitted when UBI is minted or taken by a reporter.
@@ -65,9 +61,6 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
 
   /// @dev Persists time of last minted tokens for any given address.
   mapping(address => uint256) public lastMintedSecond;
-
-  /// @dev // Snapshot ids increase monotonically, with the first value being 1. An id of 0 is invalid.
-  CountersUpgradeable.Counter private _currentSnapshotId;  
 
   /* Modifiers */
 
@@ -192,11 +185,7 @@ contract UBI is Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeabl
 
   /** @dev External function for Snapshot event emitter only accessible by governor.  */
   function snapshot() external onlyByGovernor returns(uint256) {
-     _currentSnapshotId.increment();
-
-    uint256 currentId = _currentSnapshotId.current();
-    emit Snapshot(currentId);
-    return currentId;
+    return _snapshot();
   }
 
   /* Getters */

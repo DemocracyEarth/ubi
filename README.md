@@ -98,7 +98,7 @@ You can run `npx hardhat help <task>` to get help about each tasks and their par
      const ubi = await UBI.attach('0xDdAdE19B13833d1bF52c1fe1352d41A8DD9fE8C9') // Replace with your token address
     ```
 
-## Upgrade
+### Upgrade
 
 1. Deploy new contract in a fresh address:
 
@@ -112,7 +112,7 @@ You can run `npx hardhat help <task>` to get help about each tasks and their par
     $ npx hardhat run scripts/upgrade.js --network kovan
     ```
 
-## Verify
+### Verify
 
 1. On `hardhat.config.js` configure your [Etherscan](https://kovan.etherscan.io/) API key:
 
