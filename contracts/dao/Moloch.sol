@@ -92,8 +92,13 @@ contract Moloch is ReentrancyGuard {
         bool[6] flags; // [sponsored, processed, didPass, cancelled, whitelist, guildkick]
         string details; // proposal details - could be IPFS hash, plaintext, or JSON
         uint256 maxTotalSharesAndLootAtYesVote; // the maximum # of total shares encountered at a yes vote on this proposal
-        mapping(address => Vote) votesByMember; // the votes on this proposal by each member
     }
+
+    struct Ballot {
+        address voter;        
+        Vote vote; // 
+    }
+    mapping(address => Ballot[]) votesByMember; // the votes on this proposal by each member
 
     mapping(address => bool) public tokenWhitelist;
     address[] public approvedTokens;
@@ -327,10 +332,10 @@ contract Moloch is ReentrancyGuard {
 
         require(getCurrentPeriod() >= proposal.startingPeriod, "voting period has not started");
         require(!hasVotingPeriodExpired(proposal.startingPeriod), "proposal voting period has expired");
-        require(proposal.votesByMember[memberAddress] == Vote.Null, "member has already voted");
+        require(votesByMember[memberAddress][proposalIndex].vote == Vote.Null, "member has already voted");
         require(vote == Vote.Yes || vote == Vote.No, "vote must be either Yes or No");
 
-        proposal.votesByMember[memberAddress] = vote;
+        votesByMember[memberAddress][proposalIndex].vote = vote;
 
         if (vote == Vote.Yes) {
             proposal.yesVotes = proposal.yesVotes.add(member.shares);
@@ -673,7 +678,7 @@ contract Moloch is ReentrancyGuard {
     function getMemberProposalVote(address memberAddress, uint256 proposalIndex) public view returns (Vote) {
         require(members[memberAddress].exists, "member does not exist");
         require(proposalIndex < proposalQueue.length, "proposal does not exist");
-        return proposals[proposalQueue[proposalIndex]].votesByMember[memberAddress];
+        return votesByMember[memberAddress][proposalIndex].vote;
     }
 
     function getTokenCount() public view returns (uint256) {
