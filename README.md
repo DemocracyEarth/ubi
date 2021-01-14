@@ -51,26 +51,6 @@ Latest release is [`version 0.1.5`](https://github.com/DemocracyEarth/ubi/releas
 
     To compute their code coverage run `npx hardhat coverage`.
 
-## Tasks
-
-After following those instructions, you can run `npx hardhat` to get a list with all the tasks:
-
-```
-$ npx hardhat
-AVAILABLE TASKS:
-
-  clean                         Clears the cache and deletes all artifacts
-  compile                       Compiles the entire project, building all artifacts
-  console                       Opens a hardhat console
-  flatten                       Flattens and prints all contracts and their dependencies
-  help                          Prints this message
-  deploy                        Test deploy of a new instance of the UBI Coin
-  run                           Runs a user-defined script after compiling the project
-  test                          Runs mocha tests
-```
-
-You can run `npx hardhat help <task>` to get help about each tasks and their parameters. 
-
 ## Deploy
 
 1. On `hardhat.config.js` configure the following constants for the `kovan` testnet:

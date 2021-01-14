@@ -8,6 +8,7 @@ require("hardhat-gas-reporter");
 require("solidity-coverage");
 
 require("./scripts/tasks");
+require("./scripts/moloch-tasks");
 
 // Go to https://infura.io/ and create a new project
 // Replace this with your Infura project ID
