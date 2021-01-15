@@ -21,9 +21,9 @@ const {
   verifyMember
 } = require('./test-utils')
 
-const Moloch = artifacts.require('./Moloch')
-const Token = artifacts.require('../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json')
-const Submitter = artifacts.require('./Submitter') // used to test submit proposal return values
+const Moloch = artifacts.require('./Moloch');
+const Token = artifacts.require('../Token');
+const Submitter = artifacts.require('./Submitter'); // used to test submit proposal return values
 
 const revertMessages = {
   molochConstructorSummonerCannotBe0: 'summoner cannot be 0',
