@@ -124,7 +124,8 @@ const deploymentConfig = {
   'PROPOSAL_DEPOSIT': 10,
   'DILUTION_BOUND': 3,
   'PROCESSING_REWARD': 1,
-  'TOKEN_SUPPLY': 10000
+  'TOKEN_SUPPLY': 10000,
+  'TOKEN_SYMBOL': 'UBI'
 }
 
 async function moveForwardPeriods (periods) {
@@ -172,7 +173,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
   }
 
   before('deploy contracts', async () => {
-    tokenAlpha = await Token.new(deploymentConfig.TOKEN_SUPPLY, 'TOKEN')
+    tokenAlpha = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
 
     moloch = await Moloch.new(
       summoner,
@@ -800,7 +801,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
   describe('submitWhitelistProposal', () => {
     let newToken
     beforeEach(async () => {
-      newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY)
+      newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
     })
 
     it('happy case', async () => {
@@ -884,7 +885,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       const proposalId1 = emittedLogs1.logs[0].args.proposalId
       assert.equal(proposalId1, 0)
 
-      tokenBeta = await Token.new(deploymentConfig.TOKEN_SUPPLY)
+      tokenBeta = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
 
       const emittedLogs2 = await submitter.submitWhitelistProposal(
         tokenBeta.address,
@@ -1081,7 +1082,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
 
     it('happy path - sponsor add token to whitelist', async () => {
       // whitelist newToken
-      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY)
+      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
       const proposer = proposal1.applicant
       const whitelistProposal = {
         applicant: zeroAddress,
@@ -1481,7 +1482,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
     })
 
     it('failure - proposal has been cancelled', async () => {
-      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY)
+      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
 
       const proposer = proposal1.applicant
 
@@ -1499,7 +1500,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
     })
 
     it('failure - sponsor whitelist token proposal already proposed', async () => {
-      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY)
+      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
 
       const proposer = proposal1.applicant
 
@@ -1550,7 +1551,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
   describe('having submitted two whitelist proposals for the same token, with one sponsored...', () => {
     let newToken, whitelistProposal
     beforeEach(async () => {
-      newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY)
+      newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
 
       whitelistProposal = {
         applicant: zeroAddress,
@@ -2656,7 +2657,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
     })
 
     it('happy path - token whitelist', async () => {
-      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY)
+      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
 
       // submit whitelist proposal
       const proposer = proposal1.applicant
@@ -3340,7 +3341,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
     })
 
     it('require fail - must be a guild kick proposal', async () => {
-      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY)
+      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, mdeploymentConfig.TOKEN_SYMBOL)
 
       // submit whitelist proposal
       const proposer = proposal1.applicant
@@ -3402,7 +3403,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
     })
 
     it('require fail - must be a standard process not a whitelist proposal', async () => {
-      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY)
+      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
 
       // submit whitelist proposal
       const proposer = proposal1.applicant
@@ -3464,7 +3465,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
     })
 
     it('require fail - must be a standard process not a guild kick proposal', async () => {
-      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY)
+      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
 
       // submit whitelist proposal
       const proposer = proposal1.applicant
