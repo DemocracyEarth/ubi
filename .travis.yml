@@ -10,7 +10,7 @@ script:
   - npx hardhat test
 
 after_success:
-  - npx hardhat coverage
+  - cat coverage/lcov.info | npx coveralls
   
 cache: npm
 
