@@ -333,18 +333,14 @@ contract Moloch is ReentrancyGuard {
 
         require(getCurrentPeriod() >= proposal.startingPeriod, "voting period has not started");
         require(!hasVotingPeriodExpired(proposal.startingPeriod), "proposal voting period has expired");
-        require(vote == Vote.Yes || vote == Vote.No, "vote must be either Yes or No");
-        
-        for(uint i = 0; i < votesByMember[memberAddress].length;  i++) {
-            if(votesByMember[memberAddress][i].proposalIndex == proposalIndex)
-                require(votesByMember[memberAddress][i].vote == Vote.Null, "member has already voted");
-        }
+        require(vote == Vote.Yes || vote == Vote.No, "vote must be either Yes or No");        
+        require(getMemberProposalVote(memberAddress, proposalIndex) == Vote.Null, "member has already voted");
 
+        // persist vote of member
         Ballot memory ballot = Ballot({
             proposalIndex : proposalIndex,
             vote : vote
         });
-
         votesByMember[memberAddress].push(ballot);
 
         if (vote == Vote.Yes) {
@@ -688,7 +684,13 @@ contract Moloch is ReentrancyGuard {
     function getMemberProposalVote(address memberAddress, uint256 proposalIndex) public view returns (Vote) {
         require(members[memberAddress].exists, "member does not exist");
         require(proposalIndex < proposalQueue.length, "proposal does not exist");
-        return votesByMember[memberAddress][proposalIndex].vote;
+
+        for(uint i = 0; i < votesByMember[memberAddress].length;  i++) {
+            if(votesByMember[memberAddress][i].proposalIndex == proposalIndex)
+                return votesByMember[memberAddress][i].vote;
+        }        
+        
+        return Vote.Null;
     }
 
     function getTokenCount() public view returns (uint256) {

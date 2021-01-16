@@ -19,7 +19,7 @@ const {
   verifySubmitVote,
   verifyProcessProposal,
   verifyMember
-} = require('./test-utils')
+} = require('./dao-utils')
 
 const Moloch = artifacts.require('./Moloch');
 const Token = artifacts.require('./Token');
@@ -3341,7 +3341,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
     })
 
     it('require fail - must be a guild kick proposal', async () => {
-      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, mdeploymentConfig.TOKEN_SYMBOL)
+      const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
 
       // submit whitelist proposal
       const proposer = proposal1.applicant
