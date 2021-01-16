@@ -12,7 +12,7 @@ A standard for Universal Basic Income tokens.
 
 Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof of Humanity](https://github.com/Proof-Of-Humanity) project.
 
-[![Build Status](https://travis-ci.com/DemocracyEarth/ubi.svg?branch=master)](https://travis-ci.com/DemocracyEarth/ubi)
+[![Build Status](https://travis-ci.com/DemocracyEarth/ubi.svg?branch=master)](https://travis-ci.com/DemocracyEarth/ubi) [![Coverage Status](https://coveralls.io/repos/github/DemocracyEarth/ubi/badge.svg?branch=master)](https://coveralls.io/github/DemocracyEarth/ubi?branch=master)
 
 ## Features
 
