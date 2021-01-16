@@ -9,7 +9,7 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
-    "coverage": "npx hardhat coverage"
+    "coverage": "npx hardhat coverage | coveralls"
   },
   "author": "Democracy Earth Foundation",
   "license": "ISC",
