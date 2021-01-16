@@ -4,6 +4,7 @@ pragma solidity 0.7.3;
 import "./SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./ReentrancyGuard.sol";
+import "hardhat/console.sol";
 
 contract Moloch is ReentrancyGuard {
     using SafeMath for uint256;
@@ -95,10 +96,10 @@ contract Moloch is ReentrancyGuard {
     }
 
     struct Ballot {
-        address voter;        
-        Vote vote; // 
+        uint256 proposalIndex; // proposal this vote went to
+        Vote vote; // what the voter voted
     }
-    mapping(address => Ballot[]) votesByMember; // the votes on this proposal by each member
+    mapping(address => Ballot[]) public votesByMember; // the votes from each member on proposals
 
     mapping(address => bool) public tokenWhitelist;
     address[] public approvedTokens;
@@ -332,10 +333,19 @@ contract Moloch is ReentrancyGuard {
 
         require(getCurrentPeriod() >= proposal.startingPeriod, "voting period has not started");
         require(!hasVotingPeriodExpired(proposal.startingPeriod), "proposal voting period has expired");
-        require(votesByMember[memberAddress][proposalIndex].vote == Vote.Null, "member has already voted");
         require(vote == Vote.Yes || vote == Vote.No, "vote must be either Yes or No");
+        
+        for(uint i = 0; i < votesByMember[memberAddress].length;  i++) {
+            if(votesByMember[memberAddress][i].proposalIndex == proposalIndex)
+                require(votesByMember[memberAddress][i].vote == Vote.Null, "member has already voted");
+        }
 
-        votesByMember[memberAddress][proposalIndex].vote = vote;
+        Ballot memory ballot = Ballot({
+            proposalIndex : proposalIndex,
+            vote : vote
+        });
+
+        votesByMember[memberAddress].push(ballot);
 
         if (vote == Vote.Yes) {
             proposal.yesVotes = proposal.yesVotes.add(member.shares);
