@@ -26,7 +26,7 @@ Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof o
 
 Built with [Hardhat](https://github.com/nomiclabs/hardhat). 
 
-Latest release is [`version 0.1.5`](https://github.com/DemocracyEarth/ubi/releases)
+Latest release is [`version 0.1.6`](https://github.com/DemocracyEarth/ubi/releases)
 
 ## Setup
 
