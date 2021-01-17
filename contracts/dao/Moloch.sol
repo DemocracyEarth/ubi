@@ -4,7 +4,6 @@ pragma solidity 0.7.3;
 import "./SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./ReentrancyGuard.sol";
-import "hardhat/console.sol";
 
 contract Moloch is ReentrancyGuard {
     using SafeMath for uint256;
