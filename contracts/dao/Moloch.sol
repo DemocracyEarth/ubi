@@ -222,19 +222,6 @@ contract Moloch is ReentrancyGuard {
         return proposalCount - 1;
     }
 
-    function submitGuildKickProposal(address memberToKick, string memory details) public nonReentrant returns (uint256 proposalId) {
-        Member memory member = members[memberToKick];
-
-        require(member.shares > 0 || member.loot > 0, "member must have at least one share or one loot");
-        require(members[memberToKick].jailed == 0, "member must not already be jailed");
-
-        bool[6] memory flags; // [sponsored, processed, didPass, cancelled, whitelist, guildkick]
-        flags[5] = true; // guild kick
-
-        _submitProposal(memberToKick, 0, 0, 0, address(0), 0, address(0), details, flags);
-        return proposalCount - 1;
-    }
-
     function _submitProposal(
         address applicant,
         uint256 sharesRequested,
@@ -471,37 +458,6 @@ contract Moloch is ReentrancyGuard {
         emit ProcessWhitelistProposal(proposalIndex, proposalId, didPass);
     }
 
-    function processGuildKickProposal(uint256 proposalIndex) public nonReentrant {
-        _validateProposalForProcessing(proposalIndex);
-
-        uint256 proposalId = proposalQueue[proposalIndex];
-        Proposal storage proposal = proposals[proposalId];
-
-        require(proposal.flags[5], "must be a guild kick proposal");
-
-        proposal.flags[1] = true; // processed
-
-        bool didPass = _didPass(proposalIndex);
-
-        if (didPass) {
-            proposal.flags[2] = true; // didPass
-            Member storage member = members[proposal.applicant];
-            member.jailed = proposalIndex;
-
-            // transfer shares to loot
-            member.loot = member.loot.add(member.shares);
-            totalShares = totalShares.sub(member.shares);
-            totalLoot = totalLoot.add(member.shares);
-            member.shares = 0; // revoke all shares
-        }
-
-        proposedToKick[proposal.applicant] = false;
-
-        _returnDeposit(proposal.sponsor);
-
-        emit ProcessGuildKickProposal(proposalIndex, proposalId, didPass);
-    }
-
     function _didPass(uint256 proposalIndex) internal returns (bool didPass) {
         Proposal memory proposal = proposals[proposalQueue[proposalIndex]];
 
@@ -569,16 +525,6 @@ contract Moloch is ReentrancyGuard {
         }
 
         emit Ragequit(msg.sender, sharesToBurn, lootToBurn);
-    }
-
-    function ragekick(address memberToKick) public nonReentrant {
-        Member storage member = members[memberToKick];
-
-        require(member.jailed != 0, "member must be in jail");
-        require(member.loot > 0, "member must have some loot"); // note - should be impossible for jailed member to have shares
-        require(canRagequit(member.highestIndexYesVote), "cannot ragequit until highest index proposal member voted YES on is processed");
-
-        _ragequit(memberToKick, 0, member.loot);
     }
 
     function withdrawBalance(address token, uint256 amount) public nonReentrant {

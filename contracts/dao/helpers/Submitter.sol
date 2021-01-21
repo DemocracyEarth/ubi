@@ -50,16 +50,4 @@ contract Submitter {
 
     emit Submit(proposalId);
   }
-
-  function submitGuildKickProposal(
-    address memberToKick,
-    string memory details
-  ) public {
-    uint256 proposalId = moloch.submitGuildKickProposal(
-      memberToKick,
-      details
-    );
-
-    emit Submit(proposalId);
-  }
 }
