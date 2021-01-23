@@ -174,6 +174,20 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
 
   before('deploy contracts', async () => {
     tokenAlpha = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
+    accounts = await ethers.getSigners();
+    
+    const [_addresses, mockProofOfHumanity] = await Promise.all([
+      Promise.all(accounts.map((account) => account.getAddress())),
+      waffle.deployMockContract(
+        accounts[0],
+        require("../artifacts/contracts/IProofOfHumanity.sol/IProofOfHumanity.json").abi
+      ),
+    ]);
+    addresses = _addresses;
+    setSubmissionIsRegistered = (submissionID, isRegistered) =>
+      mockProofOfHumanity.mock.getSubmissionInfo
+        .withArgs(submissionID)
+        .returns(0, 0, 0, 0, isRegistered);
 
     moloch = await Moloch.new(
       summoner,
@@ -183,7 +197,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       deploymentConfig.GRACE_DURATON_IN_PERIODS,
       deploymentConfig.PROPOSAL_DEPOSIT,
       deploymentConfig.DILUTION_BOUND,
-      deploymentConfig.PROCESSING_REWARD
+      deploymentConfig.PROCESSING_REWARD,
+      mockProofOfHumanity.address
     )
 
     const depositTokenAddress = await moloch.depositToken()
