@@ -2,6 +2,7 @@
 pragma solidity 0.7.3;
 
 import "./Moloch.sol";
+import "./IProofOfHumanity.sol";
 
 contract MolochSummoner {
 
@@ -19,7 +20,8 @@ contract MolochSummoner {
         uint256 _gracePeriodLength,
         uint256 _proposalDeposit,
         uint256 _dilutionBound,
-        uint256 _processingReward) public {
+        uint256 _processingReward,
+        IProofOfHumanity _proofOfHumanity) public {
 
         M = new Moloch(
             _summoner,
@@ -29,7 +31,8 @@ contract MolochSummoner {
             _gracePeriodLength,
             _proposalDeposit,
             _dilutionBound,
-            _processingReward);
+            _processingReward,
+            _proofOfHumanity);
 
         Molochs.push(address(M));
 

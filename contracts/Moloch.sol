@@ -4,8 +4,9 @@ pragma solidity 0.7.3;
 import "./SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./ReentrancyGuard.sol";
+import "./Humans.sol";
 
-contract Moloch is ReentrancyGuard {
+contract Moloch is ForHumans, ReentrancyGuard {
     using SafeMath for uint256;
 
     /***************
@@ -136,7 +137,8 @@ contract Moloch is ReentrancyGuard {
         uint256 _gracePeriodLength,
         uint256 _proposalDeposit,
         uint256 _dilutionBound,
-        uint256 _processingReward
+        uint256 _processingReward,
+        IProofOfHumanity _proofOfHumanity
     ) public {
         require(_summoner != address(0), "summoner cannot be 0");
         require(_periodDuration > 0, "_periodDuration cannot be 0");
@@ -167,6 +169,7 @@ contract Moloch is ReentrancyGuard {
         proposalDeposit = _proposalDeposit;
         dilutionBound = _dilutionBound;
         processingReward = _processingReward;
+        proofOfHumanity = _proofOfHumanity;
 
         summoningTime = block.timestamp;
 
