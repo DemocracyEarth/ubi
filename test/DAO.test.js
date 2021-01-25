@@ -225,7 +225,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       tributeToken: tokenAlpha.address,
       paymentRequested: 0,
       paymentToken: tokenAlpha.address,
-      details: 'all hail moloch'
+      details: 'all hail moloch',
+      burnAmount: deploymentConfig.BURN_REQUIREMENT
     }
 
     proposal2 = {
@@ -236,7 +237,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       tributeToken: tokenAlpha.address,
       paymentRequested: 0,
       paymentToken: tokenAlpha.address,
-      details: 'all hail moloch 2'
+      details: 'all hail moloch 2',
+      burnAmount: deploymentConfig.BURN_REQUIREMENT
     }
 
     tokenAlpha.transfer(summoner, initSummonerBalance, { from: creator })
@@ -576,7 +578,9 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         expectedBalance: proposal1.tributeOffered
       })
 
-      const proposer = proposal1.applicant
+      const proposer = proposal1.applicant;
+      await setSubmissionIsRegistered(proposer, true);
+
       await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -586,6 +590,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -642,12 +647,14 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(SolRevert)
     })
 
     it('require fail - tribute token is not whitelisted', async () => {
-      proposal1.tributeToken = zeroAddress
+      proposal1.tributeToken = zeroAddress;
+      await setSubmissionIsRegistered(proposal1.applicant, true);
 
       await moloch.submitProposal(
         proposal1.applicant,
@@ -658,12 +665,14 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalTributeTokenIsNotWhitelisted)
     })
 
     it('require fail - payment token is not whitelisted', async () => {
-      proposal1.paymentToken = zeroAddress
+      proposal1.paymentToken = zeroAddress;
+      await setSubmissionIsRegistered(proposal1.applicant, true);
 
       await moloch.submitProposal(
         proposal1.applicant,
@@ -674,11 +683,14 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalPaymetTokenIsNotWhitelisted)
     })
 
     it('require fail - applicant can not be zero', async () => {
+      await setSubmissionIsRegistered(zeroAddress, true);
+
       await moloch.submitProposal(
         zeroAddress,
         proposal1.sharesRequested,
@@ -688,11 +700,13 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalApplicantCannotBe0)
     })
 
     it('require fail - applicant address can not be reserved', async () => {
+      await setSubmissionIsRegistered(GUILD, true);
       await moloch.submitProposal(
         GUILD,
         proposal1.sharesRequested,
@@ -702,9 +716,11 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalApplicantCannotBeReserved)
 
+      await setSubmissionIsRegistered(ESCROW, true);
       await moloch.submitProposal(
         ESCROW,
         proposal1.sharesRequested,
@@ -714,9 +730,11 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalApplicantCannotBeReserved)
-
+      
+      await setSubmissionIsRegistered(TOTAL, true);
       await moloch.submitProposal(
         TOTAL,
         proposal1.sharesRequested,
@@ -726,11 +744,13 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalApplicantCannotBeReserved)    
     })
 
     it('failure - too many shares requested', async () => {
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       await moloch.submitProposal(
         proposal1.applicant,
         _1e18Plus1, // MAX_NUMBER_OF_SHARES_AND_LOOT
@@ -740,6 +760,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalTooManySharesRequested)
 
@@ -756,6 +777,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -764,6 +786,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
     })
 
     it('failure - too many shares (just loot) requested', async () => {
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       await moloch.submitProposal(
         proposal1.applicant,
         0, // skip shares
@@ -773,6 +796,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalTooManySharesRequested)
 
@@ -789,6 +813,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -797,6 +822,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
     })
 
     it('failure - too many shares (& loot) requested', async () => {
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       await moloch.submitProposal(
         proposal1.applicant,
         _1e18Plus1.sub(new BN('10')), // MAX_NUMBER_OF_SHARES_AND_LOOT - 10
@@ -806,6 +832,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalTooManySharesRequested)
 
@@ -822,6 +849,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -831,6 +859,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
 
 
     it('happy case - second submitted proposal returns incremented proposalId', async () => {
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       const emittedLogs1 = await submitter.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -840,6 +869,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: summoner }
       )
 
@@ -855,6 +885,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: summoner }
       )
 
@@ -870,7 +901,9 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
     })
 
     it('happy case', async () => {
-      const proposer = proposal1.applicant
+      const proposer = proposal1.applicant;
+      await setSubmissionIsRegistered(proposer, true);
+
       const whitelistProposal = {
         applicant: zeroAddress,
         proposer: proposal1.applicant,
@@ -990,7 +1023,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
     it('happy path - sponsor add token to whitelist', async () => {
       // whitelist newToken
       const newToken = await Token.new(deploymentConfig.TOKEN_SUPPLY, deploymentConfig.TOKEN_SYMBOL)
-      const proposer = proposal1.applicant
+      const proposer = proposal1.applicant;
+      
       const whitelistProposal = {
         applicant: zeroAddress,
         proposer: proposal1.applicant,
@@ -1090,7 +1124,9 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         expectedAllowance: proposal1.tributeOffered
       })
 
-      const proposer = proposal1.applicant
+      const proposer = proposal1.applicant;
+      await setSubmissionIsRegistered(proposer, true);
+
       await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested, // 100
@@ -1100,6 +1136,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -1193,6 +1230,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -1410,6 +1448,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -1681,6 +1720,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -1792,6 +1832,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -1907,6 +1948,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -1919,6 +1961,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2072,6 +2115,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2515,6 +2559,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2588,6 +2633,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -2785,6 +2831,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2818,6 +2865,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2856,6 +2904,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2868,6 +2917,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2909,6 +2959,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -3080,6 +3131,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -3429,6 +3481,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
     })
@@ -3543,6 +3596,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -3596,6 +3650,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -3650,6 +3705,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -3706,6 +3762,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -3849,6 +3906,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -3921,6 +3979,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -4111,6 +4170,7 @@ deploymentConfig.BURN_REQUIREMENT
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -4193,6 +4253,7 @@ deploymentConfig.BURN_REQUIREMENT
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: summoner }
       )
 
@@ -4291,6 +4352,7 @@ deploymentConfig.BURN_REQUIREMENT
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: processor }
       )
 
@@ -4635,6 +4697,7 @@ deploymentConfig.BURN_REQUIREMENT
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: summoner }
       )
 
@@ -4859,6 +4922,7 @@ deploymentConfig.BURN_REQUIREMENT
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -4987,6 +5051,7 @@ deploymentConfig.BURN_REQUIREMENT
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -5409,6 +5474,7 @@ deploymentConfig.BURN_REQUIREMENT
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -5588,6 +5654,7 @@ deploymentConfig.BURN_REQUIREMENT
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -5730,6 +5797,7 @@ deploymentConfig.BURN_REQUIREMENT
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
       await verifyFlags({
