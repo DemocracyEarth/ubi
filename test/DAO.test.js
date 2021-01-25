@@ -1220,6 +1220,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         from: creator,
         value: proposal1.tributeOffered
       })
+      await setSubmissionIsRegistered(proposal1.applicant, true);
 
       await moloch.submitProposal(
         proposal1.applicant,
@@ -1438,7 +1439,9 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         value: proposal1.tributeOffered
       })
 
-      const proposer = proposal1.applicant
+      const proposer = proposal1.applicant;
+      await setSubmissionIsRegistered(proposer, true);
+
       await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -1589,7 +1592,9 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
           value: proposal2.tributeOffered
         })
 
-        const proposer = proposal2.applicant
+        const proposer = proposal2.applicant;
+        await setSubmissionIsRegistered(proposer, true);
+
         await moloch.submitProposal(
           proposal2.applicant,
           proposal2.sharesRequested,
@@ -1599,6 +1604,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
           proposal2.paymentRequested,
           proposal2.paymentToken,
           proposal2.details,
+          proposal2.burnAmount,
           { from: proposal2.applicant }
         )
 
@@ -1709,8 +1715,10 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       })
 
       // submit
-      proposer = proposal1.applicant
-      applicant = proposal1.applicant
+      proposer = proposal1.applicant;
+      applicant = proposal1.applicant;
+      await setSubmissionIsRegistered(proposer, true);
+
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -1822,7 +1830,9 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       })
 
       // submit
-      applicant = proposal1.applicant
+      applicant = proposal1.applicant;
+      await setSubmissionIsRegistered(applicant, true);
+
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -1939,6 +1949,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       // submit
       proposer = proposal1.applicant
       applicant = proposal1.applicant
+      await setSubmissionIsRegistered(applicant, true);
+
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -2103,6 +2115,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       // submit
       proposer = proposal1.applicant
       applicant = proposal1.applicant
+      await setSubmissionIsRegistered(applicant, true);
 
       await moloch.updateDelegateKey(proposer, { from: summoner })
 
@@ -2266,7 +2279,9 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
 
       // submit
       proposer = proposal1.applicant
-      applicant = proposal1.applicant
+      applicant = proposal1.applicant;
+      await setSubmissionIsRegistered(applicant, true);
+
       await moloch.submitProposal(
         applicant,
         _1e18, // max shares
@@ -2276,6 +2291,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2288,6 +2304,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2352,7 +2369,9 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
 
       // submit
       proposer = proposal1.applicant
-      applicant = proposal1.applicant
+      applicant = proposal1.applicant;
+      await setSubmissionIsRegistered(applicant, true);
+
       await moloch.submitProposal(
         applicant,
         _1e18.sub(new BN(10)), // almost max shares
@@ -2362,6 +2381,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2374,6 +2394,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
+        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2550,6 +2571,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       // can be 1 because payment is calculated before tribute is accepted
       // (guild bank is 0)
       proposal1.paymentRequested = 1
+      await setSubmissionIsRegistered(applicant, true);
+
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -2624,6 +2647,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       })
 
       // submit
+      await setSubmissionIsRegistered(proposal1.applicant, true);
+
       await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -2712,6 +2737,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       })
 
       const proposer = proposal2.applicant
+      await setSubmissionIsRegistered(proposal2.applicant, true);
+
       await moloch.submitProposal(
         proposal2.applicant,
         proposal2.sharesRequested,
@@ -2721,6 +2748,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal2.paymentRequested,
         proposal2.paymentToken,
         proposal2.details,
+        proposal2.burnAmount,
         { from: proposal2.applicant }
       )
 
@@ -2822,6 +2850,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       // submit
       proposer = proposal1.applicant
       applicant = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
+
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -2856,6 +2886,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       // submit
       proposer = proposal1.applicant
       applicant = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
+
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -2895,6 +2927,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       // submit
       proposer = proposal1.applicant
       applicant = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
+
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -2950,6 +2984,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       // submit
       proposer = proposal1.applicant
       applicant = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
+
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -3121,6 +3157,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         from: creator,
         value: proposal1.tributeOffered
       })
+
+      await setSubmissionIsRegistered(proposal1.applicant, true);
 
       await moloch.submitProposal(
         proposal1.applicant,
@@ -3314,6 +3352,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
             value: proposal1.tributeOffered
           })
 
+          await setSubmissionIsRegistered(proposal2.applicant, true);
+
           await moloch.submitProposal(
             proposal2.applicant,
             proposal2.sharesRequested,
@@ -3323,6 +3363,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
             proposal2.paymentRequested,
             proposal2.paymentToken,
             proposal2.details,
+            proposal2.burnAmount,
             { from: proposal2.applicant }
           )
 
@@ -3471,7 +3512,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         from: creator,
         value: proposal1.tributeOffered
       })
-
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -3587,6 +3628,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       // submit
       const proposer = proposal1.applicant
       const applicant = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
+
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -3641,6 +3684,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       // submit
       const proposer = proposal1.applicant
       const applicant = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -3696,6 +3740,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       // submit
       const proposer = proposal1.applicant
       const applicant = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -3753,6 +3798,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
 
       // submit
       const proposer = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -3896,7 +3942,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         from: creator,
         value: proposal1.tributeOffered
       })
-
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -3969,7 +4015,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         from: creator,
         value: proposal1.tributeOffered
       })
-
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -4161,6 +4207,7 @@ deploymentConfig.BURN_REQUIREMENT
       })
 
       const proposer = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       const emittedLogs = await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -4244,6 +4291,7 @@ deploymentConfig.BURN_REQUIREMENT
       })
 
       const proposer = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       const emittedLogs = await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -4343,6 +4391,8 @@ deploymentConfig.BURN_REQUIREMENT
       })
 
       const proposer = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
+
       const emittedLogs = await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -4688,6 +4738,8 @@ deploymentConfig.BURN_REQUIREMENT
       })
 
       const proposer = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
+
       await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -4913,6 +4965,7 @@ deploymentConfig.BURN_REQUIREMENT
       })
 
       const proposer = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
@@ -5042,6 +5095,8 @@ deploymentConfig.BURN_REQUIREMENT
       // submit
       proposer = proposal1.applicant
       applicant = proposal1.applicant
+      await setSubmissionIsRegistered(proposal1.applicant, true);
+
       await moloch.submitProposal(
         applicant,
         proposal1.sharesRequested,
@@ -5464,6 +5519,7 @@ deploymentConfig.BURN_REQUIREMENT
         from: creator,
         value: proposal1.tributeOffered
       })
+      await setSubmissionIsRegistered(proposal1.applicant, true);
 
       await moloch.submitProposal(
         proposal1.applicant,
@@ -5644,6 +5700,7 @@ deploymentConfig.BURN_REQUIREMENT
         from: creator,
         value: proposal1.tributeOffered
       })
+      await setSubmissionIsRegistered(proposal1.applicant, true);
 
       await moloch.submitProposal(
         proposal1.applicant,
@@ -5787,7 +5844,7 @@ deploymentConfig.BURN_REQUIREMENT
         from: creator,
         value: proposal1.tributeOffered
       })
-
+      await setSubmissionIsRegistered(proposal1.applicant, true);
       await moloch.submitProposal(
         proposal1.applicant,
         proposal1.sharesRequested,
