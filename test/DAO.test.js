@@ -85,6 +85,7 @@ const revertMessages = {
   ragekickPendingProposals: 'cannot ragequit until highest index proposal member voted YES on is processed',
   getMemberProposalVoteMemberDoesntExist: 'member does not exist',
   getMemberProposalVoteProposalDoesntExist: 'proposal does not exist',
+  molochConstructorBurnRequirement: '_burnRequirement cannot be 0'
 }
 
 const SolRevert = 'VM Exception while processing transaction: revert'
@@ -125,7 +126,8 @@ const deploymentConfig = {
   'DILUTION_BOUND': 3,
   'PROCESSING_REWARD': 1,
   'TOKEN_SUPPLY': 10000,
-  'TOKEN_SYMBOL': 'UBI'
+  'TOKEN_SYMBOL': 'UBI',
+  'BURN_REQUIREMENT': 1000000
 }
 
 async function moveForwardPeriods (periods) {
@@ -198,7 +200,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       deploymentConfig.PROPOSAL_DEPOSIT,
       deploymentConfig.DILUTION_BOUND,
       deploymentConfig.PROCESSING_REWARD,
-      mockProofOfHumanity.address
+      mockProofOfHumanity.address,
+      deploymentConfig.BURN_REQUIREMENT
     )
 
     const depositTokenAddress = await moloch.depositToken()
@@ -318,7 +321,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorSummonerCannotBe0)
     })
 
@@ -332,7 +336,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorPeriodDurationCannotBe0)
     })
 
@@ -346,7 +351,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorVotingPeriodLengthCannotBe0)
     })
 
@@ -360,7 +366,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorVotingPeriodLengthExceedsLimit)
 
       // still works with 1 less
@@ -373,7 +380,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       )
 
       const totalShares = await molochTemp.totalShares()
@@ -390,7 +398,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorGracePeriodLengthExceedsLimit)
 
       // still works with 1 less
@@ -403,7 +412,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       )
 
       const totalShares = await molochTemp.totalShares()
@@ -420,7 +430,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         0,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorDilutionBoundCannotBe0)
     })
 
@@ -434,7 +445,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         _1e18Plus1,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorDilutionBoundExceedsLimitExceedsLimit)
 
       // still works with 1 less
@@ -447,7 +459,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         _1e18,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       )
 
       const totalShares = await molochTemp.totalShares()
@@ -464,7 +477,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorNeedAtLeastOneApprovedToken)
     })
 
@@ -478,7 +492,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorTooManyTokens)
     })
 
@@ -492,7 +507,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         _1e18,
         deploymentConfig.DILUTION_BOUND,
         _1e18Plus1,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorDepositCannotBeSmallerThanProcessingReward)
     })
 
@@ -506,7 +522,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorApprovedTokenCannotBe0)
     })
 
@@ -520,8 +537,24 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+        deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorDuplicateApprovedToken)
+    })
+
+    it('require fail - _burnRequirement cannot be 0', async () => {
+      await Moloch.new(
+        summoner,
+        [tokenAlpha.address],
+        deploymentConfig.PERIOD_DURATION_IN_SECONDS,
+        deploymentConfig.VOTING_DURATON_IN_PERIODS,
+        deploymentConfig.GRACE_DURATON_IN_PERIODS,
+        deploymentConfig.PROPOSAL_DEPOSIT,
+        deploymentConfig.DILUTION_BOUND,
+        deploymentConfig.PROCESSING_REWARD,
+        altProofOfHumanity.address,
+        0
+      ).should.be.rejectedWith(revertMessages.molochConstructorBurnRequirement)
     })
   })
 
@@ -4007,7 +4040,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.PROPOSAL_DEPOSIT,
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
-        altProofOfHumanity.address
+        altProofOfHumanity.address,
+deploymentConfig.BURN_REQUIREMENT
       )
       const transactionHash = newContract.transactionHash;
 
