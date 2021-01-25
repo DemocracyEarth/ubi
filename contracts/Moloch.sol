@@ -19,6 +19,7 @@ contract Moloch is ForHumans, ReentrancyGuard {
     uint256 public dilutionBound; // default = 3 - maximum multiplier a YES voter will be obligated to pay in case of mass ragequit
     uint256 public processingReward; // default = 0.1 - amount of ETH to give to whoever processes a proposal
     uint256 public summoningTime; // needed to determine the current period
+    uint256 public burnRequirement; // needed to publish a proposal in the dao
 
     address public depositToken; // deposit token contract reference; default = wETH
 
@@ -138,7 +139,8 @@ contract Moloch is ForHumans, ReentrancyGuard {
         uint256 _proposalDeposit,
         uint256 _dilutionBound,
         uint256 _processingReward,
-        IProofOfHumanity _proofOfHumanity
+        IProofOfHumanity _proofOfHumanity,
+        uint256 _burnRequirement
     ) public {
         require(_summoner != address(0), "summoner cannot be 0");
         require(_periodDuration > 0, "_periodDuration cannot be 0");
@@ -150,6 +152,7 @@ contract Moloch is ForHumans, ReentrancyGuard {
         require(_approvedTokens.length > 0, "need at least one approved token");
         require(_approvedTokens.length <= MAX_TOKEN_WHITELIST_COUNT, "too many tokens");
         require(_proposalDeposit >= _processingReward, "_proposalDeposit cannot be smaller than _processingReward");
+        require(_burnRequirement > 0, "_burnRequirement cannot be 0");
         
         depositToken = _approvedTokens[0];
         // NOTE: move event up here, avoid stack too deep if too many approved tokens
@@ -170,6 +173,7 @@ contract Moloch is ForHumans, ReentrancyGuard {
         dilutionBound = _dilutionBound;
         processingReward = _processingReward;
         proofOfHumanity = _proofOfHumanity;
+        burnRequirement = _burnRequirement;
 
         summoningTime = block.timestamp;
 
@@ -190,14 +194,16 @@ contract Moloch is ForHumans, ReentrancyGuard {
         address tributeToken,
         uint256 paymentRequested,
         address paymentToken,
-        string memory details
-    ) public nonReentrant returns (uint256 proposalId) {
+        string memory details,
+        uint256 burnAmount
+    ) public nonReentrant isRegistered(applicant, true) returns (uint256 proposalId) {
         require(sharesRequested.add(lootRequested) <= MAX_NUMBER_OF_SHARES_AND_LOOT, "too many shares requested");
         require(tokenWhitelist[tributeToken], "tributeToken is not whitelisted");
         require(tokenWhitelist[paymentToken], "payment is not whitelisted");
         require(applicant != address(0), "applicant cannot be 0");
         require(applicant != GUILD && applicant != ESCROW && applicant != TOTAL, "applicant address cannot be reserved");
         require(members[applicant].jailed == 0, "proposal applicant must not be jailed");
+        require(burnAmount >= burnRequirement, "an amount to burn is required");
 
         if (tributeOffered > 0 && userTokenBalances[GUILD][tributeToken] == 0) {
             require(totalGuildBankTokens < MAX_TOKEN_GUILDBANK_COUNT, 'cannot submit more tribute proposals for new tokens - guildbank is full');

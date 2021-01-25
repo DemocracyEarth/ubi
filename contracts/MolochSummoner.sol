@@ -21,7 +21,8 @@ contract MolochSummoner {
         uint256 _proposalDeposit,
         uint256 _dilutionBound,
         uint256 _processingReward,
-        IProofOfHumanity _proofOfHumanity) public {
+        IProofOfHumanity _proofOfHumanity,
+        uint256 _burnRequirement) public {
 
         M = new Moloch(
             _summoner,
@@ -32,7 +33,8 @@ contract MolochSummoner {
             _proposalDeposit,
             _dilutionBound,
             _processingReward,
-            _proofOfHumanity);
+            _proofOfHumanity,
+            _burnRequirement);
 
         Molochs.push(address(M));
 

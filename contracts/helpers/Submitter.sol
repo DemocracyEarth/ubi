@@ -23,7 +23,8 @@ contract Submitter {
     address tributeToken,
     uint256 paymentRequested,
     address paymentToken,
-    string memory details
+    string memory details,
+    uint256 burnAmount
   ) public {
     uint256 proposalId = moloch.submitProposal(
       applicant,
@@ -33,7 +34,8 @@ contract Submitter {
       tributeToken,
       paymentRequested,
       paymentToken,
-      details
+      details,
+      burnAmount
     );
 
     emit Submit(proposalId);
