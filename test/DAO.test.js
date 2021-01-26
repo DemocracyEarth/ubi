@@ -619,7 +619,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -676,7 +675,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(SolRevert)
     })
@@ -694,7 +692,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalTributeTokenIsNotWhitelisted)
     })
@@ -712,7 +709,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalPaymetTokenIsNotWhitelisted)
     })
@@ -729,7 +725,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalApplicantCannotBe0)
     })
@@ -745,7 +740,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalApplicantCannotBeReserved)
 
@@ -759,7 +753,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalApplicantCannotBeReserved)
       
@@ -773,7 +766,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalApplicantCannotBeReserved)    
     })
@@ -789,7 +781,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalTooManySharesRequested)
 
@@ -806,7 +797,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -825,7 +815,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalTooManySharesRequested)
 
@@ -842,7 +831,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -861,7 +849,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       ).should.be.rejectedWith(revertMessages.submitProposalTooManySharesRequested)
 
@@ -878,7 +865,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -898,7 +884,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: summoner }
       )
 
@@ -914,7 +899,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: summoner }
       )
 
@@ -1165,7 +1149,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -1260,7 +1243,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -1480,7 +1462,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -1633,7 +1614,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
           proposal2.paymentRequested,
           proposal2.paymentToken,
           proposal2.details,
-          proposal2.burnAmount,
           { from: proposal2.applicant }
         )
 
@@ -1757,7 +1737,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -1871,7 +1850,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -1989,7 +1967,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2002,7 +1979,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2157,7 +2133,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2320,7 +2295,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2333,7 +2307,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2410,7 +2383,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2423,7 +2395,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2611,7 +2582,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2687,7 +2657,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -2777,7 +2746,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal2.paymentRequested,
         proposal2.paymentToken,
         proposal2.details,
-        proposal2.burnAmount,
         { from: proposal2.applicant }
       )
 
@@ -2890,7 +2858,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2926,7 +2893,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2967,7 +2933,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -2980,7 +2945,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -3024,7 +2988,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -3198,7 +3161,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -3392,7 +3354,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
             proposal2.paymentRequested,
             proposal2.paymentToken,
             proposal2.details,
-            proposal2.burnAmount,
             { from: proposal2.applicant }
           )
 
@@ -3551,7 +3512,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
     })
@@ -3668,7 +3628,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -3723,7 +3682,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -3779,7 +3737,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -3837,7 +3794,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -3981,7 +3937,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -4054,7 +4009,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -4247,7 +4201,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -4331,7 +4284,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: summoner }
       )
 
@@ -4432,7 +4384,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: processor }
       )
 
@@ -4779,7 +4730,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: summoner }
       )
 
@@ -5005,7 +4955,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -5136,7 +5085,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposer }
       )
 
@@ -5560,7 +5508,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -5741,7 +5688,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
 
@@ -5884,7 +5830,6 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         proposal1.paymentRequested,
         proposal1.paymentToken,
         proposal1.details,
-        proposal1.burnAmount,
         { from: proposal1.applicant }
       )
       await verifyFlags({

@@ -197,8 +197,7 @@ contract Moloch is ForHumans, ReentrancyGuard {
         address tributeToken,
         uint256 paymentRequested,
         address paymentToken,
-        string memory details,
-        uint256 burnAmount
+        string memory details
     ) public nonReentrant isRegistered(applicant, true) returns (uint256 proposalId) {
         require(sharesRequested.add(lootRequested) <= MAX_NUMBER_OF_SHARES_AND_LOOT, "too many shares requested");
         require(tokenWhitelist[tributeToken], "tributeToken is not whitelisted");
@@ -206,7 +205,6 @@ contract Moloch is ForHumans, ReentrancyGuard {
         require(applicant != address(0), "applicant cannot be 0");
         require(applicant != GUILD && applicant != ESCROW && applicant != TOTAL, "applicant address cannot be reserved");
         require(members[applicant].jailed == 0, "proposal applicant must not be jailed");
-        require(burnAmount >= burnRequirement, "an amount to burn is required");
 
         if (tributeOffered > 0 && userTokenBalances[GUILD][tributeToken] == 0) {
             require(totalGuildBankTokens < MAX_TOKEN_GUILDBANK_COUNT, 'cannot submit more tribute proposals for new tokens - guildbank is full');
