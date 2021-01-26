@@ -3,6 +3,7 @@ pragma solidity 0.7.3;
 
 import "./Moloch.sol";
 import "./IProofOfHumanity.sol";
+import "./UBI.sol";
 
 contract MolochSummoner {
 
@@ -22,7 +23,7 @@ contract MolochSummoner {
         uint256 _dilutionBound,
         uint256 _processingReward,
         IProofOfHumanity _proofOfHumanity,
-        address _burnToken,
+        UBI _burnToken,
         uint256 _burnRequirement) public {
 
         M = new Moloch(

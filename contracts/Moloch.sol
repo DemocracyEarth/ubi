@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.3;
 
-import "./SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./SafeMath.sol";
 import "./ReentrancyGuard.sol";
 import "./Humans.sol";
+import "./UBI.sol";
 
 contract Moloch is ForHumans, ReentrancyGuard {
     using SafeMath for uint256;
@@ -22,7 +23,7 @@ contract Moloch is ForHumans, ReentrancyGuard {
     uint256 public burnRequirement; // needed to publish a proposal in the dao
 
     address public depositToken; // deposit token contract reference; default = wETH
-    address public burnToken; // token that gets burned in order to submit a proposal
+    UBI public burnToken; // token that gets burned in order to submit a proposal
 
     // HARD-CODED LIMITS
     // These numbers are quite arbitrary; they are small enough to avoid overflows when doing calculations
@@ -141,7 +142,7 @@ contract Moloch is ForHumans, ReentrancyGuard {
         uint256 _dilutionBound,
         uint256 _processingReward,
         IProofOfHumanity _proofOfHumanity,
-        address _burnToken,
+        UBI _burnToken,
         uint256 _burnRequirement
     ) public {
         require(_summoner != address(0), "summoner cannot be 0");
@@ -210,6 +211,8 @@ contract Moloch is ForHumans, ReentrancyGuard {
             require(totalGuildBankTokens < MAX_TOKEN_GUILDBANK_COUNT, 'cannot submit more tribute proposals for new tokens - guildbank is full');
         }
 
+        burnToken.burn(burnRequirement);
+
         // collect tribute from proposer and store it in the Moloch until the proposal is processed
         require(IERC20(tributeToken).transferFrom(msg.sender, address(this), tributeOffered), "tribute token transfer failed");
         unsafeAddToBalance(ESCROW, tributeToken, tributeOffered);
@@ -217,6 +220,7 @@ contract Moloch is ForHumans, ReentrancyGuard {
         bool[6] memory flags; // [sponsored, processed, didPass, cancelled, whitelist, guildkick]
 
         _submitProposal(applicant, sharesRequested, lootRequested, tributeOffered, tributeToken, paymentRequested, paymentToken, details, flags);
+
         return proposalCount - 1; // return proposalId - contracts calling submit might want it
     }
 
