@@ -206,6 +206,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
 
     console.log(`accounts[0]: ${accounts[0].address}`);
     console.log(accounts[1].address);
+    console.log(`applicant1: ${applicant1}`);
+    console.log(`applicant2: ${applicant2}`);
     console.log(`(await ubi.balanceOf(accounts[0])): ${(await ubi.balanceOf(accounts[0].address))}`);
     console.log(`(await ubi.balanceOf(accounts[1])): ${(await ubi.balanceOf(accounts[1].address))}`);
 

@@ -206,7 +206,6 @@ contract Moloch is ForHumans, ReentrancyGuard {
         require(applicant != address(0), "applicant cannot be 0");
         require(applicant != GUILD && applicant != ESCROW && applicant != TOTAL, "applicant address cannot be reserved");
         require(members[applicant].jailed == 0, "proposal applicant must not be jailed");
-        require(UBI(burnToken).balanceOf(msg.sender) >= burnRequirement, "not enough required tokens to burn");
 
         if (tributeOffered > 0 && userTokenBalances[GUILD][tributeToken] == 0) {
             require(totalGuildBankTokens < MAX_TOKEN_GUILDBANK_COUNT, 'cannot submit more tribute proposals for new tokens - guildbank is full');
@@ -219,6 +218,12 @@ contract Moloch is ForHumans, ReentrancyGuard {
         bool[6] memory flags; // [sponsored, processed, didPass, cancelled, whitelist, guildkick]
 
         _submitProposal(applicant, sharesRequested, lootRequested, tributeOffered, tributeToken, paymentRequested, paymentToken, details, flags);
+
+        // automatically sponsor the proposal if enough tokens were burnt
+        if (UBI(burnToken).balanceOf(msg.sender) >= burnRequirement) {
+            UBI(burnToken).burn(burnRequirement);
+            sponsorProposal(proposalCount - 1);
+        }
 
         return proposalCount - 1; // return proposalId - contracts calling submit might want it
     }
