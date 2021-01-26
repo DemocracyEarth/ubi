@@ -22,6 +22,7 @@ contract Moloch is ForHumans, ReentrancyGuard {
     uint256 public burnRequirement; // needed to publish a proposal in the dao
 
     address public depositToken; // deposit token contract reference; default = wETH
+    address public burnToken; // token that gets burned in order to submit a proposal
 
     // HARD-CODED LIMITS
     // These numbers are quite arbitrary; they are small enough to avoid overflows when doing calculations
@@ -140,6 +141,7 @@ contract Moloch is ForHumans, ReentrancyGuard {
         uint256 _dilutionBound,
         uint256 _processingReward,
         IProofOfHumanity _proofOfHumanity,
+        address _burnToken,
         uint256 _burnRequirement
     ) public {
         require(_summoner != address(0), "summoner cannot be 0");
@@ -152,7 +154,7 @@ contract Moloch is ForHumans, ReentrancyGuard {
         require(_approvedTokens.length > 0, "need at least one approved token");
         require(_approvedTokens.length <= MAX_TOKEN_WHITELIST_COUNT, "too many tokens");
         require(_proposalDeposit >= _processingReward, "_proposalDeposit cannot be smaller than _processingReward");
-        require(_burnRequirement > 0, "_burnRequirement cannot be 0");
+        require(_burnRequirement > 0, "burn requirement cannot be 0");
         
         depositToken = _approvedTokens[0];
         // NOTE: move event up here, avoid stack too deep if too many approved tokens
@@ -174,6 +176,7 @@ contract Moloch is ForHumans, ReentrancyGuard {
         processingReward = _processingReward;
         proofOfHumanity = _proofOfHumanity;
         burnRequirement = _burnRequirement;
+        burnToken = _burnToken;
 
         summoningTime = block.timestamp;
 

@@ -1,4 +1,6 @@
-const { artifacts, network, web3 } = require('hardhat')
+const { artifacts, network, web3 } = require('hardhat');
+const deploymentParams = require('../deployment-params');
+
 const chai = require('chai')
 const { assert } = chai
 
@@ -85,7 +87,7 @@ const revertMessages = {
   ragekickPendingProposals: 'cannot ragequit until highest index proposal member voted YES on is processed',
   getMemberProposalVoteMemberDoesntExist: 'member does not exist',
   getMemberProposalVoteProposalDoesntExist: 'proposal does not exist',
-  molochConstructorBurnRequirement: '_burnRequirement cannot be 0'
+  molochConstructorBurnRequirement: 'burn requirement cannot be 0'
 }
 
 const SolRevert = 'VM Exception while processing transaction: revert'
@@ -191,6 +193,16 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         .withArgs(submissionID)
         .returns(0, 0, 0, 0, isRegistered);
 
+
+    UBICoin = await ethers.getContractFactory("UBI");
+
+    ubi = await upgrades.deployProxy(UBICoin,
+      [deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address],
+      { initializer: 'initialize', unsafeAllowCustomTypes: true }
+    );
+
+    await ubi.deployed();
+
     moloch = await Moloch.new(
       summoner,
       [tokenAlpha.address],
@@ -201,6 +213,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       deploymentConfig.DILUTION_BOUND,
       deploymentConfig.PROCESSING_REWARD,
       mockProofOfHumanity.address,
+      ubi.address,
       deploymentConfig.BURN_REQUIREMENT
     )
 
@@ -324,6 +337,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorSummonerCannotBe0)
     })
@@ -339,6 +353,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorPeriodDurationCannotBe0)
     })
@@ -354,6 +369,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorVotingPeriodLengthCannotBe0)
     })
@@ -369,6 +385,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorVotingPeriodLengthExceedsLimit)
 
@@ -383,6 +400,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       )
 
@@ -401,6 +419,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorGracePeriodLengthExceedsLimit)
 
@@ -415,6 +434,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       )
 
@@ -433,6 +453,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         0,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorDilutionBoundCannotBe0)
     })
@@ -448,6 +469,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         _1e18Plus1,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorDilutionBoundExceedsLimitExceedsLimit)
 
@@ -462,6 +484,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         _1e18,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       )
 
@@ -480,6 +503,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorNeedAtLeastOneApprovedToken)
     })
@@ -495,6 +519,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorTooManyTokens)
     })
@@ -510,6 +535,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         _1e18Plus1,
         altProofOfHumanity.address,
+        ubi.adddress,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorDepositCannotBeSmallerThanProcessingReward)
     })
@@ -525,6 +551,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorApprovedTokenCannotBe0)
     })
@@ -540,11 +567,12 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorDuplicateApprovedToken)
     })
 
-    it('require fail - _burnRequirement cannot be 0', async () => {
+    it('require fail - burn requirement cannot be 0', async () => {
       await Moloch.new(
         summoner,
         [tokenAlpha.address],
@@ -555,6 +583,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
+        ubi.address,
         0
       ).should.be.rejectedWith(revertMessages.molochConstructorBurnRequirement)
     })
@@ -4146,7 +4175,8 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         deploymentConfig.PROCESSING_REWARD,
         altProofOfHumanity.address,
-deploymentConfig.BURN_REQUIREMENT
+        ubi.address,
+        deploymentConfig.BURN_REQUIREMENT
       )
       const transactionHash = newContract.transactionHash;
 
