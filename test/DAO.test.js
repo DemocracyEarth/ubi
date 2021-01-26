@@ -535,7 +535,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         deploymentConfig.DILUTION_BOUND,
         _1e18Plus1,
         altProofOfHumanity.address,
-        ubi.adddress,
+        ubi.address,
         deploymentConfig.BURN_REQUIREMENT
       ).should.be.rejectedWith(revertMessages.molochConstructorDepositCannotBeSmallerThanProcessingReward)
     })
