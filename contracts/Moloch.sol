@@ -206,12 +206,11 @@ contract Moloch is ForHumans, ReentrancyGuard {
         require(applicant != address(0), "applicant cannot be 0");
         require(applicant != GUILD && applicant != ESCROW && applicant != TOTAL, "applicant address cannot be reserved");
         require(members[applicant].jailed == 0, "proposal applicant must not be jailed");
+        require(UBI(burnToken).balanceOf(msg.sender) >= burnRequirement, "not enough required tokens to burn");
 
         if (tributeOffered > 0 && userTokenBalances[GUILD][tributeToken] == 0) {
             require(totalGuildBankTokens < MAX_TOKEN_GUILDBANK_COUNT, 'cannot submit more tribute proposals for new tokens - guildbank is full');
         }
-
-        burnToken.burn(burnRequirement);
 
         // collect tribute from proposer and store it in the Moloch until the proposal is processed
         require(IERC20(tributeToken).transferFrom(msg.sender, address(this), tributeOffered), "tribute token transfer failed");
