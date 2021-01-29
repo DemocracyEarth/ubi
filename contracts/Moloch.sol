@@ -132,6 +132,11 @@ contract Moloch is ForHumans, ReentrancyGuard {
         _;
     }
 
+    modifier onlyHolder {
+        require(UBI(burnToken).balanceOf(msg.sender) >= burnRequirement, "not enough required tokens to burn");
+        _;
+    }
+
     constructor(
         address _summoner,
         address[] memory _approvedTokens,
@@ -220,8 +225,8 @@ contract Moloch is ForHumans, ReentrancyGuard {
         _submitProposal(applicant, sharesRequested, lootRequested, tributeOffered, tributeToken, paymentRequested, paymentToken, details, flags);
 
         // automatically sponsor the proposal if enough tokens were burnt
-        if (UBI(burnToken).balanceOf(msg.sender) >= burnRequirement) {
-            UBI(burnToken).burn(burnRequirement);
+        if (UBI(burnToken).balanceOf(applicant) >= burnRequirement) {
+            UBI(burnToken).burnFrom(applicant, burnRequirement);
             sponsorProposal(proposalCount - 1);
         }
 

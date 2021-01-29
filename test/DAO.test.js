@@ -171,9 +171,18 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
 
   let snapshotId
 
+  console.log(`creator: ${creator}`);
+  console.log(`summoner: ${summoner}`);
+  console.log(`applicant1: ${applicant1}`);
+
   const fundAndApproveToMoloch = async ({ to, from, value }) => {
     await tokenAlpha.transfer(to, value, { from: from })
     await tokenAlpha.approve(moloch.address, value, { from: to })
+  }
+
+  const fundAndApproveUBI = async ({ to, from, value, token }) => {
+    await token.transfer(to, value, { from: from })
+    await token.approve(moloch.address, value, { from: to })
   }
 
   before('deploy contracts', async () => {
@@ -201,15 +210,7 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       { initializer: 'initialize', unsafeAllowCustomTypes: true }
     );
 
-    await ubi.deployed();
-
-
-    console.log(`accounts[0]: ${accounts[0].address}`);
-    console.log(accounts[1].address);
-    console.log(`applicant1: ${applicant1}`);
-    console.log(`applicant2: ${applicant2}`);
-    console.log(`(await ubi.balanceOf(accounts[0])): ${(await ubi.balanceOf(accounts[0].address))}`);
-    console.log(`(await ubi.balanceOf(accounts[1])): ${(await ubi.balanceOf(accounts[1].address))}`);
+    await ubi.deployed();    
 
     moloch = await Moloch.new(
       summoner,
@@ -225,6 +226,10 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
       deploymentConfig.BURN_REQUIREMENT
     )
 
+    console.log(`moloch.address: ${moloch.address}`);
+    console.log(`applicant1: ${applicant1}`);
+    console.log(`accounts[0].address: ${accounts[0].address}`);
+  
     const depositTokenAddress = await moloch.depositToken()
     assert.equal(depositTokenAddress, tokenAlpha.address)
 
@@ -604,6 +609,23 @@ contract('Moloch', ([creator, summoner, applicant1, applicant2, processor, deleg
         from: creator,
         value: proposal1.tributeOffered
       })
+
+
+      console.log(`ubi.signer.address: ${ubi.signer.address}`);
+      const ubi2 = await ubi.connect(applicant1);
+      console.log(`ubi2.signer.address: ${ubi2.signer.address}`);
+      console.log(`moloch.address: ${moloch.address}`);
+
+      await ubi2.approve(moloch.address, (deploymentConfig.BURN_REQUIREMENT * 10))
+
+      /*
+      await fundAndApproveUBI({
+        to: applicant1,
+        from: accounts[0].address,
+        value: deploymentConfig.BURN_REQUIREMENT * 10,
+        token: ubi2
+      })
+      */
     })
 
     it('happy case', async () => {
