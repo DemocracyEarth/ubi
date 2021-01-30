@@ -17,7 +17,7 @@ const delay = async (interval) => {
 /**
  @summary Tests for UBI.sol
 */
-contract('UBI (Upgradeable Contract)', accounts => {
+contract('UBI.sol', accounts => {
   describe('UBI Coin and Proof of Humanity', () => {
     before(async () => {
       accounts = await ethers.getSigners();
@@ -47,12 +47,12 @@ contract('UBI (Upgradeable Contract)', accounts => {
       altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/IProofOfHumanity.sol/IProofOfHumanity.json").abi);
     });
 
-    it("Return a value previously initialized.", async () => {
+    it("happy path - return a value previously initialized.", async () => {
       // Check that the value passed to the constructor is set.
       expect((await ubi.accruedPerSecond()).toString()).to.equal(deploymentParams.ACCRUED_PER_SECOND.toString());
     });
 
-    it("Allows the governor to change `accruedPerSecond`.", async () => {
+    it("happy path - allow governor to change `accruedPerSecond`.", async () => {
       // Make sure it reverts if we are not the governor.
       await expect(
         ubi.connect(accounts[1]).changeAccruedPerSecond(2)
@@ -63,7 +63,7 @@ contract('UBI (Upgradeable Contract)', accounts => {
       expect((await ubi.accruedPerSecond()).toString()).to.equal('2');
     });
 
-    it("Allows the governor to emit `Snapshot` event.", async () => {
+    it("happy path - allow governor to emit `Snapshot` event.", async () => {
       // Make sure it reverts if we are not the governor.
       await expect(
         ubi.connect(accounts[1]).snapshot()
@@ -74,7 +74,7 @@ contract('UBI (Upgradeable Contract)', accounts => {
         .to.emit(ubi, "Snapshot")
     });
 
-    it("Allows registered submissions to start accruing UBI.", async () => {
+    it("happy path - allow registered submissions to start accruing UBI.", async () => {
       // Check that the initial `lastMintedSecond` value is 0.
       expect((await ubi.lastMintedSecond(addresses[1])).toString()).to.equal('0');
 
@@ -100,7 +100,7 @@ contract('UBI (Upgradeable Contract)', accounts => {
       ).to.be.revertedWith("The submission is already accruing UBI.");
     });
 
-    it("Allows the minting of accrued UBI.", async () => {
+    it("happy path - allow minting of accrued UBI.", async () => {
       // Make sure it reverts if the submission is not registered.
       await setSubmissionIsRegistered(addresses[1], false);
       await expect(
@@ -132,7 +132,7 @@ contract('UBI (Upgradeable Contract)', accounts => {
         .to.emit(ubi, "Mint")
     });
 
-    it("Allows anyone to report a removed submission for their accrued UBI.", async () => {
+    it("happy path - allows anyone to report a removed submission for their accrued UBI.", async () => {
       // Make sure it reverts if the submission is still registered.
       await setSubmissionIsRegistered(addresses[6], true);
       await ubi.startAccruing(addresses[6]);
@@ -155,11 +155,11 @@ contract('UBI (Upgradeable Contract)', accounts => {
       expect((await ubi.lastMintedSecond(addresses[1])).toString()).to.equal('0');
     });
 
-    it("Returns 0 for submissions that are not accruing UBI.", async () => {
+    it("happy path - returns 0 for submissions that are not accruing UBI.", async () => {
       expect((await ubi.getAccruedValue(addresses[5])).toString()).to.equal('0');
     });
 
-    it("Allows the governor to change `proofOfHumanity`.", async () => {
+    it("happy path - allow governor to change `proofOfHumanity`.", async () => {
       // Make sure it reverts if we are not the governor.
       await expect(
         ubi.connect(accounts[1]).changeProofOfHumanity(altProofOfHumanity.address)
