@@ -6,17 +6,17 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "./IProofOfHumanity.sol";
+import "./Humans.sol";
 
 /**
  *  @title Democracy
  *  A proxy contract for ProofOfHumanity that implements a token interface to interact with other dapps.
  */
-contract Democracy is IERC20 {
+contract Democracy is ForHumans, IERC20 {
     using SafeMath for uint256;
     using Arrays for uint256[];
     using Counters for Counters.Counter;
 
-    IProofOfHumanity public PoH;
     address public deployer = msg.sender;
 
     // Snapshotted values have arrays of ids and the value corresponding to that id. These could be an array of a
@@ -44,25 +44,25 @@ contract Democracy is IERC20 {
     }
 
     /** @dev Constructor.
-     *  @param _PoH The address of the related ProofOfHumanity contract.
+     *  @param _proofOfHumanity The address of the related ProofOfHumanity contract.
      */
-    constructor(IProofOfHumanity _PoH) public {
-        PoH = _PoH;
+    constructor(IProofOfHumanity _proofOfHumanity) public {
+        proofOfHumanity = _proofOfHumanity;
     }
 
     /** @dev Changes the address of the the related ProofOfHumanity contract.
-     *  @param _PoH The address of the new contract.
+     *  @param _proofOfHumanity The address of the new contract.
      */
-    function changePoH(IProofOfHumanity _PoH) external onlyDeployer {
-        PoH = _PoH;
+    function changeProofOfHumanity(IProofOfHumanity _proofOfHumanity) external onlyDeployer {
+        proofOfHumanity = _proofOfHumanity;
     }
 
     /** @dev Returns true if the submission is registered and not expired.
      *  @param human The address of the submission.
      *  @return Whether the submission is registered or not.
      */
-    function isRegistered(address human) public view returns (bool) {
-        (, , , , bool registered) = PoH.getSubmissionInfo(human);
+    function isHuman(address human) public view returns (bool) {
+        (, , , , bool registered) = proofOfHumanity.getSubmissionInfo(human);
         return registered;
     }
 
@@ -103,7 +103,7 @@ contract Democracy is IERC20 {
         require(snapshotId > 0, "ERC20Snapshot: id is 0");
         // solhint-disable-next-line max-line-length
         require(snapshotId <= _currentSnapshotId.current(), "ERC20Snapshot: nonexistent id");
-        
+
         uint256 index = snapshots.ids.findUpperBound(snapshotId);
 
         if (index == snapshots.ids.length) {
@@ -147,7 +147,7 @@ contract Democracy is IERC20 {
      *  @return The balance of the submission.
      */
     function balanceOf(address human) external view override returns (uint256) {
-        return isRegistered(human) ? 1 : 0;
+        return isHuman(human) ? 1 : 0;
     }
 
     /** @dev Returns the count of all submissions that were successfully registered, regardless of whether they're expired or not.
@@ -155,7 +155,7 @@ contract Democracy is IERC20 {
      *  @return The count of registered submissions.
      */
     function totalSupply() external view override returns (uint256) {
-        return PoH.registrationCounter();
+        return proofOfHumanity.registrationCounter();
     }
 
     function transfer(address _recipient, uint256 _amount) external pure override returns (bool) { return false; }
