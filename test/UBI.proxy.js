@@ -26,7 +26,7 @@ contract('UBI (Upgradeable Contract)', accounts => {
         Promise.all(accounts.map((account) => account.getAddress())),
         waffle.deployMockContract(
           accounts[0],
-          require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
+          require("../artifacts/contracts/IProofOfHumanity.sol/IProofOfHumanity.json").abi
         ),
       ]);
       addresses = _addresses;
@@ -44,7 +44,7 @@ contract('UBI (Upgradeable Contract)', accounts => {
 
       await ubi.deployed();
 
-      altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
+      altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/IProofOfHumanity.sol/IProofOfHumanity.json").abi);
     });
 
     it("Return a value previously initialized.", async () => {
