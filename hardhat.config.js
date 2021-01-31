@@ -6,9 +6,7 @@ require("@nomiclabs/hardhat-ethers");
 require('@openzeppelin/hardhat-upgrades');
 require("hardhat-gas-reporter");
 require("solidity-coverage");
-
 require("./scripts/tasks");
-require("./scripts/dao-tasks");
 
 // Go to https://infura.io/ and create a new project
 // Replace this with your Infura project ID

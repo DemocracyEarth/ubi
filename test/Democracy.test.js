@@ -50,8 +50,28 @@ contract('Democracy.sol', accounts => {
     });
 
     it("happy path - get balance of 1 vote for a registered human.", async () => {
-      // Check that the value passed to the constructor is set.
-      expect((await democracy.proofOfHumanity()).toString()).to.equal(pohAddress);
+      await setSubmissionIsRegistered(addresses[1], true);
+      expect((await democracy.balanceOf(addresses[1]))).to.equal(1);
+    });
+
+    it("happy path - get balance of 0 vote for a unregistered address.", async () => {
+      await setSubmissionIsRegistered(addresses[2], false);
+      expect((await democracy.balanceOf(addresses[2]))).to.equal(0);
+    });
+
+    it("happy path - verify if an address is human.", async () => {
+      await setSubmissionIsRegistered(addresses[3], true);
+      expect((await democracy.isHuman(addresses[3]))).to.equal(true);
+    });
+
+    it("happy path - prevent any kind of transfer.", async () => {
+      expect((await democracy.transfer(addresses[1], 1))).to.equal(false);
+    });
+
+    it("happy path - emit snapshot event.", async () => {
+      console.log((await democracy.snapshot()).value.toString());
+      console.log((await democracy.snapshot()).value.toString());
+      expect(democracy.snapshot()).to.emit(democracy, "Snapshot");
     });
 
   });

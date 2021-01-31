@@ -71,7 +71,7 @@ contract Democracy is ForHumans, IERC20 {
     // ******************** //
 
     /** @dev External function for Snapshot event emitter only accessible by deployer.  */
-    function _snapshot() external onlyDeployer returns (uint256) {
+    function snapshot() external onlyDeployer returns (uint256) {
         _currentSnapshotId.increment();
 
         uint256 currentId = _currentSnapshotId.current();
