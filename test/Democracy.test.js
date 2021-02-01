@@ -33,7 +33,9 @@ contract('Democracy.sol', accounts => {
           require("../artifacts/contracts/IProofOfHumanity.sol/IProofOfHumanity.json").abi
         ),
       ]);
+
       addresses = _addresses;
+
       setSubmissionIsRegistered = (submissionID, isRegistered) =>
         mockProofOfHumanity.mock.getSubmissionInfo
           .withArgs(submissionID)
@@ -98,6 +100,10 @@ contract('Democracy.sol', accounts => {
 
     it("require fail - ERC20Snapshot: nonexistent id", async () => {
       await expect(democracy.balanceOfAt(addresses[1], 10)).to.be.revertedWith("ERC20Snapshot: nonexistent id");
+    });
+
+    it("require fail - ERC20Snapshot: id is 0", async () => {
+      await expect(democracy.balanceOfAt(addresses[1], 0)).to.be.revertedWith("ERC20Snapshot: id is 0");
     });
 
     it("happy path - get total supply", async () => {
