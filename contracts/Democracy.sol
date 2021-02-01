@@ -113,30 +113,6 @@ contract Democracy is ForHumans, IERC20 {
         }
     }
 
-    function _updateAccountSnapshot(address account) private {
-        _updateSnapshot(_accountBalanceSnapshots[account], this.balanceOf(account));
-    }
-
-    function _updateTotalSupplySnapshot() private {
-        _updateSnapshot(_totalSupplySnapshots, this.totalSupply());
-    }
-
-    function _updateSnapshot(Snapshots storage snapshots, uint256 currentValue) private {
-        uint256 currentId = _currentSnapshotId.current();
-        if (_lastSnapshotId(snapshots.ids) < currentId) {
-            snapshots.ids.push(currentId);
-            snapshots.values.push(currentValue);
-        }
-    }
-
-    function _lastSnapshotId(uint256[] storage ids) private view returns (uint256) {
-        if (ids.length == 0) {
-            return 0;
-        } else {
-            return ids[ids.length - 1];
-        }
-    }
-
     // ******************** //
     // *      IERC20      * //
     // ******************** //
