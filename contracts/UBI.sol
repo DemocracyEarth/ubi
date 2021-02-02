@@ -151,6 +151,13 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     return _snapshot();
   }
 
+  /**
+  * @dev See {IERC20-balanceOf}.
+  */
+  function balanceOf(address account) public view override returns (uint256) {
+    return ERC20SnapshotUpgradeable._balances[account];
+  }
+
   /* Getters */
 
   /** @dev Calculates how much UBI a submission has available for withdrawal.
