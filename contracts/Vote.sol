@@ -9,15 +9,20 @@ import "./IProofOfHumanity.sol";
 import "./Humans.sol";
 
 /**
- *  @title Democracy
+ *  @title Vote
  *  A proxy contract for ProofOfHumanity that implements a token interface to interact with other dapps.
  */
-contract Democracy is ForHumans, IERC20 {
+contract Vote is ForHumans, IERC20 {
     using SafeMath for uint256;
     using Arrays for uint256[];
     using Counters for Counters.Counter;
 
     address public deployer = msg.sender;
+
+    string private _name;
+    string private _symbol;
+    uint8 private _decimals;
+
 
     // Snapshotted values have arrays of ids and the value corresponding to that id. These could be an array of a
     // Snapshot struct, but that would impede usage of functions that work on an array.
@@ -46,8 +51,11 @@ contract Democracy is ForHumans, IERC20 {
     /** @dev Constructor.
      *  @param _proofOfHumanity The address of the related ProofOfHumanity contract.
      */
-    constructor(IProofOfHumanity _proofOfHumanity) public {
+    constructor(string memory name_, string memory symbol_, IProofOfHumanity _proofOfHumanity) public {
         proofOfHumanity = _proofOfHumanity;
+        _name = name_;
+        _symbol = symbol_;
+        _decimals = 18;
     }
 
     /** @dev Changes the address of the the related ProofOfHumanity contract.
@@ -123,7 +131,7 @@ contract Democracy is ForHumans, IERC20 {
      *  @return The balance of the submission.
      */
     function balanceOf(address human) external view override returns (uint256) {
-        return isHuman(human) ? 1 : 0;
+        return isHuman(human) ? (1 / 10 ** decimals) : 0;
     }
 
     /** @dev Returns the count of all submissions that were successfully registered, regardless of whether they're expired or not.
@@ -132,6 +140,29 @@ contract Democracy is ForHumans, IERC20 {
      */
     function totalSupply() external view override returns (uint256) {
         return proofOfHumanity.registrationCounter();
+    }
+
+    /**
+     * @dev Returns the name of the token.
+     */
+    function name() public view virtual returns (string memory) {
+        return _name;
+    }
+
+    /**
+     * @dev Returns the symbol of the token, usually a shorter version of the
+     * name.
+     */
+    function symbol() public view virtual returns (string memory) {
+        return _symbol;
+    }
+
+    /**
+     * @dev Returns the number of decimals used to get its user representation.
+     * {IERC20-balanceOf} and {IERC20-transfer}.
+     */
+    function decimals() public view virtual returns (uint8) {
+        return _decimals;
     }
 
     function transfer(address _recipient, uint256 _amount) external pure override returns (bool) { return false; }
