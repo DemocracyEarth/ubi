@@ -16,7 +16,6 @@ const delay = async (interval) => {
 
 
 const SEVEN_BILLION = 7000000000;
-
 const MAX_INT = '1000000000000000000';
 const DECIMALS = 18;
 
