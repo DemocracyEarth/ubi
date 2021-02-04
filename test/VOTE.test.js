@@ -111,6 +111,12 @@ contract('Vote.sol', accounts => {
       await expect(vote.balanceOfAt(addresses[1], 0)).to.be.revertedWith("ERC20Snapshot: id is 0");
     });
 
+    it("happy path - emit transfer event when registered", async () => {
+      await setSubmissionIsRegistered(addresses[1], true);
+      await setRegistrationCounter();
+      expect(await vote.register(addresses[1])).to.emit(vote, "Transfer");
+    });
+
     it("happy path - get total supply", async () => {
       await setRegistrationCounter();
       expect(await vote.totalSupply()).to.equal(SEVEN_BILLION);

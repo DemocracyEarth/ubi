@@ -59,6 +59,11 @@ contract Vote is ForHumans, ERC20Snapshot {
         return _snapshot();
     }
 
+    /** @dev Takes a Snapshot of the balance based on the ProofOfHumanity status. */
+    function register(address submission) external {
+        _mint(submission, balanceOf(submission));
+    }
+
     // ******************** //
     // *      IERC20      * //
     // ******************** //
