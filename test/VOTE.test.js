@@ -49,7 +49,7 @@ contract('Vote.sol', accounts => {
       pohAddress = mockProofOfHumanity.address;
 
       Vote = await ethers.getContractFactory("Vote");
-      vote = await Vote.deploy(pohAddress);
+      vote = await Vote.deploy(deploymentParams.VOTE_NAME, deploymentParams.VOTE_SYMBOL, pohAddress);
       await vote.deployed();
       
       altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/IProofOfHumanity.sol/IProofOfHumanity.json").abi);
@@ -63,7 +63,7 @@ contract('Vote.sol', accounts => {
 
     it("happy path - get balance of 1 vote for a registered human", async () => {
       await setSubmissionIsRegistered(addresses[1], true);
-      expect((await vote.balanceOf(addresses[1]))).to.equal(1);
+      expect((await vote.balanceOf(addresses[1]))).to.equal(1 / (10 ** 18));
     });
 
     it("happy path - get balance of 0 vote for a unregistered address", async () => {
