@@ -17,7 +17,8 @@ contract Vote is ForHumans, IERC20 {
     using Arrays for uint256[];
     using Counters for Counters.Counter;
 
-    uint256 MAX_INT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    uint256 MAX_INT = 1 ether;
+    
     address public deployer = msg.sender;
 
     string private _name;

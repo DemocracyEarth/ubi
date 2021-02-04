@@ -14,11 +14,10 @@ const delay = async (interval) => {
   });
 }
 
-const mockNumbers = {
-  SEVEN_BILLION: 7000000000,
-}
 
-const MAX_INT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+const SEVEN_BILLION = 7000000000;
+
+const MAX_INT = '1000000000000000000';
 
 /**
  @summary Tests for UBI.sol
@@ -46,7 +45,7 @@ contract('Vote.sol', accounts => {
       setRegistrationCounter = () =>
         mockProofOfHumanity.mock.registrationCounter
           .withArgs()
-          .returns(mockNumbers.SEVEN_BILLION);
+          .returns(SEVEN_BILLION);
 
       pohAddress = mockProofOfHumanity.address;
 
@@ -110,12 +109,12 @@ contract('Vote.sol', accounts => {
 
     it("happy path - get total supply", async () => {
       await setRegistrationCounter();
-      expect(await vote.totalSupply()).to.equal(mockNumbers.SEVEN_BILLION);
+      expect(await vote.totalSupply()).to.equal(SEVEN_BILLION);
     });
 
     it("happy path - get total supply at a given snapshot id", async () => {
       await setRegistrationCounter();
-      expect(await vote.totalSupplyAt(1)).to.equal(mockNumbers.SEVEN_BILLION);
+      expect(await vote.totalSupplyAt(1)).to.equal(SEVEN_BILLION);
     });
 
     it("require fail - The caller must be the deployer", async () => {
