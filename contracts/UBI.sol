@@ -10,8 +10,8 @@ pragma solidity 0.7.3;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20SnapshotUpgradeable.sol";
-import "./IProofOfHumanity.sol";
-import "./Humans.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "./Humanity.sol";
 
 contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeable {
 
