@@ -103,14 +103,6 @@ contract('Vote.sol', accounts => {
       expect(await vote.balanceOfAt(addresses[1], 2)).to.equal(MAX_INT);
     });
 
-    it("require fail - get 0 value", async () => {
-      await setSubmissionIsRegistered(addresses[1], true);
-      await vote.snapshot();
-      await vote.snapshot();
-      console.log(await vote.balanceOfAt(addresses[1], 1));
-      await expect((await vote.balanceOfAt(addresses[1], 1)).toString()).to.equal(MAX_INT);
-    });
-
     it("require fail - ERC20Snapshot: nonexistent id", async () => {
       await expect(vote.balanceOfAt(addresses[1], 10)).to.be.revertedWith("ERC20Snapshot: nonexistent id");
     });
