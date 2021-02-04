@@ -114,7 +114,7 @@ contract('Vote.sol', accounts => {
     it("happy path - emit transfer event when registered", async () => {
       await setSubmissionIsRegistered(addresses[1], true);
       await setRegistrationCounter();
-      expect(await vote.register(addresses[1])).to.emit(vote, "Transfer");
+      expect(vote.register(addresses[1])).to.emit(vote, "Transfer");
     });
 
     it("happy path - get total supply", async () => {
