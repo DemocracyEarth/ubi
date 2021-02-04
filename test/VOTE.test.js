@@ -15,8 +15,10 @@ const delay = async (interval) => {
 }
 
 const mockNumbers = {
-  SEVEN_BILLION: 7000000000
+  SEVEN_BILLION: 7000000000,
 }
+
+const MAX_INT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
 
 /**
  @summary Tests for UBI.sol
@@ -63,7 +65,7 @@ contract('Vote.sol', accounts => {
 
     it("happy path - get balance of 1 vote for a registered human", async () => {
       await setSubmissionIsRegistered(addresses[1], true);
-      expect((await vote.balanceOf(addresses[1]))).to.equal(1 / (10 ** 18));
+      expect((await vote.balanceOf(addresses[1])).toString()).to.equal(MAX_INT);
     });
 
     it("happy path - get balance of 0 vote for a unregistered address", async () => {
@@ -95,7 +97,7 @@ contract('Vote.sol', accounts => {
     it("happy path - get balance at a given snapshot id", async () => {
       await setSubmissionIsRegistered(addresses[1], true);
       await vote.snapshot();
-      expect(await vote.balanceOfAt(addresses[1], 2)).to.equal(1);
+      expect(await vote.balanceOfAt(addresses[1], 2)).to.equal(MAX_INT);
     });
 
     it("require fail - ERC20Snapshot: nonexistent id", async () => {

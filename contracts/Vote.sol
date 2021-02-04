@@ -17,12 +17,12 @@ contract Vote is ForHumans, IERC20 {
     using Arrays for uint256[];
     using Counters for Counters.Counter;
 
+    uint256 MAX_INT = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     address public deployer = msg.sender;
 
     string private _name;
     string private _symbol;
     uint8 private _decimals;
-
 
     // Snapshotted values have arrays of ids and the value corresponding to that id. These could be an array of a
     // Snapshot struct, but that would impede usage of functions that work on an array.
@@ -131,7 +131,7 @@ contract Vote is ForHumans, IERC20 {
      *  @return The balance of the submission.
      */
     function balanceOf(address human) external view override returns (uint256) {
-        return isHuman(human) ? (1 / 10 ** _decimals) : 0;
+        return isHuman(human) ? MAX_INT : 0;
     }
 
     /** @dev Returns the count of all submissions that were successfully registered, regardless of whether they're expired or not.
