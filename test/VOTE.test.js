@@ -18,6 +18,7 @@ const delay = async (interval) => {
 const SEVEN_BILLION = 7000000000;
 
 const MAX_INT = '1000000000000000000';
+const DECIMALS = 18;
 
 /**
  @summary Tests for UBI.sol
@@ -56,9 +57,12 @@ contract('Vote.sol', accounts => {
       altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/IProofOfHumanity.sol/IProofOfHumanity.json").abi);
     });
 
-    it("happy path - return a value previously initialized", async () => {
+    it("happy path - check initialized values", async () => {
       // Check that the value passed to the constructor is set.
       expect((await vote.deployer()).toString()).to.equal(addresses[0]);
+      expect(await vote.name()).to.equal(deploymentParams.VOTE_NAME);
+      expect(await vote.symbol()).to.equal(deploymentParams.VOTE_SYMBOL);
+      expect(await vote.decimals()).to.equal(DECIMALS);
       expect((await vote.proofOfHumanity()).toString()).to.equal(pohAddress);
     });
 
@@ -97,6 +101,14 @@ contract('Vote.sol', accounts => {
       await setSubmissionIsRegistered(addresses[1], true);
       await vote.snapshot();
       expect(await vote.balanceOfAt(addresses[1], 2)).to.equal(MAX_INT);
+    });
+
+    it("require fail - get 0 value", async () => {
+      await setSubmissionIsRegistered(addresses[1], true);
+      await vote.snapshot();
+      await vote.snapshot();
+      console.log(await vote.balanceOfAt(addresses[1], 1));
+      await expect((await vote.balanceOfAt(addresses[1], 1)).toString()).to.equal(MAX_INT);
     });
 
     it("require fail - ERC20Snapshot: nonexistent id", async () => {

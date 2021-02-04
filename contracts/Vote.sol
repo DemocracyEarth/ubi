@@ -110,7 +110,6 @@ contract Vote is ForHumans, IERC20 {
         private view returns (bool, uint256)
     {
         require(snapshotId > 0, "ERC20Snapshot: id is 0");
-        // solhint-disable-next-line max-line-length
         require(snapshotId <= _currentSnapshotId.current(), "ERC20Snapshot: nonexistent id");
 
         uint256 index = snapshots.ids.findUpperBound(snapshotId);
