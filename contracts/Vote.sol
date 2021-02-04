@@ -131,7 +131,7 @@ contract Vote is ForHumans, IERC20 {
      *  @return The balance of the submission.
      */
     function balanceOf(address human) external view override returns (uint256) {
-        return isHuman(human) ? (1 / 10 ** decimals) : 0;
+        return isHuman(human) ? (1 / 10 ** _decimals) : 0;
     }
 
     /** @dev Returns the count of all submissions that were successfully registered, regardless of whether they're expired or not.
