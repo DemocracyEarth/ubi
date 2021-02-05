@@ -52,7 +52,7 @@ contract Vote is ForHumans, ERC20Snapshot {
      *  @return Whether the submission is registered or not.
      */
     function isHuman(address submission) public view returns (bool) {
-        (, , , , bool registered) = proofOfHumanity.getSubmissionInfo(submission);
+        bool registered = proofOfHumanity.isRegistered(submission);
         return registered;
     }
 
