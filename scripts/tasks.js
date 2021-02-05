@@ -40,9 +40,9 @@ task('deploy', 'Test deploy of a new instance of the UBI Coin')
     ]);
     addresses = _addresses;
     setSubmissionIsRegistered = (submissionID, isRegistered) =>
-      mockProofOfHumanity.mock.getSubmissionInfo
+      mockProofOfHumanity.mock.isRegistered
         .withArgs(submissionID)
-        .returns(0, 0, 0, 0, isRegistered, false, 0);
+        .returns(isRegistered);
 
 
     UBICoin = await ethers.getContractFactory("UBI");

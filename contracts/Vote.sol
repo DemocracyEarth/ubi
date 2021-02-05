@@ -12,13 +12,16 @@ import "./Humanity.sol";
  *  A proxy contract for ProofOfHumanity that implements a token interface to interact with other dapps.
  */
 contract Vote is ForHumans, ERC20Snapshot {
-    uint256 MAX_INT = 1 ether;
-    
-    address public deployer = msg.sender;
 
+    /* Storage */
+
+    uint256 MAX_INT = 1 ether;
+    address public deployer = msg.sender;
     string private _name;
     string private _symbol;
     uint8 private _decimals;
+    
+    /* Modifiers */
 
     /// @dev Verifies sender has ability to modify governed parameters.
     modifier onlyDeployer() {
@@ -26,12 +29,16 @@ contract Vote is ForHumans, ERC20Snapshot {
       _;
     }
 
+    /* Constructor */
+
     /** @dev Constructor.
      *  @param _proofOfHumanity The address of the related ProofOfHumanity contract.
      */
     constructor(string memory name_, string memory symbol_, IProofOfHumanity _proofOfHumanity) ERC20(name_, symbol_) public {
         proofOfHumanity = _proofOfHumanity;
     }
+
+    /* External */
 
     /** @dev Changes the address of the the related ProofOfHumanity contract.
      *  @param _proofOfHumanity The address of the new contract.
@@ -45,13 +52,11 @@ contract Vote is ForHumans, ERC20Snapshot {
      *  @return Whether the submission is registered or not.
      */
     function isHuman(address submission) public view returns (bool) {
-        (, , , , bool registered) = proofOfHumanity.getSubmissionInfo(submission);
+        bool registered = proofOfHumanity.isRegistered(submission);
         return registered;
     }
 
-    // ******************** //
-    // *    Snapshot      * //
-    // ******************** //
+    /* Snapshot */
 
     /** @dev External function for Snapshot event emitter only accessible by deployer.  */
     function snapshot() external onlyDeployer returns (uint256) {
@@ -63,9 +68,7 @@ contract Vote is ForHumans, ERC20Snapshot {
         _mint(submission, balanceOf(submission));
     }
 
-    // ******************** //
-    // *      IERC20      * //
-    // ******************** //
+    /* ERC20 */
 
     /** @dev Returns the balance of a particular submission of the ProofOfHumanity contract.
      *  Note that this function takes the expiration date into account.

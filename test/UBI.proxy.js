@@ -31,9 +31,9 @@ contract('UBI.sol', accounts => {
       ]);
       addresses = _addresses;
       setSubmissionIsRegistered = (submissionID, isRegistered) =>
-        mockProofOfHumanity.mock.getSubmissionInfo
+        mockProofOfHumanity.mock.isRegistered
           .withArgs(submissionID)
-          .returns(0, 0, 0, 0, isRegistered);
+          .returns(isRegistered);
 
       UBICoin = await ethers.getContractFactory("UBI");
 

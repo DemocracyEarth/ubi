@@ -8,14 +8,10 @@ pragma solidity 0.7.3;
 interface IProofOfHumanity {
   enum Status {None, Vouching, PendingRegistration, PendingRemoval}
 
-  function getSubmissionInfo(address _submissionID)
+  function isRegistered(address _submissionID)
     external
     view
     returns (
-      Status status,
-      uint64 submissionTime,
-      uint64 renewalTimestamp,
-      uint64 index,
       bool registered
     );
 
@@ -32,9 +28,7 @@ abstract contract ForHumans {
   *  @param _registered if it's registered as valid human.
   */
   modifier isRegistered(address _submissionID, bool _registered) {
-    (, , , , bool registered) = proofOfHumanity.getSubmissionInfo(
-      _submissionID
-    );
+    bool registered = proofOfHumanity.isRegistered(_submissionID);
     require(
       registered == _registered,
       registered
