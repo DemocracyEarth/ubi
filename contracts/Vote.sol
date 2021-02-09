@@ -15,12 +15,13 @@ contract Vote is ForHumans, ERC20Snapshot {
 
     /* Storage */
 
-    uint256 MAX_INT = 1 ether;
     address public deployer = msg.sender;
     string private _name;
     string private _symbol;
     uint8 private _decimals;
     
+    uint256 MAX_INT = 10 ** _decimals;
+
     /* Modifiers */
 
     /// @dev Verifies sender has ability to modify governed parameters.
