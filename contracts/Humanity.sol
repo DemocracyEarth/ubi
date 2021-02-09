@@ -6,8 +6,6 @@ pragma solidity 0.7.3;
  * @dev See https://github.com/Proof-Of-Humanity/Proof-Of-Humanity.
  */
 interface IProofOfHumanity {
-  enum Status {None, Vouching, PendingRegistration, PendingRemoval}
-
   function isRegistered(address _submissionID)
     external
     view

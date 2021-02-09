@@ -1,20 +1,6 @@
 const { expect } = require("chai");
 const deploymentParams = require('../deployment-params');
 
-/**
- @function delay
- @summary halts execution for a given interval of milliseconds.
- @param {string} interval in milliseconds.
-*/
-const delay = async (interval) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      resolve();
-    }, interval);
-  });
-}
-
-
 const SEVEN_BILLION = 7000000000;
 const MAX_INT = '1000000000000000000';
 const DECIMALS = 18;

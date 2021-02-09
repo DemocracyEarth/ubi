@@ -50,12 +50,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     _;
   }
 
-  /// @dev Prevention of reentrancy attacks in flash loans and liquidity pools.
-  modifier isBlockApart() {
-    require(block.number > lastBlock[msg.sender], "Accrual and minting cannot happen in the same block.");
-    _;
-  }
-
   /** @dev is already accruing token subsidy
   *  @param human for the address of the human.
   *  @param _accruing if its actively accruing value.
@@ -96,7 +90,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   /** @dev Universal Basic Income mechanism
   *  @param human The submission ID.
   */
-  function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) isBlockApart {
+  function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
     uint256 newSupply = getAccruedValue(human);
     
     lastBlock[msg.sender] = block.number;
@@ -121,7 +115,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   *  leftover accrued UBI.
   *  @param human The submission ID.
   */
-  function reportRemoval(address human) external isAccruing(human, true) isRegistered(human, false) isBlockApart {
+  function reportRemoval(address human) external isAccruing(human, true) isRegistered(human, false) {
     uint256 newSupply = getAccruedValue(human);
 
     lastBlock[msg.sender] = block.number;
