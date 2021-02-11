@@ -75,8 +75,8 @@ contract('UBI.sol', accounts => {
     });
 
     it("happy path - allow registered submissions to start accruing UBI.", async () => {
-      // Check that the initial `lastMintedSecond` value is 0.
-      expect((await ubi.lastMintedSecond(addresses[1])).toString()).to.equal('0');
+      // Check that the initial `accruedSince` value is 0.
+      expect((await ubi.accruedSince(addresses[1])).toString()).to.equal('0');
 
       // Make sure it reverts if the submission is not registered.
       await setSubmissionIsRegistered(addresses[1], false);
@@ -89,8 +89,8 @@ contract('UBI.sol', accounts => {
       // Start accruing UBI and check that the current block number was set.
       await setSubmissionIsRegistered(addresses[1], true);
       await ubi.startAccruing(addresses[1]);
-      const lastMinted = await ubi.lastMintedSecond(addresses[1]);
-      expect((await ubi.lastMintedSecond(addresses[1])).toString()).to.equal(
+      const lastMinted = await ubi.accruedSince(addresses[1]);
+      expect((await ubi.accruedSince(addresses[1])).toString()).to.equal(
         lastMinted.toString()
       );
 
@@ -120,12 +120,12 @@ contract('UBI.sol', accounts => {
       await setSubmissionIsRegistered(owner.address, true);
       await ubi.startAccruing(owner.address);
       const initialBalance = await ubi.balanceOf(owner.address);
-      const initialMintedSecond = await ubi.lastMintedSecond(owner.address);
+      const initialMintedSecond = await ubi.accruedSince(owner.address);
       await delay(2000);
       await ubi.mintAccrued(owner.address);
-      const lastMintedSecond = await ubi.lastMintedSecond(owner.address);
+      const accruedSince = await ubi.accruedSince(owner.address);
 
-      expect(lastMintedSecond).to.be.above(initialMintedSecond);
+      expect(accruedSince).to.be.above(initialMintedSecond);
       expect(await ubi.balanceOf(owner.address)).to.be.above(initialBalance);
 
       await expect(ubi.mintAccrued(owner.address))
@@ -150,9 +150,9 @@ contract('UBI.sol', accounts => {
 
       // Report submission and verify that `accruingSinceBlock` was reset.
       // Also verify that the accrued UBI was sent correctly.
-      await ubi.lastMintedSecond(addresses[1]);
+      await ubi.accruedSince(addresses[1]);
       await expect(ubi.reportRemoval(addresses[1])).to.emit(ubi, "Mint");
-      expect((await ubi.lastMintedSecond(addresses[1])).toString()).to.equal('0');
+      expect((await ubi.accruedSince(addresses[1])).toString()).to.equal('0');
     });
 
     it("happy path - returns 0 for submissions that are not accruing UBI.", async () => {

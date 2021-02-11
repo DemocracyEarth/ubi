@@ -1,10 +1,3 @@
-/**
- *  @authors: [@epiqueras, @santisiri]
- *  @reviewers: [@fnanni-0]
- *  @auditors: []
- *  @bounties: []
- *  @deployments: []
- */
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.3;
 
@@ -40,7 +33,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   address public governor;
 
   /// @dev Persists time of last minted tokens for any given address.
-  mapping(address => uint256) public lastMintedSecond;
+  mapping(address => uint256) public accruedSince;
 
   /* Modifiers */
 
@@ -55,7 +48,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   *  @param _accruing if its actively accruing value.
   */
   modifier isAccruing(address human, bool _accruing) {
-    bool accruing = lastMintedSecond[human] != 0;
+    bool accruing = accruedSince[human] != 0;
     require(
       accruing == _accruing,
       accruing
@@ -94,7 +87,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     uint256 newSupply = getAccruedValue(human);
     
     lastBlock[msg.sender] = block.number;
-    lastMintedSecond[human] = block.timestamp;
+    accruedSince[human] = block.timestamp;
 
     _mint(human, newSupply);
 
@@ -105,7 +98,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   *  @param human The submission ID.
   */
   function startAccruing(address human) external isRegistered(human, true) isAccruing(human, false) {
-    lastMintedSecond[human] = block.timestamp;
+    accruedSince[human] = block.timestamp;
     lastBlock[msg.sender] = block.number;
   }
 
@@ -119,7 +112,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     uint256 newSupply = getAccruedValue(human);
 
     lastBlock[msg.sender] = block.number;
-    lastMintedSecond[human] = 0;
+    accruedSince[human] = 0;
 
     _mint(msg.sender, newSupply);
 
@@ -152,9 +145,13 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   *  @return accrued The available UBI for withdrawal.
   */
   function getAccruedValue(address human) public view returns (uint256 accrued) {
-    if (lastMintedSecond[human] == 0) return 0;
+    if (accruedSince[human] == 0) return 0;
+
+
     return
-      (block.timestamp - lastMintedSecond[human]) *
+
+
+      (block.timestamp - accruedSince[human]) *
       accruedPerSecond;
   }
 
