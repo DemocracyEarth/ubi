@@ -2,19 +2,6 @@ const { expect } = require("chai");
 const deploymentParams = require('../deployment-params');
 
 /**
- @function delay
- @summary halts execution for a given interval of milliseconds.
- @param {string} interval in milliseconds.
-*/
-const delay = async (interval) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      resolve();
-    }, interval);
-  });
-}
-
-/**
  @summary Tests for UBI.sol
 */
 contract('UBI.sol', accounts => {
