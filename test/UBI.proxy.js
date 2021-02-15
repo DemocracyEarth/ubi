@@ -53,8 +53,10 @@ contract('UBI.sol', accounts => {
     });
 
     /**
-     * @summary: Deprecated functionality that might come back to life in the future.
- 
+     * @summary: Deprecated functionality `changeAccruedPerSecond` 
+     * 
+     * Might come back to life in the future.
+     * 
       it("happy path - allow governor to change `accruedPerSecond`.", async () => {
         // Make sure it reverts if we are not the governor.
         await expect(

@@ -4,9 +4,12 @@ pragma solidity 0.7.3;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20SnapshotUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./Humanity.sol";
 
 contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeable {
+  
+  using SafeMath for uint256;
 
   /* Events */
 
@@ -144,7 +147,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     uint256 accountBalance = super.balanceOf(human);
     uint256 accrued = getAccruedValue(human);
 
-    return accountBalance + accrued;
+    return accountBalance.add(accrued);
   }
 
   /* Getters */
@@ -157,10 +160,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     if (accruedSince[human] == 0) return 0;
     // (accruedPerSecond * (block.timestamp - accruedSince[human])) - withdrawn[human]
 
-    return
-      (accruedPerSecond *
-      (block.timestamp - accruedSince[human])) -
-      withdrawn[human];
+    return accruedPerSecond.mul(block.timestamp.sub(accruedSince[human])).sub(withdrawn[human]);
 
     //  (block.timestamp - accruedSince[human]) *
     //  accruedPerSecond;
