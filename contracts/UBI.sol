@@ -29,9 +29,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   /// @dev How many tokens per second will be minted for every valid human.
   uint256 public accruedPerSecond;
 
-  /// @dev To prevent intrinsic risks of flash loan attacks it will restrict key functions to one per block.
-  mapping(address => uint256) public lastBlock;
-
   /// @dev The contract's governor.
   address public governor;
 
@@ -92,7 +89,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
     uint256 newSupply = getAccruedValue(human);
     
-    lastBlock[msg.sender] = block.number;
     accruedSince[human] = block.timestamp;
     withdrawn[human] = newSupply;
 
@@ -106,7 +102,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   */
   function startAccruing(address human) external isRegistered(human, true) isAccruing(human, false) {
     accruedSince[human] = block.timestamp;
-    lastBlock[msg.sender] = block.number;
   }
 
   /** @dev Allows anyone to report a submission that
@@ -117,12 +112,11 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   */
   function reportRemoval(address human) external isAccruing(human, true) isRegistered(human, false) {
     uint256 newSupply = getAccruedValue(human);
-
-    lastBlock[msg.sender] = block.number;
-    accruedSince[human] = 0;
-    withdrawn[msg.sender] = newSupply;
     
     _mint(msg.sender, newSupply);
+
+    accruedSince[human] = 0;
+    withdrawn[msg.sender] = newSupply;
 
     emit Mint(human, msg.sender, newSupply);
   }  
@@ -158,12 +152,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   */
   function getAccruedValue(address human) public view returns (uint256 accrued) {
     if (accruedSince[human] == 0) return 0;
-    // (accruedPerSecond * (block.timestamp - accruedSince[human])) - withdrawn[human]
-
     return accruedPerSecond.mul(block.timestamp.sub(accruedSince[human])).sub(withdrawn[human]);
-
-    //  (block.timestamp - accruedSince[human]) *
-    //  accruedPerSecond;
   }
 
   /** Overrides */
