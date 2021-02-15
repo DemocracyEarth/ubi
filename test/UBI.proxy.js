@@ -126,8 +126,6 @@ contract('UBI.sol', accounts => {
       // Make sure it reverts if the submission is still registered.
       await setSubmissionIsRegistered(addresses[6], true);
       await ubi.startAccruing(addresses[6]);
-      await network.provider.send("evm_increaseTime", [3600]);
-      await network.provider.send("evm_mine");
       await expect(
         ubi.reportRemoval(addresses[6])
       ).to.be.revertedWith(
