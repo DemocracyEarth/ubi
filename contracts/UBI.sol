@@ -35,6 +35,9 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   /// @dev Persists time of last minted tokens for any given address.
   mapping(address => uint256) public accruedSince;
 
+  /// @dev Tokens withdrawn 
+  mapping(address => uint256) public withdrawn;
+
   /* Modifiers */
 
   /// @dev Verifies sender has ability to modify governed parameters.
@@ -88,6 +91,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     
     lastBlock[msg.sender] = block.number;
     accruedSince[human] = block.timestamp;
+    withdrawn[human] = newSupply;
 
     _mint(human, newSupply);
 
@@ -113,7 +117,8 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
 
     lastBlock[msg.sender] = block.number;
     accruedSince[human] = 0;
-
+    withdrawn[msg.sender] = newSupply;
+    
     _mint(msg.sender, newSupply);
 
     emit Mint(human, msg.sender, newSupply);
@@ -146,13 +151,15 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   */
   function getAccruedValue(address human) public view returns (uint256 accrued) {
     if (accruedSince[human] == 0) return 0;
-
+    // (accruedPerSecond * (block.timestamp - accruedSince[human])) - withdrawn[human]
 
     return
+      (accruedPerSecond *
+      (block.timestamp - accruedSince[human])) -
+      withdrawn[human];
 
-
-      (block.timestamp - accruedSince[human]) *
-      accruedPerSecond;
+    //  (block.timestamp - accruedSince[human]) *
+    //  accruedPerSecond;
   }
 
   /** Overrides */
