@@ -124,21 +124,15 @@ contract('UBI.sol', accounts => {
       ).to.be.revertedWith("The submission is not accruing UBI.");
     });
 
-    it("happy path - allow minting of accrued UBI.", async () => {
+    it("happy path - real time minting of UBI in balanceOf.", async () => {
       // Make sure it accrues value with elapsed time
       const [owner] = await ethers.getSigners();
       await setSubmissionIsRegistered(owner.address, true);
       await ubi.startAccruing(owner.address);
       const initialBalance = await ubi.balanceOf(owner.address);
-      const initialMintedSecond = await ubi.accruedSince(owner.address);
-      await delay(2000);
-      await ubi.mintAccrued(owner.address);
-      const accruedSince = await ubi.accruedSince(owner.address);
-      expect(accruedSince).to.be.above(initialMintedSecond);
+      await network.provider.send("evm_increaseTime", [3600]);
+      await network.provider.send("evm_mine");
       expect(await ubi.balanceOf(owner.address)).to.be.above(initialBalance);
-      await delay(2000);
-      await expect(ubi.mintAccrued(owner.address))
-        .to.emit(ubi, "Mint")
     });
 
     it("happy path - allows anyone to report a removed submission for their accrued UBI.", async () => {
