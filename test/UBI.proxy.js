@@ -100,7 +100,7 @@ contract('UBI.sol', accounts => {
       ).to.be.revertedWith("The submission is already accruing UBI.");
     });
 
-    it("happy path - allow minting of accrued UBI.", async () => {
+    it("require fail - The submission is not registered in Proof Of Humanity.", async () => {
       // Make sure it reverts if the submission is not registered.
       await setSubmissionIsRegistered(addresses[1], false);
       await expect(
@@ -108,13 +108,17 @@ contract('UBI.sol', accounts => {
       ).to.be.revertedWith(
         "The submission is not registered in Proof Of Humanity."
       );
+    });
 
+    it("require fail - The submission is not accruing UBI.", async () => {
       // Make sure it reverts if the submission is not accruing UBI.
       await setSubmissionIsRegistered(addresses[2], true);
       await expect(
         ubi.mintAccrued(addresses[2])
       ).to.be.revertedWith("The submission is not accruing UBI.");
+    });
 
+    it("happy path - allow minting of accrued UBI.", async () => {
       // Make sure it accrues value with elapsed time
       const [owner] = await ethers.getSigners();
       await setSubmissionIsRegistered(owner.address, true);
@@ -124,10 +128,9 @@ contract('UBI.sol', accounts => {
       await delay(2000);
       await ubi.mintAccrued(owner.address);
       const accruedSince = await ubi.accruedSince(owner.address);
-
       expect(accruedSince).to.be.above(initialMintedSecond);
       expect(await ubi.balanceOf(owner.address)).to.be.above(initialBalance);
-
+      await delay(2000);
       await expect(ubi.mintAccrued(owner.address))
         .to.emit(ubi, "Mint")
     });

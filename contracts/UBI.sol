@@ -77,7 +77,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     accruedPerSecond = _accruedPerSecond;
     proofOfHumanity = _proofOfHumanity;
     governor = msg.sender;
-    withdrawn[msg.sender] = _initialSupply;
 
     _mint(msg.sender, _initialSupply);
   }
