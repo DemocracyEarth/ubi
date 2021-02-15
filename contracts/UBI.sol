@@ -77,8 +77,8 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     accruedPerSecond = _accruedPerSecond;
     proofOfHumanity = _proofOfHumanity;
     governor = msg.sender;
-
     withdrawn[msg.sender] = _initialSupply;
+
     _mint(msg.sender, _initialSupply);
   }
 
@@ -92,8 +92,8 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     
     lastBlock[msg.sender] = block.number;
     accruedSince[human] = block.timestamp;
+    withdrawn[human] = newSupply;
 
-    withdrawn[msg.sender] = newSupply;
     _mint(human, newSupply);
 
     emit Mint(human, human, newSupply);
@@ -118,8 +118,8 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
 
     lastBlock[msg.sender] = block.number;
     accruedSince[human] = 0;
-
     withdrawn[msg.sender] = newSupply;
+    
     _mint(msg.sender, newSupply);
 
     emit Mint(human, msg.sender, newSupply);
