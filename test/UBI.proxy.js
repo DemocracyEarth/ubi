@@ -52,16 +52,20 @@ contract('UBI.sol', accounts => {
       expect((await ubi.accruedPerSecond()).toString()).to.equal(deploymentParams.ACCRUED_PER_SECOND.toString());
     });
 
-    it("happy path - allow governor to change `accruedPerSecond`.", async () => {
-      // Make sure it reverts if we are not the governor.
-      await expect(
-        ubi.connect(accounts[1]).changeAccruedPerSecond(2)
-      ).to.be.revertedWith("The caller is not the governor.");
+    /**
+     * @summary: Deprecated functionality that might come back to life in the future.
+ 
+      it("happy path - allow governor to change `accruedPerSecond`.", async () => {
+        // Make sure it reverts if we are not the governor.
+        await expect(
+          ubi.connect(accounts[1]).changeAccruedPerSecond(2)
+        ).to.be.revertedWith("The caller is not the governor.");
 
-      // Set the value to 2.
-      await ubi.changeAccruedPerSecond(2);
-      expect((await ubi.accruedPerSecond()).toString()).to.equal('2');
-    });
+        // Set the value to 2.
+        await ubi.changeAccruedPerSecond(2);
+        expect((await ubi.accruedPerSecond()).toString()).to.equal('2');
+      });
+    */
 
     it("happy path - allow governor to emit `Snapshot` event.", async () => {
       // Make sure it reverts if we are not the governor.

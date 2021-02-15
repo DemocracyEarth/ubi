@@ -124,13 +124,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     emit Mint(human, msg.sender, newSupply);
   }  
 
-  /** @dev Changes `accruedPerSecond` to `_accruedPerSecond`.
-  *  @param _accruedPerSecond How much of the token is accrued per block.
-  */
-  function changeAccruedPerSecond(uint256 _accruedPerSecond) external onlyByGovernor {
-    accruedPerSecond = _accruedPerSecond;
-  }
-
   /** @dev Changes `proofOfHumanity` to `_proofOfHumanity`.
   *  @param _proofOfHumanity Registry that meets interface of Proof of Humanity
   */
@@ -141,6 +134,17 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   /** @dev External function for Snapshot event emitter only accessible by governor.  */
   function snapshot() external onlyByGovernor returns(uint256) {
     return _snapshot();
+  }
+
+  /**
+  * @dev calculates the current user accrued balance
+  * @return the accumulated debt of the user
+  **/
+  function balanceOf(address human) public view virtual override returns (uint256) {
+    uint256 accountBalance = super.balanceOf(human);
+    uint256 accrued = getAccruedValue(human);
+
+    return accountBalance + accrued;
   }
 
   /* Getters */
