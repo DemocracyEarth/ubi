@@ -134,7 +134,7 @@ contract('UBI.sol', accounts => {
         .to.emit(ubi, "Mint")
     });
 
-    it("does not allow withdrawing a negative balance", async() => {
+    it("happy path - does not allow withdrawing a negative balance", async() => {
       // Make sure it accrues value with elapsed time
       const [owner] = await ethers.getSigners();
       await ubi.changeAccruedPerSecond(200000000000); // An arbitrary fast rate.
