@@ -115,6 +115,10 @@ contract('UBI.sol', accounts => {
       await network.provider.send("evm_increaseTime", [3600]);
       await network.provider.send("evm_mine");
       await ubi.mintAccrued(owner.address);
+      await ubi.mintAccrued(owner.address);
+      const currentBalance = await ubi.balanceOf(owner.address);
+      const withdrawnAmount = await ubi.withdrawn(owner.address);
+      expect (await ubi.withdrawn(owner.address)).to.be.equal(currentBalance.sub(initialBalance));
       const accruedSince = await ubi.accruedSince(owner.address);
       expect(await ubi.balanceOf(owner.address)).to.be.above(initialBalance);
       await network.provider.send("evm_increaseTime", [3600]);
