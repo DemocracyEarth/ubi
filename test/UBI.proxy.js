@@ -2,19 +2,6 @@ const { expect } = require("chai");
 const deploymentParams = require('../deployment-params');
 
 /**
- @function delay
- @summary halts execution for a given interval of milliseconds.
- @param {string} interval in milliseconds.
-*/
-const delay = async (interval) => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      resolve();
-    }, interval);
-  });
-}
-
-/**
  @summary Tests for UBI.sol
 */
 contract('UBI.sol', accounts => {
@@ -125,20 +112,23 @@ contract('UBI.sol', accounts => {
       await ubi.startAccruing(owner.address);
       const initialBalance = await ubi.balanceOf(owner.address);
       const initialMintedSecond = await ubi.accruedSince(owner.address);
-      await delay(2000);
+      await network.provider.send("evm_increaseTime", [3600]);
+      await network.provider.send("evm_mine");
       await ubi.mintAccrued(owner.address);
       const accruedSince = await ubi.accruedSince(owner.address);
       expect(await ubi.balanceOf(owner.address)).to.be.above(initialBalance);
-      await delay(2000);
+      await network.provider.send("evm_increaseTime", [3600]);
+      await network.provider.send("evm_mine");
       await expect(ubi.mintAccrued(owner.address))
         .to.emit(ubi, "Mint")
     });
 
-    it("does not allow withdrawing a negative balance", async() => {
+    it("happy path - does not allow withdrawing a negative balance", async() => {
       // Make sure it accrues value with elapsed time
       const [owner] = await ethers.getSigners();
       await ubi.changeAccruedPerSecond(200000000000); // An arbitrary fast rate.
-      await delay(2000);
+      await network.provider.send("evm_increaseTime", [3600]);
+      await network.provider.send("evm_mine");
       await ubi.mintAccrued(owner.address);
 
       await ubi.changeAccruedPerSecond(2); // An arbitrary slow rate.
