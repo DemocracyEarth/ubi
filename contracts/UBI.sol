@@ -9,7 +9,7 @@ import "./Humanity.sol";
 
 
 contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeable {
-  
+
   using SafeMath for uint256;
 
   /* Events */
@@ -90,7 +90,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
     uint256 newSupply = getAccruedValue(human);
 
-    withdrawn[human] = newSupply;
+    withdrawn[human] += newSupply;
 
     _mint(human, newSupply);
 
@@ -114,7 +114,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     uint256 newSupply = getAccruedValue(human);
 
     accruedSince[human] = 0;
-    withdrawn[msg.sender] = newSupply;
+    withdrawn[human] = 0;
 
     _mint(msg.sender, newSupply);
 
