@@ -22,7 +22,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   );
 
   /* Storage */
-    
+
   /// @dev How many tokens per second will be minted for every valid human.
   uint256 public accruedPerSecond;
 
@@ -35,7 +35,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   /// @dev Persists time of last minted tokens for any given address.
   mapping(address => uint256) public accruedSince;
 
-  /// @dev Tokens withdrawn 
+  /// @dev Tokens withdrawn
   mapping(address => uint256) public withdrawn;
 
   /* Modifiers */
@@ -88,9 +88,8 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   */
   function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
     uint256 newSupply = getAccruedValue(human);
-    
+
     lastBlock[msg.sender] = block.number;
-    accruedSince[human] = block.timestamp;
     withdrawn[human] = newSupply;
 
     _mint(human, newSupply);
@@ -118,11 +117,11 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     lastBlock[msg.sender] = block.number;
     accruedSince[human] = 0;
     withdrawn[msg.sender] = newSupply;
-    
+
     _mint(msg.sender, newSupply);
 
     emit Mint(human, msg.sender, newSupply);
-  }  
+  }
 
   /** @dev Changes `accruedPerSecond` to `_accruedPerSecond`.
   *  @param _accruedPerSecond How much of the token is accrued per block.
@@ -150,16 +149,12 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   *  @return accrued The available UBI for withdrawal.
   */
   function getAccruedValue(address human) public view returns (uint256 accrued) {
-    if (accruedSince[human] == 0) return 0;
-    // (accruedPerSecond * (block.timestamp - accruedSince[human])) - withdrawn[human]
+    uint totalAccured = accruedPerSecond * (block.timestamp - accruedSince[human]);
 
-    return
-      (accruedPerSecond *
-      (block.timestamp - accruedSince[human])) -
-      withdrawn[human];
+    // If this human does not have started to accrue, or current available balance to withdraw is negative, return 0.
+    if (accruedSince[human] == 0 || withdrawn[human] >= totalAccured) return 0;
 
-    //  (block.timestamp - accruedSince[human]) *
-    //  accruedPerSecond;
+    else return totalAccured - withdrawn[human];
   }
 
   /** Overrides */
