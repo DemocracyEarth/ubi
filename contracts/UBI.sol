@@ -115,7 +115,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     uint256 newSupply = getAccruedValue(human);
 
     accruedSince[human] = 0;
-    withdrawn[msg.sender] = newSupply;
+    withdrawn[human] = 0;
 
     _mint(msg.sender, newSupply);
 
