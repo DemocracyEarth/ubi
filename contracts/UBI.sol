@@ -90,7 +90,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
     uint256 newSupply = getAccruedValue(human);
 
-    lastBlock[msg.sender] = block.number;
     withdrawn[human] += newSupply;
 
     _mint(human, newSupply);
