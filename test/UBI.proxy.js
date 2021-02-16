@@ -128,12 +128,24 @@ contract('UBI.sol', accounts => {
       await delay(2000);
       await ubi.mintAccrued(owner.address);
       const accruedSince = await ubi.accruedSince(owner.address);
-      expect(accruedSince).to.be.above(initialMintedSecond);
       expect(await ubi.balanceOf(owner.address)).to.be.above(initialBalance);
       await delay(2000);
       await expect(ubi.mintAccrued(owner.address))
         .to.emit(ubi, "Mint")
     });
+
+    it("does not allow withdrawing a negative balance", async() => {
+      // Make sure it accrues value with elapsed time
+      const [owner] = await ethers.getSigners();
+      await ubi.changeAccruedPerSecond(200000000000); // An arbitrary fast rate.
+      await delay(2000);
+      await ubi.mintAccrued(owner.address);
+
+      await ubi.changeAccruedPerSecond(2); // An arbitrary slow rate.
+      const initialBalance = await ubi.balanceOf(owner.address);
+      await ubi.mintAccrued(owner.address); // We expect this mint operation to mint 0 tokens because currently user has a negative amount available to withdraw.
+      expect(await ubi.balanceOf(owner.address)).to.be.equal(initialBalance);
+    })
 
     it("happy path - allows anyone to report a removed submission for their accrued UBI.", async () => {
       // Make sure it reverts if the submission is still registered.
