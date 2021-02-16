@@ -4,9 +4,13 @@ pragma solidity 0.7.3;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20SnapshotUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./Humanity.sol";
 
+
 contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeable {
+  
+  using SafeMath for uint256;
 
   /* Events */
 
@@ -25,9 +29,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
 
   /// @dev How many tokens per second will be minted for every valid human.
   uint256 public accruedPerSecond;
-
-  /// @dev To prevent intrinsic risks of flash loan attacks it will restrict key functions to one per block.
-  mapping(address => uint256) public lastBlock;
 
   /// @dev The contract's governor.
   address public governor;
@@ -89,7 +90,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
     uint256 newSupply = getAccruedValue(human);
 
-    lastBlock[msg.sender] = block.number;
     withdrawn[human] = newSupply;
 
     _mint(human, newSupply);
@@ -102,7 +102,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   */
   function startAccruing(address human) external isRegistered(human, true) isAccruing(human, false) {
     accruedSince[human] = block.timestamp;
-    lastBlock[msg.sender] = block.number;
   }
 
   /** @dev Allows anyone to report a submission that
@@ -114,7 +113,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   function reportRemoval(address human) external isAccruing(human, true) isRegistered(human, false) {
     uint256 newSupply = getAccruedValue(human);
 
-    lastBlock[msg.sender] = block.number;
     accruedSince[human] = 0;
     withdrawn[msg.sender] = newSupply;
 
@@ -149,12 +147,12 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   *  @return accrued The available UBI for withdrawal.
   */
   function getAccruedValue(address human) public view returns (uint256 accrued) {
-    uint totalAccured = accruedPerSecond * (block.timestamp - accruedSince[human]);
+    uint totalAccured = accruedPerSecond.mul(block.timestamp.sub(accruedSince[human]));
 
     // If this human does not have started to accrue, or current available balance to withdraw is negative, return 0.
     if (accruedSince[human] == 0 || withdrawn[human] >= totalAccured) return 0;
 
-    else return totalAccured - withdrawn[human];
+    else return totalAccured.sub(withdrawn[human]);
   }
 
   /** Overrides */
