@@ -28,8 +28,8 @@ contract('Vote.sol', accounts => {
           .withArgs(submissionID)
           .returns(isRegistered);
 
-      setRegistrationCounter = () =>
-        mockProofOfHumanity.mock.registrationCounter
+      setSubmissionCounter = () =>
+        mockProofOfHumanity.mock.submissionCounter
           .withArgs()
           .returns(SEVEN_BILLION);
 
@@ -98,17 +98,17 @@ contract('Vote.sol', accounts => {
 
     it("happy path - emit transfer event when registered", async () => {
       await setSubmissionIsRegistered(addresses[1], true);
-      await setRegistrationCounter();
+      await setSubmissionCounter();
       expect(vote.register(addresses[1])).to.emit(vote, "Transfer");
     });
 
     it("happy path - get total supply", async () => {
-      await setRegistrationCounter();
+      await setSubmissionCounter();
       expect(await vote.totalSupply()).to.equal(SEVEN_BILLION);
     });
 
     it("happy path - get total supply at a given snapshot id", async () => {
-      await setRegistrationCounter();
+      await setSubmissionCounter();
       expect(await vote.totalSupplyAt(1)).to.equal(SEVEN_BILLION);
     });
 
