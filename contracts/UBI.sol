@@ -33,7 +33,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   /// @dev The contract's governor.
   address public governor;
 
-  /// @dev Persists time of last minted tokens for any given address.
+  /// @dev Store the time when this human started accruing.
   mapping(address => uint256) public accruedSince;
 
   /// @dev Tokens withdrawn
