@@ -155,7 +155,7 @@ contract('UBI.sol', accounts => {
       await setSubmissionIsRegistered(addresses[5], true);
       await expect(
         ubi.reportRemoval(addresses[5])
-      ).to.be.revertedWith("The submission is not accruing UBI.");
+      ).to.be.revertedWith("The submission is still registered in Proof Of Humanity.");
 
       // Report submission and verify that `accruingSinceBlock` was reset.
       // Also verify that the accrued UBI was sent correctly.

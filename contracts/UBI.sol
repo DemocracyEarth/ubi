@@ -33,7 +33,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   /// @dev The contract's governor.
   address public governor;
 
-  /// @dev Persists time of last minted tokens for any given address.
+  /// @dev Time when the address started accruing tokens.
   mapping(address => uint256) public accruedSince;
 
   /// @dev Tokens withdrawn
@@ -41,18 +41,18 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
 
   /* Modifiers */
 
-  /// @dev Verifies sender has ability to modify governed parameters.
+  /// @dev Verifies that the sender has ability to modify governed parameters.
   modifier onlyByGovernor() {
     require(governor == msg.sender, "The caller is not the governor.");
     _;
   }
 
   /** @dev is already accruing token subsidy
-  *  @param human for the address of the human.
-  *  @param _accruing if its actively accruing value.
+  *  @param _human for the address of the human.
+  *  @param _accruing if it's actively accruing value.
   */
-  modifier isAccruing(address human, bool _accruing) {
-    bool accruing = accruedSince[human] != 0;
+  modifier isAccruing(address _human, bool _accruing) {
+    bool accruing = accruedSince[_human] != 0;
     require(
       accruing == _accruing,
       accruing
@@ -85,40 +85,40 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   /* External */
 
   /** @dev Universal Basic Income mechanism
-  *  @param human The submission ID.
+  *  @param _human The submission ID.
   */
-  function mintAccrued(address human) external isRegistered(human, true) isAccruing(human, true) {
-    uint256 newSupply = getAccruedValue(human);
+  function mintAccrued(address _human) external isRegistered(_human, true) isAccruing(_human, true) {
+    uint256 newSupply = getAccruedValue(_human);
 
-    withdrawn[human] += newSupply;
+    withdrawn[_human] += newSupply;
 
-    _mint(human, newSupply);
+    _mint(_human, newSupply);
 
-    emit Mint(human, human, newSupply);
+    emit Mint(_human, _human, newSupply);
   }
 
   /** @dev Starts accruing UBI for a registered submission.
-  *  @param human The submission ID.
+  *  @param _human The submission ID.
   */
-  function startAccruing(address human) external isRegistered(human, true) isAccruing(human, false) {
-    accruedSince[human] = block.timestamp;
+  function startAccruing(address _human) external isRegistered(_human, true) isAccruing(_human, false) {
+    accruedSince[_human] = block.timestamp;
   }
 
   /** @dev Allows anyone to report a submission that
   *  should no longer receive UBI due to removal from the
   *  Proof Of Humanity registry. The reporter receives any
   *  leftover accrued UBI.
-  *  @param human The submission ID.
+  *  @param _human The submission ID.
   */
-  function reportRemoval(address human) external isAccruing(human, true) isRegistered(human, false) {
-    uint256 newSupply = getAccruedValue(human);
+  function reportRemoval(address _human) external isRegistered(_human, false) isAccruing(_human, true) {
+    uint256 newSupply = getAccruedValue(_human);
 
-    accruedSince[human] = 0;
-    withdrawn[human] = 0;
+    accruedSince[_human] = 0;
+    withdrawn[_human] = 0;
 
     _mint(msg.sender, newSupply);
 
-    emit Mint(human, msg.sender, newSupply);
+    emit Mint(_human, msg.sender, newSupply);
   }
 
   /** @dev Changes `accruedPerSecond` to `_accruedPerSecond`.
@@ -143,16 +143,16 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   /* Getters */
 
   /** @dev Calculates how much UBI a submission has available for withdrawal.
-  *  @param human The submission ID.
+  *  @param _human The submission ID.
   *  @return accrued The available UBI for withdrawal.
   */
-  function getAccruedValue(address human) public view returns (uint256 accrued) {
-    uint totalAccured = accruedPerSecond.mul(block.timestamp.sub(accruedSince[human]));
+  function getAccruedValue(address _human) public view returns (uint256 accrued) {
+    uint256 totalAccrued = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
 
     // If this human does not have started to accrue, or current available balance to withdraw is negative, return 0.
-    if (accruedSince[human] == 0 || withdrawn[human] >= totalAccured) return 0;
+    if (accruedSince[_human] == 0 || withdrawn[_human] >= totalAccrued) return 0;
 
-    else return totalAccured.sub(withdrawn[human]);
+    else return totalAccrued.sub(withdrawn[_human]);
   }
 
   /** Overrides */

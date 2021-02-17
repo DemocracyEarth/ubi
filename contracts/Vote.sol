@@ -19,7 +19,7 @@ contract Vote is ForHumans, ERC20Snapshot {
 
     /* Modifiers */
 
-    /// @dev Verifies sender has ability to modify governed parameters.
+    /// @dev Verifies that the sender has ability to modify governed parameters.
     modifier onlyDeployer() {
       require(deployer == msg.sender, "The caller must be the deployer");
       _;
@@ -44,11 +44,11 @@ contract Vote is ForHumans, ERC20Snapshot {
     }
 
     /** @dev Returns true if the submission is registered and not expired.
-     *  @param submission The address of the submission.
+     *  @param _submission The address of the submission.
      *  @return Whether the submission is registered or not.
      */
-    function isHuman(address submission) public view returns (bool) {
-        bool registered = proofOfHumanity.isRegistered(submission);
+    function isHuman(address _submission) public view returns (bool) {
+        bool registered = proofOfHumanity.isRegistered(_submission);
         return registered;
     }
 
@@ -60,27 +60,27 @@ contract Vote is ForHumans, ERC20Snapshot {
     }
 
     /** @dev Takes a Snapshot of the balance based on the ProofOfHumanity status. */
-    function register(address submission) external {
-        _mint(submission, balanceOf(submission));
+    function register(address _submission) external {
+        _mint(_submission, balanceOf(_submission));
     }
 
     /* ERC20 */
 
     /** @dev Returns the balance of a particular submission of the ProofOfHumanity contract.
      *  Note that this function takes the expiration date into account.
-     *  @param submission The address of the submission.
+     *  @param _submission The address of the submission.
      *  @return The balance of the submission.
      */
-    function balanceOf(address submission) public view override returns (uint256) {
-        return isHuman(submission) ? MAX_INT : 0;
+    function balanceOf(address _submission) public view override returns (uint256) {
+        return isHuman(_submission) ? MAX_INT : 0;
     }
 
-    /** @dev Returns the count of all submissions that were successfully registered, regardless of whether they're expired or not.
-     *  Note that with the current implementation of ProofOfHumanity it'd be very costly to filter all the expired submissions.
-     *  @return The count of registered submissions.
+    /** @dev Returns the count of all submissions that made a registration request at some point, including those that were added manually.
+     *  Note that with the current implementation of ProofOfHumanity it'd be very costly to count only the submissions that are currently registered.
+     *  @return The total count of submissions.
      */
     function totalSupply() public view override returns (uint256) {
-        return proofOfHumanity.registrationCounter();
+        return proofOfHumanity.submissionCounter();
     }
 
     function transfer(address _recipient, uint256 _amount) public pure override returns (bool) { return false; }

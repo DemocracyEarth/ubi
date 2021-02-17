@@ -13,7 +13,7 @@ interface IProofOfHumanity {
       bool registered
     );
 
-  function registrationCounter() external view returns (uint count);
+  function submissionCounter() external view returns (uint count);
 }
 
 abstract contract ForHumans {
