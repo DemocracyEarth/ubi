@@ -84,19 +84,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
 
   /* External */
 
-  /** @dev Universal Basic Income mechanism
-  *  @param _human The submission ID.
-  */
-  function mintAccrued(address _human) external isRegistered(_human, true) isAccruing(_human, true) {
-    uint256 newSupply = getAccruedValue(_human);
-
-    withdrawn[_human] += newSupply;
-
-    _mint(_human, newSupply);
-
-    emit Mint(_human, _human, newSupply);
-  }
-
   /** @dev Starts accruing UBI for a registered submission.
   *  @param _human The submission ID.
   */
@@ -157,8 +144,37 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
 
   /** Overrides */
 
+  /**
+  * @dev calculates the current user accrued balance
+  *  @param _human The submission ID.
+  * @return the accumulated debt of the user
+  **/
+  function balanceOf(address _human) public view virtual override returns (uint256) {
+    uint256 accountBalance = super.balanceOf(_human);
+    uint256 accrued = getAccruedValue(_human);
+
+    return accountBalance.add(accrued);
+  }
+
   /** @dev Overrides with Snapshot mechanisms _beforeTokenTransfer functions.  */
   function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override(ERC20Upgradeable, ERC20SnapshotUpgradeable) {
+    _mintAccrued(from);
+    _mintAccrued(to);
     ERC20SnapshotUpgradeable._beforeTokenTransfer(from, to, amount);
+  }
+
+  /** Internal */
+
+  /** @dev Universal Basic Income mechanism
+  *  @param _human The submission ID.
+  */
+  function _mintAccrued(address _human) internal virtual {
+    uint256 newSupply = getAccruedValue(_human);
+
+    if (newSupply > 0) {
+      withdrawn[_human] += newSupply;
+      _mint(_human, newSupply);
+      emit Mint(_human, _human, newSupply);
+    }
   }
 }
