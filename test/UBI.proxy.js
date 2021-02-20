@@ -39,6 +39,8 @@ contract('UBI.sol', accounts => {
       expect((await ubi.accruedPerSecond()).toString()).to.equal(deploymentParams.ACCRUED_PER_SECOND.toString());
     });
 
+    /**
+     * @summary: Deprecated.
     it("happy path - allow governor to change `accruedPerSecond`.", async () => {
       // Make sure it reverts if we are not the governor.
       await expect(
@@ -50,8 +52,6 @@ contract('UBI.sol', accounts => {
       expect((await ubi.accruedPerSecond()).toString()).to.equal('2');
     });
 
-    /**
-     * @summary: Deprecated. 
     it("happy path - allow governor to emit `Snapshot` event.", async () => {
       // Make sure it reverts if we are not the governor.
       await expect(
@@ -155,12 +155,12 @@ contract('UBI.sol', accounts => {
       await setSubmissionIsRegistered(owner.address, true);
       await ubi.startAccruing(owner.address);
       const initialBalance = await ubi.balanceOf(owner.address);
-      await network.provider.send("evm_increaseTime", [3600]);
+      await network.provider.send("evm_increaseTime", [5000]);
       await network.provider.send("evm_mine");
       const currentBalance = await ubi.balanceOf(owner.address);
       await ubi.connect(owner).transfer(addresses[5], 350);
       const withdrawnAmount = await ubi.withdrawn(owner.address);
-      expect(withdrawnAmount.toNumber()).to.be.at.least((currentBalance.sub(initialBalance)).toNumber());
+      expect(withdrawnAmount).to.be.at.least(currentBalance.sub(initialBalance));
     });
 
     it("happy path - check that Mint and Transfer events get called when it corresponds.", async () => {
@@ -168,27 +168,21 @@ contract('UBI.sol', accounts => {
       const initialBalance = await ubi.balanceOf(owner.address);
       await setSubmissionIsRegistered(owner.address, true);
       await ubi.startAccruing(owner.address);
-      await network.provider.send("evm_increaseTime", [36000]);
+      await network.provider.send("evm_increaseTime", [1]);
       await network.provider.send("evm_mine");
       expect(await ubi.balanceOf(owner.address)).to.be.above(initialBalance);
       await expect(ubi.connect(owner).transfer(addresses[8], 18000))
-        .to.emit(ubi, "Mint")
-      await expect(ubi.connect(owner).transfer(addresses[8], 18000))
         .to.emit(ubi, "Transfer")
-      await expect(ubi.connect(owner).burn(8000))
+      await expect(ubi.connect(owner).burn('19999999999966000'))
         .to.emit(ubi, "Transfer")
-      await expect(ubi.connect(owner).burn(8000))
-        .to.emit(ubi, "Mint")
       await setSubmissionIsRegistered(owner.address, false);
-      await expect(ubi.connect(owner).burn(8000))
+      await expect(ubi.connect(owner).burn('10000000000000000'))
         .to.emit(ubi, "Transfer")
-      await expect(ubi.connect(owner).burn(8000))
-        .to.not.emit(ubi, "Mint")
-      await expect(ubi.connect(owner).transfer(addresses[8], 1000))
-        .to.not.emit(ubi, "Mint")
-      expect((await ubi.balanceOf(owner.address)).toNumber()).to.be.at.least(3000);
+      expect(await ubi.balanceOf(owner.address)).to.be.at.least(3000);
     });
 
+    /**
+     * @summary: Deprecated.
     it("happy path - does not allow withdrawing a negative balance", async() => {
       // Make sure it accrues value with elapsed time
       const owner = accounts[10];
@@ -203,8 +197,9 @@ contract('UBI.sol', accounts => {
       await ubi.connect(owner).burn(0); // We expect this mint operation to mint 0 tokens because currently user has a negative amount available to withdraw.
       expect(await ubi.balanceOf(owner.address)).to.be.equal(initialBalance);
     })
+    */
 
-    it("happy path - allows anyone to report a removed submission for their accrued UBI.", async () => {
+    it("require fail - The submission is still registered in Proof Of Humanity.", async () => {
       // Make sure it reverts if the submission is still registered.
       await setSubmissionIsRegistered(addresses[6], true);
       await ubi.startAccruing(addresses[6]);
@@ -213,17 +208,13 @@ contract('UBI.sol', accounts => {
       ).to.be.revertedWith(
         "The submission is still registered in Proof Of Humanity."
       );
+    });
 
-      // Make sure it reverts if the submission is not accruing UBI.
-      await setSubmissionIsRegistered(addresses[5], true);
-      await expect(
-        ubi.reportRemoval(addresses[5])
-      ).to.be.revertedWith("The submission is still registered in Proof Of Humanity.");
-
+    it("happy path - allows anyone to report a removed submission for their accrued UBI.", async () => {
       // Report submission and verify that `accruingSinceBlock` was reset.
       // Also verify that the accrued UBI was sent correctly.
       await ubi.accruedSince(addresses[1]);
-      await expect(ubi.reportRemoval(addresses[1])).to.emit(ubi, "Mint");
+      await expect(ubi.reportRemoval(addresses[1])).to.emit(ubi, "Transfer");
       expect((await ubi.accruedSince(addresses[1])).toString()).to.equal('0');
     });
 

@@ -11,19 +11,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
 
   using SafeMath for uint256;
 
-  /* Events */
-
-  /** @dev Emitted when UBI is minted or taken by a reporter.
-    *  @param _recipient The accruer of the UBI.
-    *  @param _beneficiary The withdrawer or taker.
-    *  @param _value The value withdrawn.
-    */
-  event Mint(
-      address indexed _recipient,
-      address indexed _beneficiary,
-      uint256 _value
-  );
-
   /* Storage */
 
   /// @dev How many tokens per second will be minted for every valid human.
@@ -103,15 +90,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
     withdrawn[_human] = 0;
 
     _mint(msg.sender, newSupply);
-
-    emit Mint(_human, msg.sender, newSupply);
-  }
-
-  /** @dev Changes `accruedPerSecond` to `_accruedPerSecond`.
-  *  @param _accruedPerSecond How much of the token is accrued per block.
-  */
-  function changeAccruedPerSecond(uint256 _accruedPerSecond) external onlyByGovernor {
-    accruedPerSecond = _accruedPerSecond;
   }
 
   /** @dev Changes `proofOfHumanity` to `_proofOfHumanity`.
@@ -168,7 +146,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
     if (newSupply > 0) {
       withdrawn[_human] += newSupply;
       _mint(_human, newSupply);
-      emit Mint(_human, _human, newSupply);
     }
   }
 }
