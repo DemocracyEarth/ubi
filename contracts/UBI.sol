@@ -33,21 +33,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
     _;
   }
 
-  /** @dev is already accruing token subsidy
-  *  @param _human for the address of the human.
-  *  @param _accruing if it's actively accruing value.
-  */
-  modifier isAccruing(address _human, bool _accruing) {
-    bool accruing = accruedSince[_human] != 0;
-    require(
-      accruing == _accruing,
-      accruing
-        ? "The submission is already accruing UBI."
-        : "The submission is not accruing UBI."
-    );
-    _;
-  }
-
   /* Initalizer */
 
   /** @dev Constructor.
@@ -73,7 +58,8 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
   /** @dev Starts accruing UBI for a registered submission.
   *  @param _human The submission ID.
   */
-  function startAccruing(address _human) external isRegistered(_human, true) isAccruing(_human, false) {
+  function startAccruing(address _human) external isRegistered(_human, true) {
+    require(accruedSince[_human] == 0, "The submission is already accruing UBI.");
     accruedSince[_human] = block.timestamp;
   }
 
@@ -83,7 +69,8 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
   *  leftover accrued UBI.
   *  @param _human The submission ID.
   */
-  function reportRemoval(address _human) external isRegistered(_human, false) isAccruing(_human, true) {
+  function reportRemoval(address _human) external isRegistered(_human, false) {
+    require(accruedSince[_human] != 0, "The submission is not accruing UBI.");
     uint256 newSupply = getAccruedValue(_human);
 
     accruedSince[_human] = 0;
