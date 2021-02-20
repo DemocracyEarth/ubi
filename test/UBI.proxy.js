@@ -95,11 +95,46 @@ contract('UBI.sol', accounts => {
       ).to.be.revertedWith("The submission is already accruing UBI.");
     });
 
+    it("happy path - a submission removed from Proof of Humanity no longer accrues value.", async () => {
+      await network.provider.send("evm_increaseTime", [7200]);
+      await network.provider.send("evm_mine");
+      await setSubmissionIsRegistered(addresses[1], false);
+      await network.provider.send("evm_increaseTime", [3600]);
+      await network.provider.send("evm_mine");
+      expect((await ubi.balanceOf(addresses[1])).toString()).to.equal('0');
+    });
+
+    it("happy path - a submission with interrupted accruing still keeps withdrawn coins.", async () => {
+      await ubi.transfer(addresses[1], 555);
+      await setSubmissionIsRegistered(addresses[1], true);
+      await network.provider.send("evm_increaseTime", [7200]);
+      await network.provider.send("evm_mine");
+      await setSubmissionIsRegistered(addresses[1], false);
+      await network.provider.send("evm_increaseTime", [7200]);
+      await network.provider.send("evm_mine");
+      expect((await ubi.balanceOf(addresses[1])).toString()).to.equal('555');
+    });
+
+    it("happy path - a submission that natively accrued keeps transfered coins upon interruption.", async () => {
+      await setSubmissionIsRegistered(accounts[3].address, true);
+      expect((await ubi.balanceOf(accounts[3].address)).toString()).to.equal('0');
+      await ubi.startAccruing(accounts[3].address);
+      await network.provider.send("evm_increaseTime", [7200]);
+      await network.provider.send("evm_mine");
+      await ubi.connect(accounts[3]).transfer(addresses[1], 55);
+      expect((await ubi.balanceOf(addresses[1])).toString()).to.equal('610');
+    });
+
+    /**
+     * @summary: Deprecated.
     it("require fail - The submission is not registered in Proof Of Humanity.", async () => {
       // Make sure it reverts if the submission is not registered.
       await setSubmissionIsRegistered(addresses[1], false);
+      console.log(`ubi.balanceOf(addresses[1]):`);
+      console.log((await ubi.balanceOf(addresses[1])).toString());
+
       await expect(
-        ubi.mintAccrued(addresses[1])
+        ubi.balanceOf(addresses[1])
       ).to.be.revertedWith(
         "The submission is not registered in Proof Of Humanity."
       );
@@ -112,40 +147,60 @@ contract('UBI.sol', accounts => {
         ubi.mintAccrued(addresses[2])
       ).to.be.revertedWith("The submission is not accruing UBI.");
     });
-
-    it("happy path - allow minting of accrued UBI.", async () => {
+    */
+   
+    it("happy path - withdrawn tokens get persisted after a transfer.", async () => {
       // Make sure it accrues value with elapsed time
-      const [owner] = await ethers.getSigners();
+      const owner = accounts[4];
       await setSubmissionIsRegistered(owner.address, true);
       await ubi.startAccruing(owner.address);
       const initialBalance = await ubi.balanceOf(owner.address);
-      const initialMintedSecond = await ubi.accruedSince(owner.address);
       await network.provider.send("evm_increaseTime", [3600]);
       await network.provider.send("evm_mine");
-      await ubi.mintAccrued(owner.address);
-      await ubi.mintAccrued(owner.address);
       const currentBalance = await ubi.balanceOf(owner.address);
+      await ubi.connect(owner).transfer(addresses[5], 350);
       const withdrawnAmount = await ubi.withdrawn(owner.address);
-      expect (await ubi.withdrawn(owner.address)).to.be.equal(currentBalance.sub(initialBalance));
-      const accruedSince = await ubi.accruedSince(owner.address);
-      expect(await ubi.balanceOf(owner.address)).to.be.above(initialBalance);
-      await network.provider.send("evm_increaseTime", [3600]);
+      expect(withdrawnAmount.toNumber()).to.be.at.least((currentBalance.sub(initialBalance)).toNumber());
+    });
+
+    it("happy path - check that Mint and Transfer events get called when it corresponds.", async () => {
+      const owner = accounts[9];
+      const initialBalance = await ubi.balanceOf(owner.address);
+      await setSubmissionIsRegistered(owner.address, true);
+      await ubi.startAccruing(owner.address);
+      await network.provider.send("evm_increaseTime", [36000]);
       await network.provider.send("evm_mine");
-      await expect(ubi.mintAccrued(owner.address))
+      expect(await ubi.balanceOf(owner.address)).to.be.above(initialBalance);
+      await expect(ubi.connect(owner).transfer(addresses[8], 18000))
         .to.emit(ubi, "Mint")
+      await expect(ubi.connect(owner).transfer(addresses[8], 18000))
+        .to.emit(ubi, "Transfer")
+      await expect(ubi.connect(owner).burn(8000))
+        .to.emit(ubi, "Transfer")
+      await expect(ubi.connect(owner).burn(8000))
+        .to.emit(ubi, "Mint")
+      await setSubmissionIsRegistered(owner.address, false);
+      await expect(ubi.connect(owner).burn(8000))
+        .to.emit(ubi, "Transfer")
+      await expect(ubi.connect(owner).burn(8000))
+        .to.not.emit(ubi, "Mint")
+      await expect(ubi.connect(owner).transfer(addresses[8], 1000))
+        .to.not.emit(ubi, "Mint")
+      expect((await ubi.balanceOf(owner.address)).toNumber()).to.be.at.least(3000);
     });
 
     it("happy path - does not allow withdrawing a negative balance", async() => {
       // Make sure it accrues value with elapsed time
-      const [owner] = await ethers.getSigners();
+      const owner = accounts[10];
       await ubi.changeAccruedPerSecond(200000000000); // An arbitrary fast rate.
+      await setSubmissionIsRegistered(owner.address, true);
+      await ubi.startAccruing(owner.address);
       await network.provider.send("evm_increaseTime", [3600]);
       await network.provider.send("evm_mine");
-      await ubi.mintAccrued(owner.address);
-
+      await ubi.connect(owner).burn(0);
       await ubi.changeAccruedPerSecond(2); // An arbitrary slow rate.
       const initialBalance = await ubi.balanceOf(owner.address);
-      await ubi.mintAccrued(owner.address); // We expect this mint operation to mint 0 tokens because currently user has a negative amount available to withdraw.
+      await ubi.connect(owner).burn(0); // We expect this mint operation to mint 0 tokens because currently user has a negative amount available to withdraw.
       expect(await ubi.balanceOf(owner.address)).to.be.equal(initialBalance);
     })
 

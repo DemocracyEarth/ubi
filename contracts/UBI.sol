@@ -131,7 +131,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
     uint256 totalAccrued = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
 
     // If this human does not have started to accrue, or current available balance to withdraw is negative, return 0.
-    if (accruedSince[_human] == 0 || withdrawn[_human] >= totalAccrued) return 0;
+    if (accruedSince[_human] == 0 || withdrawn[_human] >= totalAccrued || proofOfHumanity.isRegistered(_human) == false) return 0;
 
     else return totalAccrued.sub(withdrawn[_human]);
   }
