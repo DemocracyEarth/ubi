@@ -64,10 +64,11 @@ contract('UBI.sol', accounts => {
     });
     */
 
-    it("happy path - allow registered submissions to start accruing UBI.", async () => {
-      // Check that the initial `accruedSince` value is 0.
+    it("happy path - check that the initial `accruedSince` value is 0.", async () => {
       expect((await ubi.accruedSince(addresses[1])).toString()).to.equal('0');
+    });
 
+    it("require fail - The submission is not registered in Proof Of Humanity.", async () => {
       // Make sure it reverts if the submission is not registered.
       await setSubmissionIsRegistered(addresses[1], false);
       await expect(
@@ -75,15 +76,19 @@ contract('UBI.sol', accounts => {
       ).to.be.revertedWith(
         "The submission is not registered in Proof Of Humanity."
       );
+    });
 
+    it("happy path - allow registered submissions to start accruing UBI.", async () => {
       // Start accruing UBI and check that the current block number was set.
       await setSubmissionIsRegistered(addresses[1], true);
       await ubi.startAccruing(addresses[1]);
-      const lastMinted = await ubi.accruedSince(addresses[1]);
+      const accruedSince = await ubi.accruedSince(addresses[1]);
       expect((await ubi.accruedSince(addresses[1])).toString()).to.equal(
-        lastMinted.toString()
+        accruedSince.toString()
       );
+    });
 
+    it("require fail - The submission is already accruing UBI.", async () => {
       // Make sure it reverts if you try to accrue UBI while already accruing UBI.
       await expect(
         ubi.startAccruing(addresses[1])
