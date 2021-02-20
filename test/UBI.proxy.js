@@ -50,6 +50,8 @@ contract('UBI.sol', accounts => {
       expect((await ubi.accruedPerSecond()).toString()).to.equal('2');
     });
 
+    /**
+     * @summary: Deprecated. 
     it("happy path - allow governor to emit `Snapshot` event.", async () => {
       // Make sure it reverts if we are not the governor.
       await expect(
@@ -60,6 +62,7 @@ contract('UBI.sol', accounts => {
       await expect(ubi.snapshot())
         .to.emit(ubi, "Snapshot")
     });
+    */
 
     it("happy path - allow registered submissions to start accruing UBI.", async () => {
       // Check that the initial `accruedSince` value is 0.

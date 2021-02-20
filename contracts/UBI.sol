@@ -2,13 +2,12 @@
 pragma solidity 0.7.3;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20SnapshotUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./Humanity.sol";
 
 
-contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20SnapshotUpgradeable {
+contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
 
   using SafeMath for uint256;
 
@@ -122,11 +121,6 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
     proofOfHumanity = _proofOfHumanity;
   }
 
-  /** @dev External function for Snapshot event emitter only accessible by governor.  */
-  function snapshot() external onlyByGovernor returns(uint256) {
-    return _snapshot();
-  }
-
   /* Getters */
 
   /** @dev Calculates how much UBI a submission has available for withdrawal.
@@ -157,10 +151,10 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable, ERC20Snapsho
   }
 
   /** @dev Overrides with Snapshot mechanisms _beforeTokenTransfer functions.  */
-  function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override(ERC20Upgradeable, ERC20SnapshotUpgradeable) {
+  function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override {
     _mintAccrued(from);
     _mintAccrued(to);
-    ERC20SnapshotUpgradeable._beforeTokenTransfer(from, to, amount);
+    super._beforeTokenTransfer(from, to, amount);
   }
 
   /** Internal */
