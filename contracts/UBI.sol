@@ -6,7 +6,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./Humanity.sol";
 
-
 contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
 
   using SafeMath for uint256;
@@ -115,7 +114,7 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
     return accountBalance.add(accrued);
   }
 
-  /** @dev Overrides with Snapshot mechanisms _beforeTokenTransfer functions.  */
+  /** @dev Hook that will get called before a transfer, mint or burn.  */
   function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override {
     _mintAccrued(from);
     _mintAccrued(to);
