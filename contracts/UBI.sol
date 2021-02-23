@@ -1,29 +1,79 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.7.3;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20BurnableUpgradeable.sol";
+/**
+ * This code contains elements of ERC20BurnableUpgradeable.sol https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/blob/master/contracts/token/ERC20/ERC20BurnableUpgradeable.sol
+ * Those have been inlined for the purpose of gas optimization.
+ */
+
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./Humanity.sol";
 
+/**
+ * @title ProofOfHumanity Interface
+ * @dev See https://github.com/Proof-Of-Humanity/Proof-Of-Humanity.
+ */
+interface IProofOfHumanity {
+  function isRegistered(address _submissionID)
+    external
+    view
+    returns (
+      bool registered
+    );
 
-contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
+  function submissionCounter() external view returns (uint count);
+}
+
+contract UBI is Initializable {
+
+  /* Events */
+  
+  /**
+   * @dev Emitted when `value` tokens are moved from one account (`from`) to another (`to`).
+   *
+   * Note that `value` may be zero.
+   * Also note that due to continous minting we cannot emmit transfer events from the address 0 when tokens are created.
+   * In order to keep consistency, we decided not emmit those events from the address 0 even when minting is done within a transaction.
+   */
+  event Transfer(address indexed from, address indexed to, uint256 value);
+
+  /**
+   * @dev Emitted when the allowance of a `spender` for an `owner` is set by
+   * a call to {approve}. `value` is the new allowance.
+   */
+  event Approval(address indexed owner, address indexed spender, uint256 value);
 
   using SafeMath for uint256;
 
   /* Storage */
+  
+  mapping (address => uint256) private balance;
+
+  mapping (address => mapping (address => uint256)) public allowance;
+
+  /// @dev A lower bound of the total supply. Does not take into account tokens minted as UBI by an address before it moves those (transfer or burn).
+  uint256 public totalSupply;
+  
+  /// @dev Name of the token.
+  string public name;
+  
+  /// @dev Symbol of the token.
+  string public symbol;
+  
+  /// @dev Number of decimals of the token.
+  uint8 public decimals;
 
   /// @dev How many tokens per second will be minted for every valid human.
   uint256 public accruedPerSecond;
 
   /// @dev The contract's governor.
   address public governor;
+  
+  /// @dev The Proof Of Humanity registry to reference.
+  IProofOfHumanity public proofOfHumanity; 
 
   /// @dev Store the time when this human started accruing.
   mapping(address => uint256) public accruedSince;
-
-  /// @dev Tokens withdrawn
-  mapping(address => uint256) public withdrawn;
 
   /* Modifiers */
 
@@ -43,14 +93,16 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
   *  @param _proofOfHumanity The Proof Of Humanity registry to reference.
   */
   function initialize(uint256 _initialSupply, string memory _name, string memory _symbol, uint256 _accruedPerSecond, IProofOfHumanity _proofOfHumanity) public initializer {
-    __Context_init_unchained();
-    __ERC20_init_unchained(_name, _symbol);
+    name = _name;
+    symbol = _symbol;
+    decimals = 18;
 
     accruedPerSecond = _accruedPerSecond;
     proofOfHumanity = _proofOfHumanity;
     governor = msg.sender;
 
-    _mint(msg.sender, _initialSupply);
+    balance[msg.sender] = _initialSupply;
+    totalSupply = _initialSupply;
   }
 
   /* External */
@@ -58,7 +110,8 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
   /** @dev Starts accruing UBI for a registered submission.
   *  @param _human The submission ID.
   */
-  function startAccruing(address _human) external isRegistered(_human, true) {
+  function startAccruing(address _human) external {
+    require(proofOfHumanity.isRegistered(_human), "The submission is not registered in Proof Of Humanity.");
     require(accruedSince[_human] == 0, "The submission is already accruing UBI.");
     accruedSince[_human] = block.timestamp;
   }
@@ -69,14 +122,15 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
   *  leftover accrued UBI.
   *  @param _human The submission ID.
   */
-  function reportRemoval(address _human) external isRegistered(_human, false) {
+  function reportRemoval(address _human) external  {
+    require(!proofOfHumanity.isRegistered(_human), "The submission is still registered in Proof Of Humanity.");
     require(accruedSince[_human] != 0, "The submission is not accruing UBI.");
-    uint256 newSupply = getAccruedValue(_human);
+    uint256 newSupply = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
 
     accruedSince[_human] = 0;
-    withdrawn[_human] = 0;
 
-    _mint(msg.sender, newSupply);
+    balance[msg.sender] = balance[msg.sender].add(newSupply);
+    totalSupply = totalSupply.add(newSupply);
   }
 
   /** @dev Changes `proofOfHumanity` to `_proofOfHumanity`.
@@ -86,6 +140,104 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
     proofOfHumanity = _proofOfHumanity;
   }
 
+  /** @dev Transfer `_amount` to `_recipient`.
+  *  @param _recipient The entity receiving the funds.
+  *  @param _amount The amount to tranfer in base units.
+  */
+  function transfer(address _recipient, uint256 _amount) public returns (bool) {
+    uint newSupplyFrom;
+    if (accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
+        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
+        totalSupply=totalSupply.add(newSupplyFrom);
+        accruedSince[msg.sender] = block.timestamp;
+    }
+    balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(_amount, "ERC20: transfer amount exceeds balance");
+    balance[_recipient] = balance[_recipient].add(_amount);
+    emit Transfer(msg.sender, _recipient, _amount);
+    return true;
+  }
+  
+  /** @dev Transfer `_amount` from `_sender` to `_recipient`.
+  *  @param _sender The entity to take the funds from.
+  *  @param _recipient The entity receiving the funds.
+  *  @param _amount The amount to tranfer in base units.
+  */
+  function transferFrom(address _sender, address _recipient, uint256 _amount)  public returns (bool) {
+    uint newSupplyFrom;
+    allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: burn amount exceeds allowance");
+    if (accruedSince[_sender] != 0 && proofOfHumanity.isRegistered(_sender)) {
+        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_sender]));
+        totalSupply=totalSupply.add(newSupplyFrom);
+        accruedSince[_sender] = block.timestamp;
+    }
+    balance[_sender] = balance[_sender].add(newSupplyFrom).sub(_amount, "ERC20: transfer amount exceeds balance");
+    balance[_recipient] = balance[_recipient].add(_amount);       
+    emit Transfer(_sender, _recipient, _amount);
+    return true;
+  }
+
+  /** @dev Approve `_spender` to spend `_amount`.
+  *  @param _spender The entity allowed to spend funds.
+  *  @param _amount The amount of base units the entity will be allowed to spend.
+  */
+  function approve(address _spender, uint256 _amount) public returns (bool) {
+    allowance[msg.sender][_spender] = _amount;
+    emit Approval(msg.sender, _spender, _amount);
+    return true;
+  }
+
+  /** @dev Increase the `_spender` allowance by `_addedValue`.
+  *  @param _spender The entity allowed to spend funds.
+  *  @param _addedValue The amount of extra base units the entity will be allowed to spend.
+  */  
+  function increaseAllowance(address _spender, uint256 _addedValue) public returns (bool) {
+    uint newAllowance = allowance[msg.sender][_spender].add(_addedValue);
+    allowance[msg.sender][_spender] = newAllowance;
+    emit Approval(msg.sender, _spender, newAllowance);
+    return true;
+  }
+
+  /** @dev Decrease the `_spender` allowance by `_subtractedValue`.
+  *  @param _spender The entity whose spending allocation will be reduced.
+  *  @param _subtractedValue The reduction of spending allocation in base units.
+  */  
+  function decreaseAllowance(address _spender, uint256 _subtractedValue) public returns (bool) {
+    uint newAllowance = allowance[msg.sender][_spender].sub(_subtractedValue, "ERC20: decreased allowance below zero");
+    allowance[msg.sender][_spender] = newAllowance;
+    emit Approval(msg.sender, _spender, newAllowance);
+    return true;
+  }
+  
+  /** @dev Burn `_amount` of tokens.
+  *  @param _amount The quantity of tokens to burn in base units.
+  */  
+  function burn(uint256 _amount) public {
+    uint newSupplyFrom;
+    if(accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
+      newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
+      accruedSince[msg.sender] = block.timestamp;
+    }
+    balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(_amount, "ERC20: burn amount exceeds balance");
+    totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
+    emit Transfer(msg.sender, address(0), _amount);
+  }
+
+  /** @dev Burn `_amount` of tokens from `_account`.
+  *  @param _account The entity to burn tokens from.
+  *  @param _amount The quantity of tokens to burn in base units.
+  */  
+  function burnFrom(address _account, uint256 _amount) public {
+    uint newSupplyFrom;
+    allowance[_account][msg.sender] = allowance[_account][msg.sender].sub(_amount, "ERC20: burn amount exceeds allowance");
+    if (accruedSince[_account] != 0 && proofOfHumanity.isRegistered(_account)) {
+        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_account]));
+        accruedSince[_account] = block.timestamp;
+    }
+    balance[_account] = balance[_account].add(newSupplyFrom).sub(_amount, "ERC20: burn amount exceeds balance");
+    totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
+    emit Transfer(_account, address(0), _amount);
+  }
+  
   /* Getters */
 
   /** @dev Calculates how much UBI a submission has available for withdrawal.
@@ -93,46 +245,20 @@ contract UBI is ForHumans, Initializable, ERC20BurnableUpgradeable {
   *  @return accrued The available UBI for withdrawal.
   */
   function getAccruedValue(address _human) public view returns (uint256 accrued) {
-    uint256 totalAccrued = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
+    // If this human does not have started to accrue, or is not registered, return 0.
+    if (accruedSince[_human] == 0 || !proofOfHumanity.isRegistered(_human)) return 0;
 
-    // If this human does not have started to accrue, or current available balance to withdraw is negative, return 0.
-    if (accruedSince[_human] == 0 || withdrawn[_human] >= totalAccrued || proofOfHumanity.isRegistered(_human) == false) return 0;
-
-    else return totalAccrued.sub(withdrawn[_human]);
+    else return accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
   }
-
-  /** Overrides */
-
+  
   /**
   * @dev calculates the current user accrued balance
   *  @param _human The submission ID.
   * @return the accumulated debt of the user
   **/
-  function balanceOf(address _human) public view virtual override returns (uint256) {
-    uint256 accountBalance = super.balanceOf(_human);
-    uint256 accrued = getAccruedValue(_human);
+  function balanceOf(address _human) public view returns (uint256) {
+    return getAccruedValue(_human).add(balance[_human]);
+  }  
+   
 
-    return accountBalance.add(accrued);
-  }
-
-  /** @dev Overrides with Snapshot mechanisms _beforeTokenTransfer functions.  */
-  function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual override {
-    _mintAccrued(from);
-    _mintAccrued(to);
-    super._beforeTokenTransfer(from, to, amount);
-  }
-
-  /** Internal */
-
-  /** @dev Universal Basic Income mechanism
-  *  @param _human The submission ID.
-  */
-  function _mintAccrued(address _human) internal virtual {
-    uint256 newSupply = getAccruedValue(_human);
-
-    if (newSupply > 0) {
-      withdrawn[_human] += newSupply;
-      _mint(_human, newSupply);
-    }
-  }
 }
