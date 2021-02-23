@@ -149,19 +149,6 @@ contract('UBI.sol', accounts => {
     });
     */
    
-    it("happy path - withdrawn tokens get persisted after a transfer.", async () => {
-      // Make sure it accrues value with elapsed time
-      const owner = accounts[4];
-      await setSubmissionIsRegistered(owner.address, true);
-      await ubi.startAccruing(owner.address);
-      const initialBalance = await ubi.balanceOf(owner.address);
-      await network.provider.send("evm_increaseTime", [5000]);
-      await network.provider.send("evm_mine");
-      const currentBalance = await ubi.balanceOf(owner.address);
-      await ubi.connect(owner).transfer(addresses[5], 350);
-      const withdrawnAmount = await ubi.withdrawn(owner.address);
-      expect(withdrawnAmount).to.be.at.least(currentBalance.sub(initialBalance));
-    });
 
     it("happy path - check that Mint and Transfer events get called when it corresponds.", async () => {
       const owner = accounts[9];
@@ -214,7 +201,7 @@ contract('UBI.sol', accounts => {
       // Report submission and verify that `accruingSinceBlock` was reset.
       // Also verify that the accrued UBI was sent correctly.
       await ubi.accruedSince(addresses[1]);
-      await expect(ubi.reportRemoval(addresses[1])).to.emit(ubi, "Transfer");
+      await ubi.reportRemoval(addresses[1]);
       expect((await ubi.accruedSince(addresses[1])).toString()).to.equal('0');
     });
 
