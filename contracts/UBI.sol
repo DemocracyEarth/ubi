@@ -30,8 +30,8 @@ contract UBI is Initializable {
    * @dev Emitted when `value` tokens are moved from one account (`from`) to another (`to`).
    *
    * Note that `value` may be zero.
-   * Also note that due to continuous minting we cannot emmit transfer events from the address 0 when tokens are created.
-   * In order to keep consistency, we decided not to emmit those events from the address 0 even when minting is done within a transaction.
+   * Also note that due to continuous minting we cannot emit transfer events from the address 0 when tokens are created.
+   * In order to keep consistency, we decided not to emit those events from the address 0 even when minting is done within a transaction.
    */
   event Transfer(address indexed from, address indexed to, uint256 value);
 
@@ -143,7 +143,7 @@ contract UBI is Initializable {
   *  @param _amount The amount to tranfer in base units.
   */
   function transfer(address _recipient, uint256 _amount) public returns (bool) {
-    uint newSupplyFrom;
+    uint256 newSupplyFrom;
     if (accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
         totalSupply = totalSupply.add(newSupplyFrom);
@@ -161,7 +161,7 @@ contract UBI is Initializable {
   *  @param _amount The amount to tranfer in base units.
   */
   function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
-    uint newSupplyFrom;
+    uint256 newSupplyFrom;
     allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: transfer amount exceeds allowance");
     if (accruedSince[_sender] != 0 && proofOfHumanity.isRegistered(_sender)) {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_sender]));
@@ -189,7 +189,7 @@ contract UBI is Initializable {
   *  @param _addedValue The amount of extra base units the entity will be allowed to spend.
   */  
   function increaseAllowance(address _spender, uint256 _addedValue) public returns (bool) {
-    uint newAllowance = allowance[msg.sender][_spender].add(_addedValue);
+    uint256 newAllowance = allowance[msg.sender][_spender].add(_addedValue);
     allowance[msg.sender][_spender] = newAllowance;
     emit Approval(msg.sender, _spender, newAllowance);
     return true;
@@ -200,7 +200,7 @@ contract UBI is Initializable {
   *  @param _subtractedValue The reduction of spending allocation in base units.
   */  
   function decreaseAllowance(address _spender, uint256 _subtractedValue) public returns (bool) {
-    uint newAllowance = allowance[msg.sender][_spender].sub(_subtractedValue, "ERC20: decreased allowance below zero");
+    uint256 newAllowance = allowance[msg.sender][_spender].sub(_subtractedValue, "ERC20: decreased allowance below zero");
     allowance[msg.sender][_spender] = newAllowance;
     emit Approval(msg.sender, _spender, newAllowance);
     return true;
@@ -210,7 +210,7 @@ contract UBI is Initializable {
   *  @param _amount The quantity of tokens to burn in base units.
   */  
   function burn(uint256 _amount) public {
-    uint newSupplyFrom;
+    uint256 newSupplyFrom;
     if(accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
       newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
       accruedSince[msg.sender] = block.timestamp;
@@ -225,7 +225,7 @@ contract UBI is Initializable {
   *  @param _amount The quantity of tokens to burn in base units.
   */  
   function burnFrom(address _account, uint256 _amount) public {
-    uint newSupplyFrom;
+    uint256 newSupplyFrom;
     allowance[_account][msg.sender] = allowance[_account][msg.sender].sub(_amount, "ERC20: burn amount exceeds allowance");
     if (accruedSince[_account] != 0 && proofOfHumanity.isRegistered(_account)) {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_account]));
@@ -243,7 +243,7 @@ contract UBI is Initializable {
   *  @return accrued The available UBI for withdrawal.
   */
   function getAccruedValue(address _human) public view returns (uint256 accrued) {
-    // If this human does not have started to accrue, or is not registered, return 0.
+    // If this human have not started to accrue, or is not registered, return 0.
     if (accruedSince[_human] == 0 || !proofOfHumanity.isRegistered(_human)) return 0;
 
     else return accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
