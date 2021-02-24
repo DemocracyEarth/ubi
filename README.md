@@ -17,16 +17,14 @@ Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof o
 ## Features
 
 - ERC20 token that can `mint` new supply for verified humans over time at a given rate. 
+- Tokens get streamed directly to a users wallet.
 - Interfaces with `ProofOfHumanity` to get curated list of verified humans.
-- Issuance rate —a. k. a. inflation— is subject to governance.
-- Token has `burn` function —a. k. a. deflation— that can be triggered by users or a DAO.
-- `Snapshot` event emitted to ease use of token for governance purposes.
 - `ProofOfHumanity` registry can be updated with governance mechanism.
 - Implements `ERC20Upgradeable` contracts with [OpenZeppelin](https://github.com/openzeppelin) proxy libraries.
 
 Built with [Hardhat](https://github.com/nomiclabs/hardhat). 
 
-Latest release is [`version 0.1.9`](https://github.com/DemocracyEarth/ubi/releases)
+Latest release is [`version 0.2.0`](https://github.com/DemocracyEarth/ubi/releases)
 
 ## Setup
 
