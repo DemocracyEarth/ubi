@@ -22,6 +22,14 @@ interface IProofOfHumanity {
     );
 }
 
+/**
+ * @title Universal Basic Income
+ * @dev UBI is an ERC20 compatible token that is connected to a Proof of Humanity registry. 
+ *
+ * Tokens are issued and drip over time for every verified submission on a Proof of Humanity registry.
+ * The accrued tokens are updated directly on every wallet using the `balanceOf` function.
+ * The tokens get effectively minted and persisted in memory when someone interacts with the contract doing a `transfer` or `burn`. 
+ */
 contract UBI is Initializable {
 
   /* Events */
@@ -257,6 +265,4 @@ contract UBI is Initializable {
   function balanceOf(address _human) public view returns (uint256) {
     return getAccruedValue(_human).add(balance[_human]);
   }  
-   
-
 }
