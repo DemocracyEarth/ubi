@@ -20,8 +20,6 @@ interface IProofOfHumanity {
     returns (
       bool registered
     );
-
-  function submissionCounter() external view returns (uint count);
 }
 
 contract UBI is Initializable {
@@ -32,8 +30,8 @@ contract UBI is Initializable {
    * @dev Emitted when `value` tokens are moved from one account (`from`) to another (`to`).
    *
    * Note that `value` may be zero.
-   * Also note that due to continous minting we cannot emmit transfer events from the address 0 when tokens are created.
-   * In order to keep consistency, we decided not emmit those events from the address 0 even when minting is done within a transaction.
+   * Also note that due to continuous minting we cannot emmit transfer events from the address 0 when tokens are created.
+   * In order to keep consistency, we decided not to emmit those events from the address 0 even when minting is done within a transaction.
    */
   event Transfer(address indexed from, address indexed to, uint256 value);
 
@@ -72,7 +70,7 @@ contract UBI is Initializable {
   /// @dev The Proof Of Humanity registry to reference.
   IProofOfHumanity public proofOfHumanity; 
 
-  /// @dev Store the time when this human started accruing.
+  /// @dev Timestamp since human started accruing.
   mapping(address => uint256) public accruedSince;
 
   /* Modifiers */
@@ -134,7 +132,7 @@ contract UBI is Initializable {
   }
 
   /** @dev Changes `proofOfHumanity` to `_proofOfHumanity`.
-  *  @param _proofOfHumanity Registry that meets interface of Proof of Humanity
+  *  @param _proofOfHumanity Registry that meets interface of Proof of Humanity.
   */
   function changeProofOfHumanity(IProofOfHumanity _proofOfHumanity) external onlyByGovernor {
     proofOfHumanity = _proofOfHumanity;
@@ -148,7 +146,7 @@ contract UBI is Initializable {
     uint newSupplyFrom;
     if (accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
-        totalSupply=totalSupply.add(newSupplyFrom);
+        totalSupply = totalSupply.add(newSupplyFrom);
         accruedSince[msg.sender] = block.timestamp;
     }
     balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(_amount, "ERC20: transfer amount exceeds balance");
@@ -162,12 +160,12 @@ contract UBI is Initializable {
   *  @param _recipient The entity receiving the funds.
   *  @param _amount The amount to tranfer in base units.
   */
-  function transferFrom(address _sender, address _recipient, uint256 _amount)  public returns (bool) {
+  function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
     uint newSupplyFrom;
-    allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: burn amount exceeds allowance");
+    allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: transfer amount exceeds allowance");
     if (accruedSince[_sender] != 0 && proofOfHumanity.isRegistered(_sender)) {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_sender]));
-        totalSupply=totalSupply.add(newSupplyFrom);
+        totalSupply = totalSupply.add(newSupplyFrom);
         accruedSince[_sender] = block.timestamp;
     }
     balance[_sender] = balance[_sender].add(newSupplyFrom).sub(_amount, "ERC20: transfer amount exceeds balance");
@@ -252,9 +250,9 @@ contract UBI is Initializable {
   }
   
   /**
-  * @dev calculates the current user accrued balance
-  *  @param _human The submission ID.
-  * @return the accumulated debt of the user
+  * @dev Calculates the current user accrued balance.
+  * @param _human The submission ID.
+  * @return The current balance including accrued Universal Basic Income of the user.
   **/
   function balanceOf(address _human) public view returns (uint256) {
     return getAccruedValue(_human).add(balance[_human]);
