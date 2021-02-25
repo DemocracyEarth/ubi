@@ -146,7 +146,7 @@ contract UBI is Initializable {
     proofOfHumanity = _proofOfHumanity;
   }
 
-  /** @dev Transfer `_amount` to `_recipient`.
+  /** @dev Transfer `_amount` to `_recipient` and withdraws accrued tokens.
   *  @param _recipient The entity receiving the funds.
   *  @param _amount The amount to tranfer in base units.
   */
@@ -163,7 +163,7 @@ contract UBI is Initializable {
     return true;
   }
   
-  /** @dev Transfer `_amount` from `_sender` to `_recipient`.
+  /** @dev Transfer `_amount` from `_sender` to `_recipient` and withdraws accrued tokens.
   *  @param _sender The entity to take the funds from.
   *  @param _recipient The entity receiving the funds.
   *  @param _amount The amount to tranfer in base units.
@@ -214,7 +214,7 @@ contract UBI is Initializable {
     return true;
   }
   
-  /** @dev Burn `_amount` of tokens.
+  /** @dev Burn `_amount` of tokens and withdraws accrued tokens.
   *  @param _amount The quantity of tokens to burn in base units.
   */  
   function burn(uint256 _amount) public {
@@ -228,7 +228,7 @@ contract UBI is Initializable {
     emit Transfer(msg.sender, address(0), _amount);
   }
 
-  /** @dev Burn `_amount` of tokens from `_account`.
+  /** @dev Burn `_amount` of tokens from `_account` and withdraws accrued tokens.
   *  @param _account The entity to burn tokens from.
   *  @param _amount The quantity of tokens to burn in base units.
   */  
