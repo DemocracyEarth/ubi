@@ -4,19 +4,36 @@ pragma solidity 0.7.3;
 import "@openzeppelin/contracts/token/ERC20/ERC20Snapshot.sol";
 import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "./Humanity.sol";
+
+/**
+ * @title ProofOfHumanity Interface
+ * @dev See https://github.com/Proof-Of-Humanity/Proof-Of-Humanity.
+ */
+interface IProofOfHumanity {
+  function isRegistered(address _submissionID)
+    external
+    view
+    returns (
+      bool registered
+    );
+
+  function submissionCounter() external view returns (uint count);
+}
 
 /**
  *  @title Vote
  *  A proxy contract for ProofOfHumanity that implements a token interface to interact with other dapps.
  */
-contract Vote is ForHumans, ERC20Snapshot {
+contract Vote is ERC20Snapshot {
 
     /* Storage */
 
     address public deployer = msg.sender;
     uint256 private MAX_INT = 10 ** 18;
 
+    /// @dev The Proof Of Humanity registry to reference.
+    IProofOfHumanity public proofOfHumanity; 
+    
     /* Modifiers */
 
     /// @dev Verifies that the sender has ability to modify governed parameters.
@@ -30,7 +47,7 @@ contract Vote is ForHumans, ERC20Snapshot {
     /** @dev Constructor.
      *  @param _proofOfHumanity The address of the related ProofOfHumanity contract.
      */
-    constructor(string memory name_, string memory symbol_, IProofOfHumanity _proofOfHumanity) ERC20(name_, symbol_) public {
+    constructor(string memory name_, string memory symbol_, IProofOfHumanity _proofOfHumanity) ERC20(name_, symbol_) {
         proofOfHumanity = _proofOfHumanity;
     }
 

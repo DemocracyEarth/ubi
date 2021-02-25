@@ -13,7 +13,7 @@ contract('UBI.sol', accounts => {
         Promise.all(accounts.map((account) => account.getAddress())),
         waffle.deployMockContract(
           accounts[0],
-          require("../artifacts/contracts/Humanity.sol/IProofOfHumanity.json").abi
+          require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
         ),
       ]);
       addresses = _addresses;
@@ -31,7 +31,7 @@ contract('UBI.sol', accounts => {
 
       await ubi.deployed();
 
-      altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/Humanity.sol/IProofOfHumanity.json").abi);
+      altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
     });
 
     it("happy path - return a value previously initialized.", async () => {
@@ -50,17 +50,6 @@ contract('UBI.sol', accounts => {
       // Set the value to 2.
       await ubi.changeAccruedPerSecond(2);
       expect((await ubi.accruedPerSecond()).toString()).to.equal('2');
-    });
-
-    it("happy path - allow governor to emit `Snapshot` event.", async () => {
-      // Make sure it reverts if we are not the governor.
-      await expect(
-        ubi.connect(accounts[1]).snapshot()
-      ).to.be.revertedWith("The caller is not the governor.");
-
-      // Emit Snapshot from governor address
-      await expect(ubi.snapshot())
-        .to.emit(ubi, "Snapshot")
     });
     */
 
@@ -125,31 +114,6 @@ contract('UBI.sol', accounts => {
       expect((await ubi.balanceOf(addresses[1])).toString()).to.equal('610');
     });
 
-    /**
-     * @summary: Deprecated.
-    it("require fail - The submission is not registered in Proof Of Humanity.", async () => {
-      // Make sure it reverts if the submission is not registered.
-      await setSubmissionIsRegistered(addresses[1], false);
-      console.log(`ubi.balanceOf(addresses[1]):`);
-      console.log((await ubi.balanceOf(addresses[1])).toString());
-
-      await expect(
-        ubi.balanceOf(addresses[1])
-      ).to.be.revertedWith(
-        "The submission is not registered in Proof Of Humanity."
-      );
-    });
-
-    it("require fail - The submission is not accruing UBI.", async () => {
-      // Make sure it reverts if the submission is not accruing UBI.
-      await setSubmissionIsRegistered(addresses[2], true);
-      await expect(
-        ubi.mintAccrued(addresses[2])
-      ).to.be.revertedWith("The submission is not accruing UBI.");
-    });
-    */
-   
-
     it("happy path - check that Mint and Transfer events get called when it corresponds.", async () => {
       const owner = accounts[9];
       const initialBalance = await ubi.balanceOf(owner.address);
@@ -167,25 +131,7 @@ contract('UBI.sol', accounts => {
         .to.emit(ubi, "Transfer")
       expect(await ubi.balanceOf(owner.address)).to.be.at.least(3000);
     });
-
-    /**
-     * @summary: Deprecated.
-    it("happy path - does not allow withdrawing a negative balance", async() => {
-      // Make sure it accrues value with elapsed time
-      const owner = accounts[10];
-      await ubi.changeAccruedPerSecond(200000000000); // An arbitrary fast rate.
-      await setSubmissionIsRegistered(owner.address, true);
-      await ubi.startAccruing(owner.address);
-      await network.provider.send("evm_increaseTime", [3600]);
-      await network.provider.send("evm_mine");
-      await ubi.connect(owner).burn(0);
-      await ubi.changeAccruedPerSecond(2); // An arbitrary slow rate.
-      const initialBalance = await ubi.balanceOf(owner.address);
-      await ubi.connect(owner).burn(0); // We expect this mint operation to mint 0 tokens because currently user has a negative amount available to withdraw.
-      expect(await ubi.balanceOf(owner.address)).to.be.equal(initialBalance);
-    })
-    */
-
+  
     it("require fail - The submission is still registered in Proof Of Humanity.", async () => {
       // Make sure it reverts if the submission is still registered.
       await setSubmissionIsRegistered(addresses[6], true);

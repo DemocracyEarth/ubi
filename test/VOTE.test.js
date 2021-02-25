@@ -17,7 +17,7 @@ contract('Vote.sol', accounts => {
         Promise.all(accounts.map((account) => account.getAddress())),
         waffle.deployMockContract(
           accounts[0],
-          require("../artifacts/contracts/Humanity.sol/IProofOfHumanity.json").abi
+          require("../artifacts/contracts/Vote.sol/IProofOfHumanity.json").abi
         ),
       ]);
 
@@ -39,7 +39,7 @@ contract('Vote.sol', accounts => {
       vote = await Vote.deploy(deploymentParams.VOTE_NAME, deploymentParams.VOTE_SYMBOL, pohAddress);
       await vote.deployed();
       
-      altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/Humanity.sol/IProofOfHumanity.json").abi);
+      altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/Vote.sol/IProofOfHumanity.json").abi);
     });
 
     it("happy path - check initialized values", async () => {
