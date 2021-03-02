@@ -139,6 +139,13 @@ contract UBI is Initializable {
     totalSupply = totalSupply.add(newSupply);
   }
 
+  /** @dev Changes `governor` to `_governor`.
+  *  @param _governor The address of the new governor.
+  */
+  function changeGovernor(address _governor) external onlyByGovernor {
+    governor = _governor;
+  }
+
   /** @dev Changes `proofOfHumanity` to `_proofOfHumanity`.
   *  @param _proofOfHumanity Registry that meets interface of Proof of Humanity.
   */
