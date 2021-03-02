@@ -89,7 +89,7 @@ contract UBI is Initializable {
     _;
   }
 
-  /* Initalizer */
+  /* Initializer */
 
   /** @dev Constructor.
   *  @param _initialSupply for the UBI coin including all decimals.
