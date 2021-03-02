@@ -53,7 +53,7 @@ contract Vote is ERC20Snapshot {
 
     /* External */
 
-    /** @dev Changes the address of the the related ProofOfHumanity contract.
+    /** @dev Changes the address of the related ProofOfHumanity contract.
      *  @param _proofOfHumanity The address of the new contract.
      */
     function changeProofOfHumanity(IProofOfHumanity _proofOfHumanity) external onlyDeployer {
