@@ -146,7 +146,7 @@ contract UBI is Initializable {
     proofOfHumanity = _proofOfHumanity;
   }
 
-  /** @dev Transfer `_amount` to `_recipient` and withdraws accrued tokens.
+  /** @dev Transfers `_amount` to `_recipient` and withdraws accrued tokens.
   *  @param _recipient The entity receiving the funds.
   *  @param _amount The amount to tranfer in base units.
   */
@@ -163,7 +163,7 @@ contract UBI is Initializable {
     return true;
   }
   
-  /** @dev Transfer `_amount` from `_sender` to `_recipient` and withdraws accrued tokens.
+  /** @dev Transfers `_amount` from `_sender` to `_recipient` and withdraws accrued tokens.
   *  @param _sender The entity to take the funds from.
   *  @param _recipient The entity receiving the funds.
   *  @param _amount The amount to tranfer in base units.
@@ -182,7 +182,7 @@ contract UBI is Initializable {
     return true;
   }
 
-  /** @dev Approve `_spender` to spend `_amount`.
+  /** @dev Approves `_spender` to spend `_amount`.
   *  @param _spender The entity allowed to spend funds.
   *  @param _amount The amount of base units the entity will be allowed to spend.
   */
@@ -192,7 +192,7 @@ contract UBI is Initializable {
     return true;
   }
 
-  /** @dev Increase the `_spender` allowance by `_addedValue`.
+  /** @dev Increases the `_spender` allowance by `_addedValue`.
   *  @param _spender The entity allowed to spend funds.
   *  @param _addedValue The amount of extra base units the entity will be allowed to spend.
   */  
@@ -203,7 +203,7 @@ contract UBI is Initializable {
     return true;
   }
 
-  /** @dev Decrease the `_spender` allowance by `_subtractedValue`.
+  /** @dev Decreases the `_spender` allowance by `_subtractedValue`.
   *  @param _spender The entity whose spending allocation will be reduced.
   *  @param _subtractedValue The reduction of spending allocation in base units.
   */  
@@ -214,7 +214,7 @@ contract UBI is Initializable {
     return true;
   }
   
-  /** @dev Burn `_amount` of tokens and withdraws accrued tokens.
+  /** @dev Burns `_amount` of tokens and withdraws accrued tokens.
   *  @param _amount The quantity of tokens to burn in base units.
   */  
   function burn(uint256 _amount) public {
@@ -228,7 +228,7 @@ contract UBI is Initializable {
     emit Transfer(msg.sender, address(0), _amount);
   }
 
-  /** @dev Burn `_amount` of tokens from `_account` and withdraws accrued tokens.
+  /** @dev Burns `_amount` of tokens from `_account` and withdraws accrued tokens.
   *  @param _account The entity to burn tokens from.
   *  @param _amount The quantity of tokens to burn in base units.
   */  
