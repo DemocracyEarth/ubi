@@ -2,7 +2,7 @@
 module.exports.INITIAL_SUPPLY = '10000000000000000000000000';
 module.exports.TOKEN_NAME = "Universal Basic Income";
 module.exports.TOKEN_SYMBOL = "UBI";
-module.exports.ACCRUED_PER_SECOND = "140000000000000"
+module.exports.ACCRUED_PER_SECOND = "280000000000000"
 
 module.exports.PROOF_OF_HUMANITY_MAINNET = '';
 module.exports.PROXY_CONTRACT_ADDRESS_MAINNET = '';
