@@ -3,8 +3,8 @@ const deploymentParams = require('../deployment-params');
 async function main() {
   console.log("Transferring ownership of ProxyAdmin...");
   // The owner of the ProxyAdmin can upgrade our contracts
-  await upgrades.admin.transferProxyAdminOwnership(deploymentParams.PROXY_ADMIN);
-  console.log("Transferred ownership of ProxyAdmin to:", deploymentParams.PROXY_ADMIN);
+  await upgrades.admin.transferProxyAdminOwnership(deploymentParams.PROXY_ADMIN_KOVAN);
+  console.log("Transferred ownership of ProxyAdmin to:", deploymentParams.PROXY_ADMIN_KOVAN);
 }
 
 main()
