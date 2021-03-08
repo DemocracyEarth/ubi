@@ -39,20 +39,6 @@ contract('UBI.sol', accounts => {
       expect((await ubi.accruedPerSecond()).toString()).to.equal(deploymentParams.ACCRUED_PER_SECOND.toString());
     });
 
-    /**
-     * @summary: Deprecated.
-    it("happy path - allow governor to change `accruedPerSecond`.", async () => {
-      // Make sure it reverts if we are not the governor.
-      await expect(
-        ubi.connect(accounts[1]).changeAccruedPerSecond(2)
-      ).to.be.revertedWith("The caller is not the governor.");
-
-      // Set the value to 2.
-      await ubi.changeAccruedPerSecond(2);
-      expect((await ubi.accruedPerSecond()).toString()).to.equal('2');
-    });
-    */
-
     it("happy path - check that the initial `accruedSince` value is 0.", async () => {
       expect((await ubi.accruedSince(addresses[1])).toString()).to.equal('0');
     });
@@ -124,10 +110,10 @@ contract('UBI.sol', accounts => {
       expect(await ubi.balanceOf(owner.address)).to.be.above(initialBalance);
       await expect(ubi.connect(owner).transfer(addresses[8], 18000))
         .to.emit(ubi, "Transfer")
-      await expect(ubi.connect(owner).burn('19999999999966000'))
+      await expect(ubi.connect(owner).burn('199999999966000'))
         .to.emit(ubi, "Transfer")
       await setSubmissionIsRegistered(owner.address, false);
-      await expect(ubi.connect(owner).burn('10000000000000000'))
+      await expect(ubi.connect(owner).burn('100000000000000'))
         .to.emit(ubi, "Transfer")
       expect(await ubi.balanceOf(owner.address)).to.be.at.least(3000);
     });
