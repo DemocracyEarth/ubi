@@ -131,7 +131,7 @@ contract UBI is Initializable {
   function reportRemoval(address _human) external  {
     require(!proofOfHumanity.isRegistered(_human), "The submission is still registered in Proof Of Humanity.");
     require(accruedSince[_human] != 0, "The submission is not accruing UBI.");
-    uint256 newSupply = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
+    uint256 newSupply = this.getAccruedValue(_human);
 
     accruedSince[_human] = 0;
 
@@ -158,12 +158,11 @@ contract UBI is Initializable {
   *  @param _amount The amount to tranfer in base units.
   */
   function transfer(address _recipient, uint256 _amount) public returns (bool) {
-    uint256 newSupplyFrom;
-    if (accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
-        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
-        totalSupply = totalSupply.add(newSupplyFrom);
-        accruedSince[msg.sender] = block.timestamp;
-    }
+    uint256 newSupplyFrom = this.getAccruedValue(msg.sender);
+    
+    totalSupply = totalSupply.add(newSupplyFrom);
+    accruedSince[msg.sender] = block.timestamp;
+
     balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(_amount, "ERC20: transfer amount exceeds balance");
     balance[_recipient] = balance[_recipient].add(_amount);
     emit Transfer(msg.sender, _recipient, _amount);
@@ -176,13 +175,12 @@ contract UBI is Initializable {
   *  @param _amount The amount to tranfer in base units.
   */
   function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
-    uint256 newSupplyFrom;
+    uint256 newSupplyFrom = this.getAccruedValue(_sender);
     allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: transfer amount exceeds allowance");
-    if (accruedSince[_sender] != 0 && proofOfHumanity.isRegistered(_sender)) {
-        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_sender]));
-        totalSupply = totalSupply.add(newSupplyFrom);
-        accruedSince[_sender] = block.timestamp;
-    }
+    
+    totalSupply = totalSupply.add(newSupplyFrom);
+    accruedSince[_sender] = block.timestamp;
+    
     balance[_sender] = balance[_sender].add(newSupplyFrom).sub(_amount, "ERC20: transfer amount exceeds balance");
     balance[_recipient] = balance[_recipient].add(_amount);       
     emit Transfer(_sender, _recipient, _amount);
@@ -225,11 +223,9 @@ contract UBI is Initializable {
   *  @param _amount The quantity of tokens to burn in base units.
   */  
   function burn(uint256 _amount) public {
-    uint256 newSupplyFrom;
-    if(accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
-      newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
-      accruedSince[msg.sender] = block.timestamp;
-    }
+    uint256 newSupplyFrom = this.getAccruedValue(msg.sender);
+    accruedSince[msg.sender] = block.timestamp;
+    
     balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(_amount, "ERC20: burn amount exceeds balance");
     totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
     emit Transfer(msg.sender, address(0), _amount);
@@ -240,12 +236,10 @@ contract UBI is Initializable {
   *  @param _amount The quantity of tokens to burn in base units.
   */  
   function burnFrom(address _account, uint256 _amount) public {
-    uint256 newSupplyFrom;
-    allowance[_account][msg.sender] = allowance[_account][msg.sender].sub(_amount, "ERC20: burn amount exceeds allowance");
-    if (accruedSince[_account] != 0 && proofOfHumanity.isRegistered(_account)) {
-        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_account]));
-        accruedSince[_account] = block.timestamp;
-    }
+    uint256 newSupplyFrom = this.getAccruedValue(_account);
+    allowance[_account][msg.sender] = allowance[_account][msg.sender].sub(_amount, "ERC20: burn amount exceeds allowance");    
+    accruedSince[_account] = block.timestamp;
+
     balance[_account] = balance[_account].add(newSupplyFrom).sub(_amount, "ERC20: burn amount exceeds balance");
     totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
     emit Transfer(_account, address(0), _amount);
