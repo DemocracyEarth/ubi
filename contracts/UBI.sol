@@ -57,8 +57,15 @@ contract UBI is Initializable {
 
   mapping (address => mapping (address => uint256)) public allowance;
 
-  /// @dev A lower bound of the total supply. Does not take into account tokens minted as UBI by an address before it moves those (transfer or burn).
-  uint256 public totalSupply;
+  /**@dev M0 supply marker
+  * M0 should be updated after.. 
+  * a) adding new PoH
+  * b) revoking active PoH
+  *
+  * If accrued per sec rate is changed,
+  * It'll fluctuate +- "real" total supply
+  */
+  uint256 public supplyMarker; // same slot/position as old totalSupply to match upgradable pattern
   
   /// @dev Name of the token.
   string public name;
@@ -80,6 +87,32 @@ contract UBI is Initializable {
 
   /// @dev Timestamp since human started accruing.
   mapping(address => uint256) public accruedSince;
+  
+  /// @dev Timestamp of PoH activation, used as internal PoH Marker
+  mapping(address => bool) public activated;
+  
+  /// @dev Number of active Humans accruing UBI, Updated after adding / revoking PoH
+  uint256 public activeVerifiedHumans;
+
+  /// @dev Timestamp of last M0 update
+  uint256 public lastSupplyUpdate; // same as accruedSince but for M0 supply
+
+  /**
+  * @dev stream mapping
+  * stream[0][addr] = total incoming (excluding accruedPerSecond)
+  * stream[addr][0] = total outgoing
+  * stream[from][to] = record of stream from ~ to
+  * stream[this][addr] = outgoing stream counter
+  */
+  mapping (address => mapping (address => uint256)) public stream;
+  
+  /**@dev Total Supply of UBI
+  * @notice 
+  */
+  function totalSupply() public view returns(uint){
+    // NOT using SafeMath for internal is OK?
+    return supplyMarker + ((block.timestamp - lastSupplyUpdate) * (activeVerifiedHumans * accruedPerSecond));
+  }
 
   /* Modifiers */
 
@@ -108,7 +141,7 @@ contract UBI is Initializable {
     governor = msg.sender;
 
     balance[msg.sender] = _initialSupply;
-    totalSupply = _initialSupply;
+    supplyMarker = _initialSupply;
   }
 
   /* External */
@@ -118,8 +151,18 @@ contract UBI is Initializable {
   */
   function startAccruing(address _human) external {
     require(proofOfHumanity.isRegistered(_human), "The submission is not registered in Proof Of Humanity.");
-    require(accruedSince[_human] == 0, "The submission is already accruing UBI.");
-    accruedSince[_human] = block.timestamp;
+    require(!activated[_human], "The submission is already accruing UBI.");
+    uint256 _now = block.timestamp;
+    if(stream[address(0)][_human] != 0) { // check incoming streams
+      balance[_human] += (stream[address(0)][_human] * (_now - accruedSince[_human]));
+    }
+    activated[_human] = true;
+    accruedSince[_human] = _now;
+    emit NewStream(address(0), _human, accruedPerSecond); // emit stream event 
+    // update M0 total supply marker 
+    supplyMarker += ((activeVerifiedHumans * accruedPerSecond) * (_now - lastSupplyUpdate));
+    activeVerifiedHumans++;
+    lastSupplyUpdate = _now;
   }
 
   /** @dev Allows anyone to report a submission that
@@ -127,16 +170,34 @@ contract UBI is Initializable {
   *  Proof Of Humanity registry. The reporter receives any
   *  leftover accrued UBI.
   *  @param _human The submission ID.
+  *  @param _outFlow Array of outgoing stream addresses to revoke
   */
-  function reportRemoval(address _human) external  {
+  function reportRemoval(address _human, address[] calldata _outFlow) external  {
     require(!proofOfHumanity.isRegistered(_human), "The submission is still registered in Proof Of Humanity.");
-    require(accruedSince[_human] != 0, "The submission is not accruing UBI.");
-    uint256 newSupply = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
-
-    accruedSince[_human] = 0;
-
-    balance[msg.sender] = balance[msg.sender].add(newSupply);
-    totalSupply = totalSupply.add(newSupply);
+    require(activated[_human], "Stream : Already Removed");
+    uint256 _slash; // total value recovered
+    uint256 _out; // sum of UBI units
+    uint256 _now = block.timestamp;
+    for (uint256 i = 0; i < _outFlow.length; i++) {
+      address _addr = _outFlow[i];
+      uint256 _drip = stream[_human][_addr]; // units in this stream >=0
+      stream[address(0)][_addr] -= _drip; // subtract units
+      _slash += _drip * (_now - accruedSince[_addr]); // add total recovered
+      stream[_human][_addr] = 0; // reset stream to zero
+      _out += _drip; // for final check
+      emit Revoked(_human, _outFlow[i], _drip); // emit revoked event
+    }
+    require(stream[_human][address(0)] == _out, "Stream: Unable to close all outgoing stream.");
+    _slash += (accruedPerSecond - _out) * (_now - accruedSince[_human]);
+    balance[msg.sender] = balance[msg.sender].add(_slash); // reward msg sender
+    activated[_human] = false; // deactivate stream
+    stream[_human][address(0)] = 0; // reset outgoing to zero 
+    stream[address(this)][_human] = 0; // reset stream counter
+    emit Revoked(address(0), _human, 0); // emit revoked event
+    // update M0 for total supply marker
+    supplyMarker += ((activeVerifiedHumans * accruedPerSecond) * (_now - lastSupplyUpdate));
+    activeVerifiedHumans--; // remove 1 PoH
+    lastSupplyUpdate = _now; // last updated
   }
 
   /** @dev Changes `governor` to `_governor`.
@@ -144,6 +205,16 @@ contract UBI is Initializable {
   */
   function changeGovernor(address _governor) external onlyByGovernor {
     governor = _governor;
+  }
+
+  /** @dev Changes `accruedPerSecond`
+  *  @param _accruedPerSecond.
+  * IF changed totalSupply will be +- of real total supply
+  */
+  function changeAccruedRate(uint256 _accruedPerSecond) external onlyByGovernor {
+    supplyMarker += ((activeVerifiedHumans * accruedPerSecond) * (block.timestamp - lastSupplyUpdate));
+    lastSupplyUpdate = block.timestamp;
+    accruedPerSecond = _accruedPerSecond;
   }
 
   /** @dev Changes `proofOfHumanity` to `_proofOfHumanity`.
@@ -155,17 +226,18 @@ contract UBI is Initializable {
 
   /** @dev Transfers `_amount` to `_recipient` and withdraws accrued tokens.
   *  @param _recipient The entity receiving the funds.
-  *  @param _amount The amount to tranfer in base units.
+  *  @param _amount The amount to transfer in base units.
   */
   function transfer(address _recipient, uint256 _amount) public returns (bool) {
-    uint256 newSupplyFrom;
-    if (accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
-        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
-        totalSupply = totalSupply.add(newSupplyFrom);
-        accruedSince[msg.sender] = block.timestamp;
+    uint256 _accrued;
+    if(activated[msg.sender] && proofOfHumanity.isRegistered(msg.sender)) {
+      _accrued = (block.timestamp - accruedSince[msg.sender]) * ((accruedPerSecond + stream[address(0)][msg.sender]) - stream[msg.sender][address(0)]);
+    } else if(stream[address(0)][msg.sender] != 0) {
+      _accrued = ((block.timestamp - accruedSince[msg.sender]) * stream[address(0)][msg.sender]);
     }
-    balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(_amount, "ERC20: transfer amount exceeds balance");
-    balance[_recipient] = balance[_recipient].add(_amount);
+    balance[msg.sender] = (balance[msg.sender] + _accrued).sub(_amount, "ERC20: transfer amount exceeds balance");
+    balance[_recipient] += _amount; // ?Public" Good for everyone if this overflows ;)
+    accruedSince[msg.sender] = block.timestamp;
     emit Transfer(msg.sender, _recipient, _amount);
     return true;
   }
@@ -173,18 +245,15 @@ contract UBI is Initializable {
   /** @dev Transfers `_amount` from `_sender` to `_recipient` and withdraws accrued tokens.
   *  @param _sender The entity to take the funds from.
   *  @param _recipient The entity receiving the funds.
-  *  @param _amount The amount to tranfer in base units.
+  *  @param _amount The amount to transfer in base units.
   */
   function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
-    uint256 newSupplyFrom;
-    allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: transfer amount exceeds allowance");
-    if (accruedSince[_sender] != 0 && proofOfHumanity.isRegistered(_sender)) {
-        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_sender]));
-        totalSupply = totalSupply.add(newSupplyFrom);
-        accruedSince[_sender] = block.timestamp;
+    if(allowance[_sender][msg.sender] != type(uint256).max){
+      allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: transfer amount exceeds allowance");      
     }
-    balance[_sender] = balance[_sender].add(newSupplyFrom).sub(_amount, "ERC20: transfer amount exceeds balance");
-    balance[_recipient] = balance[_recipient].add(_amount);       
+    balance[_sender] = (balance[_sender] + getAccruedValue(_sender)).sub(_amount, "ERC20: transfer amount exceeds balance");
+    balance[_recipient] += _amount;
+    accruedSince[_sender] = block.timestamp;
     emit Transfer(_sender, _recipient, _amount);
     return true;
   }
@@ -225,13 +294,9 @@ contract UBI is Initializable {
   *  @param _amount The quantity of tokens to burn in base units.
   */  
   function burn(uint256 _amount) public {
-    uint256 newSupplyFrom;
-    if(accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
-      newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
-      accruedSince[msg.sender] = block.timestamp;
-    }
-    balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(_amount, "ERC20: burn amount exceeds balance");
-    totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
+    balance[msg.sender] = (balance[msg.sender] + getAccruedValue(msg.sender)).sub(_amount, "ERC20: Burn amount exceeds balance");
+    accruedSince[msg.sender] = block.timestamp;
+    supplyMarker = supplyMarker.sub(_amount);
     emit Transfer(msg.sender, address(0), _amount);
   }
 
@@ -240,28 +305,30 @@ contract UBI is Initializable {
   *  @param _amount The quantity of tokens to burn in base units.
   */  
   function burnFrom(address _account, uint256 _amount) public {
-    uint256 newSupplyFrom;
-    allowance[_account][msg.sender] = allowance[_account][msg.sender].sub(_amount, "ERC20: burn amount exceeds allowance");
-    if (accruedSince[_account] != 0 && proofOfHumanity.isRegistered(_account)) {
-        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_account]));
-        accruedSince[_account] = block.timestamp;
+    if(allowance[_account][msg.sender] != type(uint256).max){
+      allowance[_account][msg.sender] = allowance[_account][msg.sender].sub(_amount, "ERC20: Burn amount exceeds allowance");      
     }
-    balance[_account] = balance[_account].add(newSupplyFrom).sub(_amount, "ERC20: burn amount exceeds balance");
-    totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
+    balance[_account] = (balance[_account] + getAccruedValue(_account)).sub(_amount, "ERC20: Burn amount exceeds balance");
+    supplyMarker = supplyMarker.sub(_amount);
     emit Transfer(_account, address(0), _amount);
   }
   
   /* Getters */
 
-  /** @dev Calculates how much UBI a submission has available for withdrawal.
+  /** @dev Calculates how much UBI an address has available for withdrawal.
   *  @param _human The submission ID.
   *  @return accrued The available UBI for withdrawal.
   */
   function getAccruedValue(address _human) public view returns (uint256 accrued) {
-    // If this human have not started to accrue, or is not registered, return 0.
-    if (accruedSince[_human] == 0 || !proofOfHumanity.isRegistered(_human)) return 0;
-
-    else return accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
+    if(activated[_human] && proofOfHumanity.isRegistered(_human)) { // check if Active PoH
+      // time * ((base rate  + inflow) - outflow)
+      return (block.timestamp - accruedSince[_human]) * ((accruedPerSecond + stream[address(0)][_human]) - stream[_human][address(0)]);
+    }
+    if(stream[address(0)][_human] != 0) { //check incoming stream
+      // time * inflow rate
+      return ((block.timestamp - accruedSince[_human]) * stream[address(0)][_human]);
+    }
+    // returns zero if stream is zero
   }
   
   /**
@@ -270,6 +337,73 @@ contract UBI is Initializable {
   * @return The current balance including accrued Universal Basic Income of the user.
   **/
   function balanceOf(address _human) public view returns (uint256) {
-    return getAccruedValue(_human).add(balance[_human]);
-  }  
+    return (balance[_human] + getAccruedValue(_human));
+  }
+
+  /* Stream Functions */
+  
+/* Stream Events */
+  /**
+  * @dev Emitted when the `_src` creates new stream for `_dst` 
+  * `_src` is address(0) for Primary stream
+  * `_drip` are UBI units moved into`_dst` stream.
+  */
+  event NewStream(address indexed _src, address indexed _dst, uint256 _drip);
+
+  /**
+  * @dev Emitted when the `_src` ~ `_dst` is stopped
+  * `_src` is address(0) for Primary stream
+  * `_drip` are UBI units moved out of `_dst` stream.
+  */
+  event EndStream(address indexed _src, address indexed _dst, uint256 _drip);
+  
+  /**
+  * @dev Emitted when the `_src`'s PoH is revoked `_dst`.
+  * `_src` is address(0) for Primary stream
+  * `_drip` UBI units per second revoked from `_dst` stream.
+  */
+  event Revoked(address indexed _src, address indexed _dst, uint256 _drip);
+  
+  /** @dev Start secondary UBI stream to any address
+   * @param _dst destination address
+   * @param _drip UBI units per second moved in stream. 
+   * <10% >1% of accruedPerSecond
+   */ 
+  function startStream(address _dst, uint256 _drip) external {
+    require(_dst != address(0), "Stream: Zero address as destination.");
+    require(stream[address(this)][msg.sender] < 5, "Stream: Max 5 outgoing streams");
+    uint256 _rate = accruedPerSecond;
+    require(_drip <= _rate / 10 && _drip >= _rate / 100, "Stream: limit Max 10%, Min 1%");
+    require(stream[msg.sender][_dst] == 0, "Stream: Already active/Use update");
+    require(proofOfHumanity.isRegistered(msg.sender), "The submission is not registered in Proof Of Humanity.");
+    require(activated[msg.sender], "Stream: Start accruing before streaming out.");
+    balance[_dst] += getAccruedValue(_dst); // settle dst balance
+    accruedSince[_dst] = block.timestamp; // update dst timer
+    balance[msg.sender] += ((block.timestamp - accruedSince[msg.sender]) * ((_rate + stream[address(0)][msg.sender]) - stream[msg.sender][address(0)]));
+    accruedSince[msg.sender] = block.timestamp; // update src timer
+    stream[msg.sender][_dst] = _drip; // record of new stream
+    stream[msg.sender][address(0)] += _drip; // add outgoing stream for src 
+    stream[address(0)][_dst] += _drip; // add incoming stream for dst 
+    stream[address(this)][msg.sender]++; // increase active stream counter 
+    emit NewStream(msg.sender, _dst, _drip);
+  }
+  
+  /** @dev Stop secondary UBI stream 
+   * @param _dst destination address to stop
+   */
+
+  function stopStream(address _dst) external {
+    require(proofOfHumanity.isRegistered(msg.sender), "Your address is not registered in Proof Of Humanity.");
+    require(stream[msg.sender][_dst] != 0, "Stream: Not active");
+    balance[_dst] += getAccruedValue(_dst); // settle dst balance
+    accruedSince[_dst] = block.timestamp; // update dst timer
+    balance[msg.sender] += ((block.timestamp - accruedSince[msg.sender]) * ((accruedPerSecond + stream[address(0)][msg.sender]) - stream[msg.sender][address(0)]));
+    accruedSince[msg.sender] = block.timestamp;
+    uint256 _drip = stream[msg.sender][_dst];
+    stream[msg.sender][_dst] = 0; // reset stream to zero
+    stream[msg.sender][address(0)] -= _drip; // subtract outgoing stream for src 
+    stream[address(0)][_dst] -= _drip; // subtract incoming stream for dst 
+    stream[address(this)][msg.sender]--; // decrease active outgoing stream counter 
+    emit EndStream(msg.sender, _dst, 0); // close stream
+  }
 }
