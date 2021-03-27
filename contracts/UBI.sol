@@ -22,18 +22,30 @@ interface IProofOfHumanity {
     );
 }
 
+
+/**
+ * @title Poster Interface
+ * @dev See https://github.com/auryn-macmillan/poster
+ */
+interface IPoster {
+  event NewPost(bytes32 id, address user, string content);
+
+  function post(string memory content) external;
+}
+
+
 /**
  * @title Universal Basic Income
- * @dev UBI is an ERC20 compatible token that is connected to a Proof of Humanity registry. 
+ * @dev UBI is an ERC20 compatible token that is connected to a Proof of Humanity registry.
  *
  * Tokens are issued and drip over time for every verified submission on a Proof of Humanity registry.
  * The accrued tokens are updated directly on every wallet using the `balanceOf` function.
- * The tokens get effectively minted and persisted in memory when someone interacts with the contract doing a `transfer` or `burn`. 
+ * The tokens get effectively minted and persisted in memory when someone interacts with the contract doing a `transfer` or `burn`.
  */
 contract UBI is Initializable {
 
   /* Events */
-  
+
   /**
    * @dev Emitted when `value` tokens are moved from one account (`from`) to another (`to`).
    *
@@ -52,20 +64,20 @@ contract UBI is Initializable {
   using SafeMath for uint256;
 
   /* Storage */
-  
+
   mapping (address => uint256) private balance;
 
   mapping (address => mapping (address => uint256)) public allowance;
 
   /// @dev A lower bound of the total supply. Does not take into account tokens minted as UBI by an address before it moves those (transfer or burn).
   uint256 public totalSupply;
-  
+
   /// @dev Name of the token.
   string public name;
-  
+
   /// @dev Symbol of the token.
   string public symbol;
-  
+
   /// @dev Number of decimals of the token.
   uint8 public decimals;
 
@@ -74,9 +86,9 @@ contract UBI is Initializable {
 
   /// @dev The contract's governor.
   address public governor;
-  
+
   /// @dev The Proof Of Humanity registry to reference.
-  IProofOfHumanity public proofOfHumanity; 
+  IProofOfHumanity public proofOfHumanity;
 
   /// @dev Timestamp since human started accruing.
   mapping(address => uint256) public accruedSince;
@@ -169,7 +181,7 @@ contract UBI is Initializable {
     emit Transfer(msg.sender, _recipient, _amount);
     return true;
   }
-  
+
   /** @dev Transfers `_amount` from `_sender` to `_recipient` and withdraws accrued tokens.
   *  @param _sender The entity to take the funds from.
   *  @param _recipient The entity receiving the funds.
@@ -184,7 +196,7 @@ contract UBI is Initializable {
         accruedSince[_sender] = block.timestamp;
     }
     balance[_sender] = balance[_sender].add(newSupplyFrom).sub(_amount, "ERC20: transfer amount exceeds balance");
-    balance[_recipient] = balance[_recipient].add(_amount);       
+    balance[_recipient] = balance[_recipient].add(_amount);
     emit Transfer(_sender, _recipient, _amount);
     return true;
   }
@@ -202,7 +214,7 @@ contract UBI is Initializable {
   /** @dev Increases the `_spender` allowance by `_addedValue`.
   *  @param _spender The entity allowed to spend funds.
   *  @param _addedValue The amount of extra base units the entity will be allowed to spend.
-  */  
+  */
   function increaseAllowance(address _spender, uint256 _addedValue) public returns (bool) {
     uint256 newAllowance = allowance[msg.sender][_spender].add(_addedValue);
     allowance[msg.sender][_spender] = newAllowance;
@@ -213,17 +225,17 @@ contract UBI is Initializable {
   /** @dev Decreases the `_spender` allowance by `_subtractedValue`.
   *  @param _spender The entity whose spending allocation will be reduced.
   *  @param _subtractedValue The reduction of spending allocation in base units.
-  */  
+  */
   function decreaseAllowance(address _spender, uint256 _subtractedValue) public returns (bool) {
     uint256 newAllowance = allowance[msg.sender][_spender].sub(_subtractedValue, "ERC20: decreased allowance below zero");
     allowance[msg.sender][_spender] = newAllowance;
     emit Approval(msg.sender, _spender, newAllowance);
     return true;
   }
-  
+
   /** @dev Burns `_amount` of tokens and withdraws accrued tokens.
   *  @param _amount The quantity of tokens to burn in base units.
-  */  
+  */
   function burn(uint256 _amount) public {
     uint256 newSupplyFrom;
     if(accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
@@ -235,10 +247,21 @@ contract UBI is Initializable {
     emit Transfer(msg.sender, address(0), _amount);
   }
 
+  /** @dev Burns `_amount` of tokens and posts content in a Poser contract.
+  *  @param _amount The quantity of tokens to burn in base units.
+  *  @param _poster the address of the poster contract.
+  *  @param content bit of strings to signal.
+  */
+  function burnAndPost(uint256 _amount, address _poster, string memory content) public {
+    burn(_amount);
+    IPoster poster = IPoster(_poster);
+    poster.post(content);
+  }
+
   /** @dev Burns `_amount` of tokens from `_account` and withdraws accrued tokens.
   *  @param _account The entity to burn tokens from.
   *  @param _amount The quantity of tokens to burn in base units.
-  */  
+  */
   function burnFrom(address _account, uint256 _amount) public {
     uint256 newSupplyFrom;
     allowance[_account][msg.sender] = allowance[_account][msg.sender].sub(_amount, "ERC20: burn amount exceeds allowance");
@@ -250,7 +273,7 @@ contract UBI is Initializable {
     totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
     emit Transfer(_account, address(0), _amount);
   }
-  
+
   /* Getters */
 
   /** @dev Calculates how much UBI a submission has available for withdrawal.
@@ -263,7 +286,7 @@ contract UBI is Initializable {
 
     else return accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
   }
-  
+
   /**
   * @dev Calculates the current user accrued balance.
   * @param _human The submission ID.
@@ -271,5 +294,5 @@ contract UBI is Initializable {
   **/
   function balanceOf(address _human) public view returns (uint256) {
     return getAccruedValue(_human).add(balance[_human]);
-  }  
+  }
 }
