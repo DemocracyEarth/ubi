@@ -22,6 +22,11 @@ interface IProofOfHumanity {
     );
 }
 
+
+/**
+ * @title Poster Interface
+ * @dev See https://github.com/auryn-macmillan/poster
+ */
 interface IPoster {
   event NewPost(bytes32 id, address user, string content);
 
@@ -242,6 +247,11 @@ contract UBI is Initializable {
     emit Transfer(msg.sender, address(0), _amount);
   }
 
+  /** @dev Burns `_amount` of tokens and posts content in a Poser contract.
+  *  @param _amount The quantity of tokens to burn in base units.
+  *  @param _poster the address of the poster contract.
+  *  @param content bit of strings to signal.
+  */
   function burnAndPost(uint256 _amount, address _poster, string memory content) public {
     burn(_amount);
     IPoster poster = IPoster(_poster);
