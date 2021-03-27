@@ -38,5 +38,8 @@
     "openzeppelin-solidity": "^3.3.0",
     "prompt-confirm": "^2.0.4",
     "solidity-coverage": "^0.7.14"
+  },
+  "dependencies": {
+    "poster": "git+https://github.com/auryn-macmillan/poster.git"
   }
 }
