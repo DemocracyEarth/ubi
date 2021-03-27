@@ -8,7 +8,6 @@ pragma solidity 0.7.3;
 
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "poster/contracts/IPoster.sol";
 
 /**
  * @title ProofOfHumanity Interface
@@ -22,6 +21,13 @@ interface IProofOfHumanity {
       bool registered
     );
 }
+
+interface IPoster {
+  event NewPost(bytes32 id, address user, string content);
+
+  function post(string memory content) external;
+}
+
 
 /**
  * @title Universal Basic Income
