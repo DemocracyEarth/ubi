@@ -1,3 +1,4 @@
+const { default: BigNumber } = require("bignumber.js");
 const { expect } = require("chai");
 const deploymentParams = require('../deployment-params');
 
@@ -167,10 +168,10 @@ contract('UBI.sol', accounts => {
 
     it("happy path - allow to burn and post.", async () => {
       await setPost('hello world');
-      const actualBalance = (await ubi.balanceOf(addresses[0])).toString();
-      await ubi.burnAndPost('10000009077319999999999445', altPoster, 'hello world');
-      const newBalance = (await ubi.balanceOf(addresses[0])).toString();
-      expect(newBalance).to.equal('0');
+      const previousBalance = new BigNumber((await ubi.balanceOf(addresses[0])).toString()).toNumber();
+      await ubi.burnAndPost('10000000000000', altPoster, 'hello world');
+      const newBalance = new BigNumber((await ubi.balanceOf(addresses[0])).toString()).toNumber();
+      expect(newBalance).to.lessThan(previousBalance);
     });
 
   });
