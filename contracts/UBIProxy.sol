@@ -7,7 +7,7 @@
  *  @tools: []
  */
 
-pragma solidity ^0.5.17;
+pragma solidity ^0.7.3;
 
 interface IProofOfHumanity {
     /** @dev Return true if the submission is registered and not expired.
@@ -89,7 +89,7 @@ contract UBIProxy {
     /**
      * @dev Calculates the square root of a number. Uses the Babylonian Method.
      * @param x The input.
-     * @return The square root of the input.
+     * @return y The square root of the input.
      **/
     function sqrt(uint256 x) private pure returns (uint256 y) {
         uint256 z = (x + 1) / 2;
