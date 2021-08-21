@@ -111,7 +111,7 @@ contract UBI is Initializable {
   /// @dev Persists the targets of an address sending a stream.
   mapping (address => mapping (address => uint128)) public streamTargets;
 
-  /// @dev A large integer to enable computable tallying.
+  /// @dev Useful to calculate percentages.
   uint128 private BASIS_POINTS = 10000;
 
   /* Modifiers */
@@ -332,8 +332,8 @@ contract UBI is Initializable {
 
     // Set new delegation
     uint128 percentage = BASIS_POINTS; // 10000 basis points
-    streamCount[_newDelegate] = streamCount[_newDelegate].add(percentage);
-    streamCount[msg.sender] = streamCount[msg.sender].sub(percentage);
+    streamCount[_newDelegate] = streamCount[_newDelegate].add(1);
+    streamCount[msg.sender] = streamCount[msg.sender].sub(1);
     streamSources[_newDelegate][msg.sender] = percentage;
     streamTargets[msg.sender][_newDelegate] = percentage;
 
