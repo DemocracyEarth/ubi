@@ -106,13 +106,19 @@ contract UBI is Initializable {
   mapping(address => uint256) public accrualDelta;
 
   /// @dev Persists the sources of an address receiving a stream.
-  mapping (address => mapping (address => uint128)) public streamSources;
+  mapping (address => mapping (address => uint256)) public streamSources;
 
   /// @dev Persists the targets of an address sending a stream.
-  mapping (address => mapping (address => uint128)) public streamTargets;
+  mapping (address => mapping (address => uint256)) public streamTargets;
+
+  /// @dev Percentage multiplier based on how many delegations an address receives.
+  mapping (address => uint256) public delegationStrength;
+
+  /// @dev Accrual time that should not be computed in the balance of a delegate.
+  mapping (address => uint256) public discountedAccrual;
 
   /// @dev Useful to calculate percentages.
-  uint128 private BASIS_POINTS = 10000;
+  uint256 private BASIS_POINTS;
 
   /* Modifiers */
 
@@ -135,6 +141,7 @@ contract UBI is Initializable {
     name = _name;
     symbol = _symbol;
     decimals = 18;
+    BASIS_POINTS = 10000;
 
     accruedPerSecond = _accruedPerSecond;
     proofOfHumanity = _proofOfHumanity;
@@ -153,7 +160,7 @@ contract UBI is Initializable {
     require(proofOfHumanity.isRegistered(_human), "The submission is not registered in Proof Of Humanity.");
     require(accruedSince[_human] == 0, "The submission is already accruing UBI.");
     accruedSince[_human] = block.timestamp;
-    streamCount[_human] = 1;
+    delegationStrength[_human] = BASIS_POINTS;
   }
 
   /** @dev Allows anyone to report a submission that
@@ -306,10 +313,9 @@ contract UBI is Initializable {
     // If this human have not started to accrue, or is not registered, return 0.
     if (accruedSince[_human] == 0 || !proofOfHumanity.isRegistered(_human)) return 0;
 
-    // If accruing factor is not initialized and it's a registered human, hardcode the initial accruing factor to be 1.
-    uint256 factor = (streamCount[_human] == 0 && proofOfHumanity.isRegistered(_human)) ? 1 : streamCount[_human];
+    uint256 factor = (delegationStrength[_human] == 0) ? BASIS_POINTS : delegationStrength[_human];
 
-    return accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human])).mul(factor.div(BASIS_POINTS));
+    return accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]).sub(discountedAccrual[_human])).mul(factor.div(BASIS_POINTS));
   }
 
   /**
@@ -325,17 +331,22 @@ contract UBI is Initializable {
   * @dev Delegate the UBI stream to another recipient than the current human.
   * @param _newDelegate The new delegate address to delegate stream UBI.
   */
-  function delegate(address _newDelegate, uint128 percentage) public {
+  function delegate(address _newDelegate, uint256 _percentage) public {
     // Only humans can delegate their accruance
     require(proofOfHumanity.isRegistered(msg.sender), "The sender is not registered in Proof Of Humanity.");
     require(_newDelegate != address(0), "Delegate cannot be an empty address");
 
     // Set new delegation
-    uint128 percentage = BASIS_POINTS; // 10000 basis points
-    streamCount[_newDelegate] = streamCount[_newDelegate].add(1);
-    streamCount[msg.sender] = streamCount[msg.sender].sub(1);
-    streamSources[_newDelegate][msg.sender] = percentage;
-    streamTargets[msg.sender][_newDelegate] = percentage;
+    uint256 strength = BASIS_POINTS.mul(_percentage).div(100);
+    streamSources[_newDelegate][msg.sender] = strength;
+    streamTargets[msg.sender][_newDelegate] = strength;
+
+    // A delegate should have a stream multiplier based on how many delegations it got according to the aggregated percentages from each.
+    delegationStrength[_newDelegate] = (delegationStrength[_newDelegate] == 0) ? BASIS_POINTS.add(strength) : delegationStrength[_newDelegate].add(strength);
+
+    // The accrual during the time previous to a delegation should be discounted from the balance of the delegate.
+    uint256 discountedTime = (accruedSince[_newDelegate] != 0) ? block.timestamp.sub(accruedSince[_newDelegate]) : block.timestamp.sub(accruedSince[msg.sender]);
+    discountedAccrual[_newDelegate] = (discountedAccrual[_newDelegate] == 0) ? discountedTime : discountedAccrual[_newDelegate].add(discountedTime);
 
     emit DelegateChange(msg.sender, _newDelegate);
   }
