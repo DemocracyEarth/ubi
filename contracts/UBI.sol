@@ -61,6 +61,12 @@ contract UBI is Initializable {
    */
   event Approval(address indexed owner, address indexed spender, uint256 value);
 
+  /**
+   * @dev Emitted when the `delegator` delegates its UBI accruing to the `delegate` by
+   * a call to {delegate}.
+   */
+  event DelegateChange(address indexed delegator, address indexed delegate);  
+
   using SafeMath for uint256;
 
   /* Storage */
@@ -92,6 +98,21 @@ contract UBI is Initializable {
 
   /// @dev Timestamp since human started accruing.
   mapping(address => uint256) public accruedSince;
+
+  /// @dev Delegations received by a given address.
+  mapping(address => uint256) public streamCount;
+
+  /// @dev Delta of time based on the elapsed time from delegators.
+  mapping(address => uint256) public accrualDelta;
+
+  /// @dev Persists the sources of an address receiving a stream.
+  mapping (address => mapping (address => uint128)) public streamSources;
+
+  /// @dev Persists the targets of an address sending a stream.
+  mapping (address => mapping (address => uint128)) public streamTargets;
+
+  /// @dev A large integer to enable computable tallying.
+  uint128 private BASIS_POINTS = 10000;
 
   /* Modifiers */
 
@@ -132,6 +153,7 @@ contract UBI is Initializable {
     require(proofOfHumanity.isRegistered(_human), "The submission is not registered in Proof Of Humanity.");
     require(accruedSince[_human] == 0, "The submission is already accruing UBI.");
     accruedSince[_human] = block.timestamp;
+    streamCount[_human] = 1;
   }
 
   /** @dev Allows anyone to report a submission that
@@ -284,7 +306,10 @@ contract UBI is Initializable {
     // If this human have not started to accrue, or is not registered, return 0.
     if (accruedSince[_human] == 0 || !proofOfHumanity.isRegistered(_human)) return 0;
 
-    else return accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
+    // If accruing factor is not initialized and it's a registered human, hardcode the initial accruing factor to be 1.
+    uint256 factor = (streamCount[_human] == 0 && proofOfHumanity.isRegistered(_human)) ? 1 : streamCount[_human];
+
+    return accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human])).mul(factor.div(BASIS_POINTS));
   }
 
   /**
@@ -294,5 +319,24 @@ contract UBI is Initializable {
   **/
   function balanceOf(address _human) public view returns (uint256) {
     return getAccruedValue(_human).add(balance[_human]);
+  }
+
+  /**
+  * @dev Delegate the UBI stream to another recipient than the current human.
+  * @param _newDelegate The new delegate address to delegate stream UBI.
+  */
+  function delegate(address _newDelegate, uint128 percentage) public {
+    // Only humans can delegate their accruance
+    require(proofOfHumanity.isRegistered(msg.sender), "The sender is not registered in Proof Of Humanity.");
+    require(_newDelegate != address(0), "Delegate cannot be an empty address");
+
+    // Set new delegation
+    uint128 percentage = BASIS_POINTS; // 10000 basis points
+    streamCount[_newDelegate] = streamCount[_newDelegate].add(percentage);
+    streamCount[msg.sender] = streamCount[msg.sender].sub(percentage);
+    streamSources[_newDelegate][msg.sender] = percentage;
+    streamTargets[msg.sender][_newDelegate] = percentage;
+
+    emit DelegateChange(msg.sender, _newDelegate);
   }
 }
