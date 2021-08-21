@@ -335,6 +335,7 @@ contract UBI is Initializable {
     // Only humans can delegate their accruance
     require(proofOfHumanity.isRegistered(msg.sender), "The sender is not registered in Proof Of Humanity.");
     require(_newDelegate != address(0), "Delegate cannot be an empty address");
+    require(_newDelegate != msg.sender, "Invalid circular delegation");
 
     // Set new delegation
     uint256 strength = BASIS_POINTS.mul(_percentage).div(100);
