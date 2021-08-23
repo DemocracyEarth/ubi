@@ -501,25 +501,21 @@ contract UBI is Initializable {
         require(recipient != address(0x00), "stream to the zero address");
         require(recipient != address(this), "stream to the contract itself");
         require(recipient != msg.sender, "stream to the caller");
+        require(tokenAddress == address(this),"token address can only be UBI");
         require(deposit > 0, "deposit is zero");
         require(startTime >= block.timestamp, "start time before block.timestamp");
         require(stopTime > startTime, "stop time before the start time");
+        require(deposit <= accruedPerSecond, "Cannot delegate more than maximum accrued per second.");
 
         CreateStreamLocalVars memory vars;
         vars.duration = stopTime.sub(startTime);
-
-        /* Without this, the rate per second would be zero. */
-        require(deposit >= vars.duration, "deposit smaller than time delta");
-
-        /* This condition avoids dealing with remainders */
-        require(deposit % vars.duration == 0, "deposit not multiple of time delta");
 
         vars.ratePerSecond = deposit.div(vars.duration);
 
         /* Create and store the stream object. */
         uint256 streamId = nextStreamId;
         streams[streamId] = Types.Stream({
-            remainingBalance: deposit,
+            remainingBalance: 0,
             deposit: deposit,
             isEntity: true,
             ratePerSecond: vars.ratePerSecond,
@@ -533,7 +529,6 @@ contract UBI is Initializable {
         /* Increment the next stream id. */
         nextStreamId = nextStreamId.add(1);
 
-        transferFrom(msg.sender, address(this), deposit);
         emit CreateStream(streamId, msg.sender, recipient, deposit, tokenAddress, startTime, stopTime);
         return streamId;
     }
@@ -593,5 +588,9 @@ contract UBI is Initializable {
 
         emit CancelStream(streamId, stream.sender, stream.recipient, senderBalance, recipientBalance);
         return true;
+    }
+
+    function getAccruedPerSecond() public view returns (uint256) {
+      return accruedPerSecond;
     }
 }

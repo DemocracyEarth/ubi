@@ -1,51 +1,68 @@
 const { default: BigNumber } = require("bignumber.js");
 const { expect } = require("chai");
 const deploymentParams = require('../deployment-params');
+const testUtils = require("./testUtils");
+const moment = require("moment");
+
+const ONE_HOUR = 3600;
+const TWO_HOURS = 3600 * 2;
 
 /**
  @summary Tests for UBI.sol
 */
 contract('UBI.sol', accounts => {
   describe('UBI Coin and Proof of Humanity', () => {
-    describe("UBI base use cases", () => {
-      before(async () => {
-        accounts = await ethers.getSigners();
+    before(async () => {
+      accounts = await ethers.getSigners();
 
-        const [_addresses, mockProofOfHumanity, mockPoster] = await Promise.all([
-          Promise.all(accounts.map((account) => account.getAddress())),
-          waffle.deployMockContract(
-            accounts[0],
-            require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
-          ),
-          waffle.deployMockContract(
-            accounts[9],
-            require("../artifacts/contracts/UBI.sol/IPoster.json").abi
-          ),
-        ]);
-        setSubmissionIsRegistered = (submissionID, isRegistered) =>
-          mockProofOfHumanity.mock.isRegistered
-            .withArgs(submissionID)
-            .returns(isRegistered);
-        setPost = (content) =>
-          mockPoster.mock.post
-            .withArgs(content)
-            .returns();
+      [_addresses, mockProofOfHumanity, mockPoster] = await Promise.all([
+        Promise.all(accounts.map((account) => account.getAddress())),
+        waffle.deployMockContract(
+          accounts[0],
+          require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
+        ),
+        waffle.deployMockContract(
+          accounts[9],
+          require("../artifacts/contracts/UBI.sol/IPoster.json").abi
+        ),
+      ]);
+      setSubmissionIsRegistered = (submissionID, isRegistered) =>
+        mockProofOfHumanity.mock.isRegistered
+          .withArgs(submissionID)
+          .returns(isRegistered);
+      setPost = (content) =>
+        mockPoster.mock.post
+          .withArgs(content)
+          .returns();
 
-        addresses = _addresses;
+      setSubmissionInfo = (submissionID, info) => {
+        mockProofOfHumanity.mock.getSubmissionInfo
+          .withArgs(submissionID)
+          .returns({
+            submissionTime: info.submissionTime
+          });
+      }
 
-        UBICoin = await ethers.getContractFactory("UBI");
+      addresses = _addresses;
 
-        ubi = await upgrades.deployProxy(UBICoin,
-          [deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address],
-          { initializer: 'initialize', unsafeAllowCustomTypes: true }
-        );
+      UBICoin = await ethers.getContractFactory("UBI");
 
-        const mockAddress = mockPoster.address;
-        await ubi.deployed();
+      ubi = await upgrades.deployProxy(UBICoin,
+        [deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address],
+        { initializer: 'initialize', unsafeAllowCustomTypes: true }
+      );
 
-        altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
-        altPoster = mockAddress;
-      });
+      const mockAddress = mockPoster.address;
+      await ubi.deployed();
+
+      altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
+      altPoster = mockAddress;
+
+      // Set zero address as not registered
+      setSubmissionIsRegistered(ethers.constants.AddressZero, false);
+    });
+
+    describe("UBI basic use cases", () => {
 
       it("happy path - return a value previously initialized.", async () => {
         // Check that the value passed to the constructor is set.
@@ -89,7 +106,7 @@ contract('UBI.sol', accounts => {
         await setSubmissionIsRegistered(addresses[1], false);
         await network.provider.send("evm_increaseTime", [3600]);
         await network.provider.send("evm_mine");
-        expect((await ubi.balanceOf(addresses[1])).toString()).to.equal('0');
+        expect((await testUtils.ubiBalanceOfHuman(addresses[1], ubi)).toString()).to.equal('0');
       });
 
       it("happy path - a submission with interrupted accruing still keeps withdrawn coins.", async () => {
@@ -100,27 +117,27 @@ contract('UBI.sol', accounts => {
         await setSubmissionIsRegistered(addresses[1], false);
         await network.provider.send("evm_increaseTime", [7200]);
         await network.provider.send("evm_mine");
-        expect((await ubi.balanceOf(addresses[1])).toString()).to.equal('555');
+        expect((await testUtils.ubiBalanceOfHuman(addresses[1], ubi)).toString()).to.equal('555');
       });
 
       it("happy path - a submission that natively accrued keeps transfered coins upon interruption.", async () => {
         await setSubmissionIsRegistered(accounts[3].address, true);
-        expect((await ubi.balanceOf(accounts[3].address)).toString()).to.equal('0');
+        expect((await testUtils.ubiBalanceOfHuman(addresses[3], ubi)).toString()).to.equal('0');
         await ubi.startAccruing(accounts[3].address);
         await network.provider.send("evm_increaseTime", [7200]);
         await network.provider.send("evm_mine");
         await ubi.connect(accounts[3]).transfer(addresses[1], 55);
-        expect((await ubi.balanceOf(addresses[1])).toString()).to.equal('610');
+        expect((await testUtils.ubiBalanceOfHuman(addresses[1], ubi)).toString()).to.equal('610');
       });
 
       it("happy path - check that Mint and Transfer events get called when it corresponds.", async () => {
         const owner = accounts[9];
-        const initialBalance = await ubi.balanceOf(owner.address);
+        const initialBalance = await testUtils.ubiBalanceOfHuman(owner.address, ubi);
         await setSubmissionIsRegistered(owner.address, true);
         await ubi.startAccruing(owner.address);
         await network.provider.send("evm_increaseTime", [1]);
         await network.provider.send("evm_mine");
-        expect(await ubi.balanceOf(owner.address)).to.be.above(initialBalance);
+        expect(await testUtils.ubiBalanceOfHuman(owner.address, ubi)).to.be.above(initialBalance);
         await expect(ubi.connect(owner).transfer(addresses[8], 18000))
           .to.emit(ubi, "Transfer")
         await expect(ubi.connect(owner).burn('199999999966000'))
@@ -128,7 +145,7 @@ contract('UBI.sol', accounts => {
         await setSubmissionIsRegistered(owner.address, false);
         await expect(ubi.connect(owner).burn('100000000000000'))
           .to.emit(ubi, "Transfer")
-        expect(await ubi.balanceOf(owner.address)).to.be.at.least(3000);
+        expect(await testUtils.ubiBalanceOfHuman(owner.address, ubi)).to.be.at.least(3000);
       });
 
       it("require fail - The submission is still registered in Proof Of Humanity.", async () => {
@@ -165,155 +182,156 @@ contract('UBI.sol', accounts => {
         await ubi.changeProofOfHumanity(altProofOfHumanity.address);
         expect(await ubi.proofOfHumanity()).to.equal(altProofOfHumanity.address);
         expect(await ubi.proofOfHumanity()).to.not.equal(originalProofOfHumanity);
+
+        await ubi.changeProofOfHumanity(originalProofOfHumanity)
       });
 
       it("happy path - allow to burn and post.", async () => {
+        await setSubmissionIsRegistered(addresses[0], true);
         await setPost('hello world');
-        const previousBalance = new BigNumber((await ubi.balanceOf(addresses[0])).toString()).toNumber();
-        await ubi.burnAndPost('10000000000000', altPoster, 'hello world');
-        const newBalance = new BigNumber((await ubi.balanceOf(addresses[0])).toString()).toNumber();
-        expect(newBalance).to.lessThan(previousBalance);
+        const previousBalance = new BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
+        await ubi.burnAndPost(ethers.utils.parseEther("0.01"), altPoster, 'hello world');
+        const newBalance = new BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
+        expect(newBalance.toNumber()).to.lessThan(previousBalance.toNumber());
       });
+    });
+  });
+
+  describe("UBI accruing delegation", () => {
+
+    before(async () => {
+      // Restore original PoH
+      await ubi.changeProofOfHumanity(mockProofOfHumanity.address);
+
+      setSubmissionIsRegistered(addresses[0], true);
+      setSubmissionIsRegistered(addresses[1], false);
+      await ubi.startAccruing(addresses[0]);
+    });
+
+    it("require fail - Creating stream of UBI per second higher than UBI.accruedPerSecond should fail.", async () => {
+      setSubmissionIsRegistered(addresses[0], true);
+      setSubmissionIsRegistered(addresses[1], false);
+
+      // Stream from NOW until the next 1 hour
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(10,"minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Get the value of accruedPerSecond
+      const accruedPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+
+      // Generate invalid payment per second
+      const newStreamPaymentPerSecond = accruedPerSecond.plus(1);
+
+      // try to create stream with a value lower should revert
+      await expect(testUtils.createStream(accounts[0], addresses[1], newStreamPaymentPerSecond.toNumber(), fromDate, toDate, ubi))
+            .to.be.revertedWith("Cannot delegate more than maximum accrued per second.");
+    });
+
+    it("happy path - After creating a stream that starts in the future, human should accrue UBI until stream starts.", async () => {
+      setSubmissionIsRegistered(accounts[0].address, true);
+      setSubmissionIsRegistered(addresses[1], false);
+
+      // Stream from NOW until the next 1 hour
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(2, "hours").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Create a stream from address 0 to address 1
+      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      // try to create stream with a value lower should revert
+      const streamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
+
+      // Get previous human balance 
+      const prevHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
+      // Get previous Stream balance
+      const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId.toString(), addresses[1], ubi)).toString())
+      expect(prevStreamBalance.toNumber()).to.eq(0);
+
+      // Wait 1 hour
+      await testUtils.timeForward(testUtils.hoursToSeconds(1), network);
+
+      // Get current human balance 
+      const currHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
+      expect(currHumanBalance.toNumber()).to.eq(prevHumanBalance.plus(ubiPerSecond.multipliedBy(testUtils.hoursToSeconds(1))).toNumber());
 
     });
 
-    describe("UBI stream accruing", () => {
+    it("require fail - Creating stream to an existing valid stream recipient should fail.", async () => {
+      setSubmissionIsRegistered(addresses[0], true);
+      setSubmissionIsRegistered(addresses[1], false);
 
-      before(async () => {
-        // Restore original PoH
-        await ubi.changeProofOfHumanity(mockProofOfHumanity.address);
-  
-        setSubmissionIsRegistered(addresses[0], true);
-        setSubmissionIsRegistered(addresses[1], false);
-        await ubi.startAccruing(addresses[0]);
-      });
-  
-      it("require fail - Creating stream of UBI per second higher than UBI.accruedPerSecond should fail.", async () => {
-        setSubmissionIsRegistered(addresses[0], true);
-        setSubmissionIsRegistered(addresses[1], false);
-  
-        const fromDate = new Date();
-        const toDate = moment(fromDate).add(1, "hour").toDate();
-  
-        // Get the value of accruedPerSecond
-        const accruedPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
-  
-        // Generate invalid payment per second
-        const newStreamPaymentPerSecond = accruedPerSecond.plus(1);
-  
-        // try to create stream with a value lower should revert
-        await expect(ubi.connect(accounts[0]).create(addresses[1], ubi.address, testUtils.dateToSeconds(fromDate), testUtils.dateToSeconds(toDate), newStreamPaymentPerSecond.toString(), 1))
-          .to.be.revertedWith("Cannot delegate more than maximum accrued per second.");
-      });
-  
-      it("happy path - After creating a stream that starts in the future, human should accrue UBI until stream starts.", async () => {
-        setSubmissionIsRegistered(accounts[0].address, true);
-        setSubmissionIsRegistered(addresses[1], false);
-  
-        // Stream from NOW until the next 1 hour
-        const currentBlockTime = await testUtils.getCurrentBlockTime();
-  
-        const fromDate = moment(new Date(currentBlockTime * 1000)).add(2, "hours").toDate();
-        const toDate = moment(fromDate).add(1, "hour").toDate();
-  
-        // Create a stream from address 0 to address 1
-        const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
-        await ubi.connect(accounts[0]).create(addresses[1], ubi.address, testUtils.dateToSeconds(fromDate), testUtils.dateToSeconds(toDate), ubiPerSecond.toNumber(), 1);
-  
-        // ID of last stream.
-        const streamId = BigNumber((await ubi.getStreamCount()).toString()).toNumber();
-  
-        // Get previous human balance 
-        const prevHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
-        // Get previous Stream balance
-        const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId, addresses[1], ubi)).toString())
-        expect(prevStreamBalance.toNumber()).to.eq(0);
-  
-        // Wait 1 hour
-        await testUtils.timeForward(testUtils.hoursToSeconds(1), network);
-  
-        // Get current human balance 
-        const currHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
-        expect(currHumanBalance.toNumber()).to.eq(prevHumanBalance.plus(ubiPerSecond.multipliedBy(testUtils.hoursToSeconds(1))).toNumber());
-  
-      });
-  
-      it("require fail - Creating stream to an existing valid stream recipient should fail.", async () => {
-        setSubmissionIsRegistered(addresses[0], true);
-        setSubmissionIsRegistered(addresses[1], false);
-  
-        // Stream from NOW until the next 1 hour
-        const currentBlockTime = await testUtils.getCurrentBlockTime();
-  
-        const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "hours").toDate();
-        const toDate = moment(fromDate).add(1, "hour").toDate();
-  
-  
-        const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
-  
-        // try to create stream with a value lower should revert
-        await expect(ubi.connect(accounts[0]).create(addresses[1], ubi.address, testUtils.dateToSeconds(fromDate), testUtils.dateToSeconds(toDate), ubiPerSecond.toString(), 1))
-          .to.be.revertedWith("Account is already a recipient on an active stream.");
-      });
-  
-      it("happy path - After stream starts human should not accrue any UBI and stream should accrue.", async () => {
-        setSubmissionIsRegistered(accounts[0].address, true);
-        setSubmissionIsRegistered(addresses[1], false);
-  
-        // Create a stream from address 0 to address 1
-        const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
-  
-        // ID of last stream.
-        const streamId = BigNumber((await ubi.getStreamCount()).toString()).toNumber();
-  
-        // Get previous human balance 
-        const prevHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
-        // Get previous Stream balance
-        const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId, addresses[1], ubi)).toString())
-  
-        // Wait 2 hours to give a window of time for the stream to execute
-        await testUtils.timeForward(testUtils.hoursToSeconds(2), network);
-  
-        // Get current human balance 
-        const currHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
-        // Get current Stream balance
-        const currStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId, addresses[1], ubi)).toString())
-  
-        // Human should have accrued the balance of 1 hour
-        expect(currHumanBalance.toNumber()).to.eq(prevHumanBalance.plus(ubiPerSecond.multipliedBy(testUtils.hoursToSeconds(1))).toNumber(), "Human should not increase balance after delegating all UBIs per second");
-        // Stream should have accrued the balance of 1 hour
-        expect(currStreamBalance.toNumber()).to.eq(prevStreamBalance.plus(ubiPerSecond.multipliedBy(testUtils.hoursToSeconds(1))).toNumber(), "Stream should increase the balance in 1 UBI");
-      });
-  
-      it("happy path - When human stops being registered, stream should stop accruing.", async () => {
-        setSubmissionIsRegistered(addresses[0], true);
-        setSubmissionIsRegistered(addresses[2], false);
-  
-        // Stream from NOW until the next 1 hour
-        const currentBlockTime = await testUtils.getCurrentBlockTime();
-  
-        const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
-        const toDate = moment(fromDate).add(1, "hour").toDate();
-  
-        // Create a stream from address 0 to address 1
-        const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
-        await ubi.connect(accounts[0]).create(addresses[1], ubi.address, testUtils.dateToSeconds(fromDate), testUtils.dateToSeconds(toDate), ubiPerSecond.toNumber(), 1);
-  
-        // ID of last stream.
-        const streamId = BigNumber((await ubi.getStreamCount()).toString()).toNumber();  
-  
-        // Wait 30 minutes
-        await testUtils.timeForward(testUtils.hoursToSeconds(1), network);
-  
-        // Unregister human
-        setSubmissionIsRegistered(addresses[0], false);
-  
-        // GetStream balance
-        const streamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId, addresses[1], ubi)).toString())
-        expect(streamBalance.toNumber()).to.eq(0);
-  
-  
-      });
-    })
-  });
-})
+      // Stream from NOW until the next 1 hour
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "hours").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+
+      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+
+      // try to create stream with a value lower should revert
+      await expect(ubi.connect(accounts[0]).create(addresses[1], ubi.address, testUtils.dateToSeconds(fromDate), testUtils.dateToSeconds(toDate), ubiPerSecond.toString(), 1))
+        .to.be.revertedWith("Account is already a recipient on an active stream.");
+    });
+
+    it("happy path - After stream starts human should not accrue any UBI and stream should accrue.", async () => {
+      setSubmissionIsRegistered(accounts[0].address, true);
+      setSubmissionIsRegistered(addresses[1], false);
+
+      // Create a stream from address 0 to address 1
+      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+
+      // ID of last stream.
+      const streamId = BigNumber((await ubi.getStreamCount()).toString()).toNumber();
+
+      // Get previous human balance 
+      const prevHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
+      // Get previous Stream balance
+      const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId, addresses[1], ubi)).toString())
+
+      // Wait 2 hours to give a window of time for the stream to execute
+      await testUtils.timeForward(testUtils.hoursToSeconds(2), network);
+
+      // Get current human balance 
+      const currHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
+      // Get current Stream balance
+      const currStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId, addresses[1], ubi)).toString())
+
+      // Human should have accrued the balance of 1 hour
+      expect(currHumanBalance.toNumber()).to.eq(prevHumanBalance.plus(ubiPerSecond.multipliedBy(testUtils.hoursToSeconds(1))).toNumber(), "Human should not increase balance after delegating all UBIs per second");
+      // Stream should have accrued the balance of 1 hour
+      expect(currStreamBalance.toNumber()).to.eq(prevStreamBalance.plus(ubiPerSecond.multipliedBy(testUtils.hoursToSeconds(1))).toNumber(), "Stream should increase the balance in 1 UBI");
+    });
+
+    it("happy path - When human stops being registered, stream should stop accruing.", async () => {
+      setSubmissionIsRegistered(addresses[0], true);
+      setSubmissionIsRegistered(addresses[2], false);
+
+      // Stream from NOW until the next 1 hour
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Create a stream from address 0 to address 1
+      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      await ubi.connect(accounts[0]).createStream(addresses[1], ubi.address, testUtils.dateToSeconds(fromDate), testUtils.dateToSeconds(toDate), ubiPerSecond.toNumber(), 1);
+
+      // ID of last stream.
+      const streamId = BigNumber((await ubi.getStreamCount()).toString()).toNumber();  
+
+      // Wait 30 minutes
+      await testUtils.timeForward(testUtils.hoursToSeconds(1), network);
+
+      // Unregister human
+      setSubmissionIsRegistered(addresses[0], false);
+
+      // GetStream balance
+      const streamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId, addresses[1], ubi)).toString())
+      expect(streamBalance.toNumber()).to.eq(0);
+
+    });
+  })
+});
