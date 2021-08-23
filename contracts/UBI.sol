@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+v// SPDX-License-Identifier: MIT
 pragma solidity 0.7.3;
 
 /**
@@ -8,6 +8,7 @@ pragma solidity 0.7.3;
 
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+
 
 /**
  * @title ProofOfHumanity Interface
@@ -31,6 +32,26 @@ interface IPoster {
   event NewPost(bytes32 id, address user, string content);
 
   function post(string memory content) external;
+}
+
+pragma solidity =0.5.17;
+
+/**
+ * @title Sablier Types
+ * @author Sablier
+ */
+library Types {
+    struct Stream {
+        uint256 deposit;
+        uint256 ratePerSecond;
+        uint256 remainingBalance;
+        uint256 startTime;
+        uint256 stopTime;
+        address recipient;
+        address sender;
+        address tokenAddress;
+        bool isEntity;
+    }
 }
 
 
@@ -121,6 +142,7 @@ contract UBI is Initializable {
 
     balance[msg.sender] = _initialSupply;
     totalSupply = _initialSupply;
+    nextStreamId = 0;
   }
 
   /* External */
@@ -302,19 +324,19 @@ contract UBI is Initializable {
    /*** Storage Properties ***/
 
     /**
-     * @notice Counter for new stream ids.
+     * @dev Counter for new stream ids.
      */
     uint256 public nextStreamId;
 
     /**
-     * @notice The stream objects identifiable by their unsigned integer ids.
+     * @dev The stream objects identifiable by their unsigned integer ids.
      */
     mapping(uint256 => Types.Stream) private streams;
 
     /*** Modifiers ***/
 
     /**
-     * @dev Throws if the caller is not the sender of the recipient of the stream.
+     * @dev Throws if the caller is not the sender or the recipient of the stream.
      */
     modifier onlySenderOrRecipient(uint256 streamId) {
         require(
@@ -333,10 +355,6 @@ contract UBI is Initializable {
     }
 
     /*** Contract Logic Starts Here */
-
-    constructor() public {
-        nextStreamId = 100000;
-    }
 
     /*** View Functions ***/
 
