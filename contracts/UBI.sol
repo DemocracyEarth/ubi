@@ -34,8 +34,6 @@ interface IPoster {
   function post(string memory content) external;
 }
 
-pragma solidity =0.5.17;
-
 /**
  * @title Sablier Types
  * @author Sablier
@@ -81,6 +79,36 @@ contract UBI is Initializable {
    * a call to {approve}. `value` is the new allowance.
    */
   event Approval(address indexed owner, address indexed spender, uint256 value);
+
+  /**
+     * @notice Emits when a stream is successfully created.
+     */
+    event CreateStream(
+        uint256 indexed streamId,
+        address indexed sender,
+        address indexed recipient,
+        uint256 deposit,
+        address tokenAddress,
+        uint256 startTime,
+        uint256 stopTime
+    );
+
+   /**
+     * @notice Emits when the recipient of a stream withdraws a portion or all their pro rata share of the stream.
+     */
+    event WithdrawFromStream(uint256 indexed streamId, address indexed recipient, uint256 amount);
+
+    /**
+     * @notice Emits when a stream is successfully cancelled and tokens are transferred back on a pro rata basis.
+     */
+    event CancelStream(
+        uint256 indexed streamId,
+        address indexed sender,
+        address indexed recipient,
+        uint256 senderBalance,
+        uint256 recipientBalance
+    );
+
 
   using SafeMath for uint256;
 
@@ -362,7 +390,6 @@ contract UBI is Initializable {
      * @notice Returns the stream with all its properties.
      * @dev Throws if the id does not point to a valid stream.
      * @param streamId The id of the stream to query.
-     * @return The stream object.
      */
     function getStream(uint256 streamId)
         external
@@ -395,7 +422,6 @@ contract UBI is Initializable {
      *  `startTime`, it returns 0.
      * @dev Throws if the id does not point to a valid stream.
      * @param streamId The id of the stream for which to query the delta.
-     * @return The time delta in seconds.
      */
     function deltaOf(uint256 streamId) public view streamExists(streamId) returns (uint256 delta) {
         Types.Stream memory stream = streams[streamId];
@@ -405,7 +431,6 @@ contract UBI is Initializable {
     }
 
     struct BalanceOfLocalVars {
-        MathError mathErr;
         uint256 recipientBalance;
         uint256 withdrawalAmount;
         uint256 senderBalance;
@@ -416,15 +441,13 @@ contract UBI is Initializable {
      * @dev Throws if the id does not point to a valid stream.
      * @param streamId The id of the stream for which to query the balance.
      * @param who The address for which to query the balance.
-     * @return The total funds allocated to `who` as uint256.
      */
-    function balanceOf(uint256 streamId, address who) public view streamExists(streamId) returns (uint256 balance) {
+    function balanceOf(uint256 streamId, address who) public view streamExists(streamId) returns (uint256) {
         Types.Stream memory stream = streams[streamId];
         BalanceOfLocalVars memory vars;
 
         uint256 delta = deltaOf(streamId);
-        (vars.mathErr, vars.recipientBalance) = mulUInt(delta, stream.ratePerSecond);
-        require(vars.mathErr == MathError.NO_ERROR, "recipient balance calculation error");
+        vars.recipientBalance = delta.mul(stream.ratePerSecond);
 
         /*
          * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
@@ -432,18 +455,13 @@ contract UBI is Initializable {
          * streamed until now.
          */
         if (stream.deposit > stream.remainingBalance) {
-            (vars.mathErr, vars.withdrawalAmount) = subUInt(stream.deposit, stream.remainingBalance);
-            assert(vars.mathErr == MathError.NO_ERROR);
-            (vars.mathErr, vars.recipientBalance) = subUInt(vars.recipientBalance, vars.withdrawalAmount);
-            /* `withdrawalAmount` cannot and should not be bigger than `recipientBalance`. */
-            assert(vars.mathErr == MathError.NO_ERROR);
+            vars.withdrawalAmount = stream.deposit.sub(stream.remainingBalance);
+            vars.recipientBalance = vars.recipientBalance.sub(vars.withdrawalAmount);
         }
 
         if (who == stream.recipient) return vars.recipientBalance;
         if (who == stream.sender) {
-            (vars.mathErr, vars.senderBalance) = subUInt(stream.remainingBalance, vars.recipientBalance);
-            /* `recipientBalance` cannot and should not be bigger than `remainingBalance`. */
-            assert(vars.mathErr == MathError.NO_ERROR);
+            vars.senderBalance = stream.remainingBalance.sub(vars.recipientBalance);
             return vars.senderBalance;
         }
         return 0;
@@ -452,7 +470,6 @@ contract UBI is Initializable {
     /*** Public Effects & Interactions Functions ***/
 
     struct CreateStreamLocalVars {
-        MathError mathErr;
         uint256 duration;
         uint256 ratePerSecond;
     }
@@ -489,9 +506,7 @@ contract UBI is Initializable {
         require(stopTime > startTime, "stop time before the start time");
 
         CreateStreamLocalVars memory vars;
-        (vars.mathErr, vars.duration) = subUInt(stopTime, startTime);
-        /* `subUInt` can only return MathError.INTEGER_UNDERFLOW but we know `stopTime` is higher than `startTime`. */
-        assert(vars.mathErr == MathError.NO_ERROR);
+        vars.duration = stopTime.sub(startTime);
 
         /* Without this, the rate per second would be zero. */
         require(deposit >= vars.duration, "deposit smaller than time delta");
@@ -499,9 +514,7 @@ contract UBI is Initializable {
         /* This condition avoids dealing with remainders */
         require(deposit % vars.duration == 0, "deposit not multiple of time delta");
 
-        (vars.mathErr, vars.ratePerSecond) = divUInt(deposit, vars.duration);
-        /* `divUInt` can only return MathError.DIVISION_BY_ZERO but we know `duration` is not zero. */
-        assert(vars.mathErr == MathError.NO_ERROR);
+        vars.ratePerSecond = deposit.div(vars.duration);
 
         /* Create and store the stream object. */
         uint256 streamId = nextStreamId;
@@ -518,10 +531,9 @@ contract UBI is Initializable {
         });
 
         /* Increment the next stream id. */
-        (vars.mathErr, nextStreamId) = addUInt(nextStreamId, uint256(1));
-        require(vars.mathErr == MathError.NO_ERROR, "next stream id calculation error");
+        nextStreamId = nextStreamId.add(1);
 
-        IERC20(tokenAddress).safeTransferFrom(msg.sender, address(this), deposit);
+        transferFrom(msg.sender, address(this), deposit);
         emit CreateStream(streamId, msg.sender, recipient, deposit, tokenAddress, startTime, stopTime);
         return streamId;
     }
@@ -537,7 +549,6 @@ contract UBI is Initializable {
      */
     function withdrawFromStream(uint256 streamId, uint256 amount)
         external
-        nonReentrant
         streamExists(streamId)
         onlySenderOrRecipient(streamId)
         returns (bool)
@@ -545,20 +556,14 @@ contract UBI is Initializable {
         require(amount > 0, "amount is zero");
         Types.Stream memory stream = streams[streamId];
 
-        uint256 balance = balanceOf(streamId, stream.recipient);
-        require(balance >= amount, "amount exceeds the available balance");
+        uint256 recipientBalance = balanceOf(streamId, stream.recipient);
+        require(recipientBalance >= amount, "amount exceeds the available balance");
 
-        MathError mathErr;
-        (mathErr, streams[streamId].remainingBalance) = subUInt(stream.remainingBalance, amount);
-        /**
-         * `subUInt` can only return MathError.INTEGER_UNDERFLOW but we know that `remainingBalance` is at least
-         * as big as `amount`.
-         */
-        assert(mathErr == MathError.NO_ERROR);
+        streams[streamId].remainingBalance = stream.remainingBalance.sub(amount);
 
         if (streams[streamId].remainingBalance == 0) delete streams[streamId];
 
-        IERC20(stream.tokenAddress).safeTransfer(stream.recipient, amount);
+        transfer(stream.recipient, amount);
         emit WithdrawFromStream(streamId, stream.recipient, amount);
         return true;
     }
@@ -573,7 +578,6 @@ contract UBI is Initializable {
      */
     function cancelStream(uint256 streamId)
         external
-        nonReentrant
         streamExists(streamId)
         onlySenderOrRecipient(streamId)
         returns (bool)
@@ -584,9 +588,8 @@ contract UBI is Initializable {
 
         delete streams[streamId];
 
-        IERC20 token = IERC20(stream.tokenAddress);
-        if (recipientBalance > 0) token.safeTransfer(stream.recipient, recipientBalance);
-        if (senderBalance > 0) token.safeTransfer(stream.sender, senderBalance);
+        if (recipientBalance > 0) transfer(stream.recipient, recipientBalance);
+        if (senderBalance > 0) transfer(stream.sender, senderBalance);
 
         emit CancelStream(streamId, stream.sender, stream.recipient, senderBalance, recipientBalance);
         return true;
