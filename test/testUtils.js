@@ -46,9 +46,9 @@ const testUtils = {
     // }
   },
 
-  async timeForward(seconds, network) {
+  async timeForward(seconds, network, mine = true) {
     await network.provider.send("evm_increaseTime", [seconds]);
-    await network.provider.send("evm_mine");
+    if(mine) await network.provider.send("evm_mine");
   },
 
   dateToSeconds(date) {

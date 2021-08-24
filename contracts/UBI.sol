@@ -142,8 +142,6 @@ contract UBI is Initializable {
   /// @dev Timestamp since human started accruing.
   mapping(address => uint256) public accruedSince;
 
-  /// @dev Get the streamId from human and recipient addresses.
-  mapping (address => mapping(address => uint256)) public streamIds;
 
   /* Modifiers */
 
@@ -346,7 +344,15 @@ contract UBI is Initializable {
   * @return The current balance including accrued Universal Basic Income of the user.
   **/
   function balanceOf(address _human) public view returns (uint256) {
-    return getAccruedValue(_human).add(balance[_human]);
+	uint256 delegatedBalance;
+	for(uint256 i = 0; i < streamIdsOf[_human].length; i++) {
+		uint256 streamId = streamIdsOf[_human][i];
+		uint256 streamBalance = balanceOf(streamId, streams[streamId].recipient);
+		console.log("STREAM BALANCE",streamBalance);
+		delegatedBalance = delegatedBalance.add(streamBalance);
+	}	
+
+    return getAccruedValue(_human).add(balance[_human]).sub(delegatedBalance);
   }
 
   /**
@@ -364,6 +370,15 @@ contract UBI is Initializable {
      * @dev The stream objects identifiable by their unsigned integer ids.
      */
     mapping(uint256 => Types.Stream) private streams;
+
+	/// @dev Get the streamId from human and recipient addresses.
+  	mapping (address => mapping(address => uint256)) public streamIds;
+
+			
+	/// @dev A mapping containing UNORDERED lists of the stream ids of each sender.
+	/// @notice This does not guarantee to contain valid streams (may have ended).
+	mapping (address => uint256[]) public streamIdsOf;
+
 
     /*** Modifiers ***/
 
@@ -455,12 +470,20 @@ contract UBI is Initializable {
 
         vars.recipientBalance = stream.deposit;
 
-		// Account for the time between accruendSince ans startTime
-		uint256 accruedSinceDelta = accruedSince[stream.sender].sub(block.timestamp.sub(stream.startTime));
-		// Calculate how much accrued per second doesnt belong to the stream
-		uint256 nonStreamBalance = accruedSinceDelta.mul(accruedPerSecond);
-		// Stream accrued balance is: (Total Accrued value - non stream balance) * rate of accruance.  (Withdraws not included)
+		// Account for the time between accruedSince ans startTime
+		uint nonStreamBalance;
+		if(accruedSince[stream.sender] < stream.startTime) {
+			
+			uint256 startTime = stream.startTime;
+			uint256 accruedSinceDelta = startTime.sub(accruedSince[stream.sender]);
+			
+			// Calculate how much accrued per second doesnt belong to the stream
+			nonStreamBalance = accruedSinceDelta.mul(accruedPerSecond);
+			
+		}
+		// Stream accrued balance is: (Total Accrued value - non stream accrued value) * rate of accruance.  (Withdraws not included)
 		uint256 streamAccruedValue = getAccruedValue(stream.sender).sub(nonStreamBalance).mul(stream.ratePerSecond.div(accruedPerSecond));
+		
 
 		/*
          * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
@@ -546,6 +569,23 @@ contract UBI is Initializable {
         });
 
 		streamIds[msg.sender][recipient] = newStreamId;
+
+		// Clear previous streamId if existed
+		if(existingStreamId > 0) {
+			// This looks for the element that contains the existingStreamId
+			// and replaces the newStreamId. This makes the list's order unreliable.
+			for(uint256 i = 0; i < streamIdsOf[msg.sender].length; i++) {
+				
+				// If it's existing stream id, demove it from the array and replace it with the new
+				if(streamIdsOf[msg.sender][i] == existingStreamId) {
+					streamIdsOf[msg.sender][i] = newStreamId;
+					break;
+				} 
+			}
+		} else {
+			// If id didn't exist, just add it.
+			streamIdsOf[msg.sender].push(newStreamId);
+		}
 
         /* Increment the next stream id. */
         prevStreamId = newStreamId;
