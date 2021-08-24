@@ -247,7 +247,7 @@ contract('UBI.sol', accounts => {
       console.log("Prev Human balance", prevHumanBalance.toString());
       // Get previous Stream balance
       const initialStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId.toString(), addresses[1], ubi)).toString())
-      console.log("Initial stream balance", prevHumanBalance.toString());
+      console.log("Initial stream balance", initialStreamBalance.toString());
       expect(initialStreamBalance.toNumber()).to.eq(0, "Initial stream balance should be 0");
 
       // Wait 1 hour
@@ -256,6 +256,9 @@ contract('UBI.sol', accounts => {
       // Get current human balance 
       const currHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
       expect(currHumanBalance.toNumber()).to.eq(prevHumanBalance.plus(ubiPerSecond.multipliedBy(testUtils.hoursToSeconds(1))).toNumber());
+
+      const currentStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId.toString(), addresses[1], ubi)).toString())
+      expect(currentStreamBalance.toNumber()).to.eq(0, "Current stream balance should still be 0");
 
     });
 
@@ -273,7 +276,7 @@ contract('UBI.sol', accounts => {
       const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
 
       // try to create stream with a value lower should revert
-      await expect(ubi.connect(accounts[0]).create(addresses[1], ubi.address, testUtils.dateToSeconds(fromDate), testUtils.dateToSeconds(toDate), ubiPerSecond.toString(), 1))
+      await expect(testUtils.createStream(accounts[0],addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi))
         .to.be.revertedWith("Account is already a recipient on an active stream.");
     });
 

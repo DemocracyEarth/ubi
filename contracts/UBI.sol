@@ -8,6 +8,7 @@ pragma solidity 0.7.3;
 
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "hardhat/console.sol";
 
 /**
  * @title ProofOfHumanity Interface
@@ -444,20 +445,32 @@ contract UBI is Initializable {
     function balanceOf(uint256 streamId, address who) public view streamExists(streamId) returns (uint256) {
         Types.Stream memory stream = streams[streamId];
         BalanceOfLocalVars memory vars;
-		if(stream.startTime <= block.timestamp) return 0;
+
+		if(stream.startTime >= block.timestamp) return 0;
 
 
         vars.recipientBalance = stream.deposit;
 
-		uint256 streamAccruedValue = getAccruedValue(stream.sender).mul(stream.ratePerSecond.div(accruedPerSecond));
-        /*
+		// Account for the time between accruendSince ans startTime
+		uint256 accruedSinceDelta = accruedSince[stream.sender].sub(block.timestamp.sub(stream.startTime));
+		// Calculate how much accrued per second doesnt belong to the stream
+		uint256 nonStreamBalance = accruedSinceDelta.mul(accruedPerSecond);
+		// Stream accrued balance is: (Total Accrued value - non stream balance) * rate of accruance.  (Withdraws not included)
+		uint256 streamAccruedValue = getAccruedValue(stream.sender).sub(nonStreamBalance).mul(stream.ratePerSecond.div(accruedPerSecond));
+
+		/*
          * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
          * We have to subtract the total amount withdrawn from the amount of money that has been
          * streamed until now.
          */
-		if(stream.stopTime <= block.timestamp) return stream.remainingBalance;
+		if(stream.stopTime < block.timestamp) return stream.remainingBalance;
+		
+		
+		
+		uint256 withdrawn = streamAccruedValue.sub(stream.remainingBalance);
 
 		uint256 realTimeRemainingBalance = stream.remainingBalance.add(streamAccruedValue);
+		assert(realTimeRemainingBalance <= streamAccruedValue);
 
         if (who == stream.recipient) return realTimeRemainingBalance;
         if (who == stream.sender) {
@@ -506,8 +519,7 @@ contract UBI is Initializable {
         require(startTime >= block.timestamp, "start time before block.timestamp");
         require(stopTime > startTime, "stop time before the start time");
         require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
-		console.log("START TIME", startTime);
-		console.log("STOP TIME", stopTime);
+		
         CreateStreamLocalVars memory vars;
         vars.duration = stopTime.sub(startTime);
 
