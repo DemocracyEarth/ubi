@@ -142,6 +142,9 @@ contract UBI is Initializable {
   /// @dev Timestamp since human started accruing.
   mapping(address => uint256) public accruedSince;
 
+  /// @dev Get the streamId from human and recipient addresses.
+  mapping (address => mapping(address => uint256)) public streamIds;
+
   /* Modifiers */
 
   /// @dev Verifies that the sender has ability to modify governed parameters.
@@ -170,7 +173,7 @@ contract UBI is Initializable {
 
     balance[msg.sender] = _initialSupply;
     totalSupply = _initialSupply;
-    nextStreamId = 0;
+    prevStreamId = 0;
   }
 
   /* External */
@@ -352,9 +355,10 @@ contract UBI is Initializable {
    /*** Storage Properties ***/
 
     /**
-     * @dev Counter for new stream ids.
+     * @dev Counter for new stream ids. Stores the last used stream id.
+	 * @notice 0 is an invalid stream. it's used to check for empty streams on `streamIds` mapping
      */
-    uint256 public nextStreamId;
+    uint256 public prevStreamId;
 
     /**
      * @dev The stream objects identifiable by their unsigned integer ids.
@@ -519,14 +523,16 @@ contract UBI is Initializable {
         require(startTime >= block.timestamp, "start time before block.timestamp");
         require(stopTime > startTime, "stop time before the start time");
         require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
+		uint256 existingStreamId = streamIds[msg.sender][recipient];
+     	require(existingStreamId == 0 || streams[existingStreamId].stopTime <= block.timestamp, "Account is already a recipient on an active stream.");
 		
         CreateStreamLocalVars memory vars;
         vars.duration = stopTime.sub(startTime);
 
         /* Create and store the stream object. */
-        uint256 streamId = nextStreamId;
+        uint256 newStreamId = prevStreamId.add(1);
 		// Create the stream
-        streams[streamId] = Types.Stream({
+        streams[newStreamId] = Types.Stream({
 			// Total deposit is calculated from duration and ubiPerSecond
             deposit: accruedPerSecond.mul(vars.duration).mul(ubiPerSecond.div(accruedPerSecond)),
             ratePerSecond: ubiPerSecond, // how many UBI to delegate per second.
@@ -539,21 +545,13 @@ contract UBI is Initializable {
             tokenAddress: tokenAddress
         });
 
-        // uint256 accruePerSecond; // Original is deposit. The type remains but the name changes because it has different meaning.
-        // uint256 ratePerSecond;
-        // uint256 remainingBalance;
-        // uint256 startTime;
-        // uint256 stopTime;
-        // address recipient;
-        // address sender;
-        // address tokenAddress;
-        // bool isEntity;
+		streamIds[msg.sender][recipient] = newStreamId;
 
         /* Increment the next stream id. */
-        nextStreamId = nextStreamId.add(1);
+        prevStreamId = newStreamId;
 
-        emit CreateStream(streamId, msg.sender, recipient, ubiPerSecond, tokenAddress, startTime, stopTime);
-        return streamId;
+        emit CreateStream(newStreamId, msg.sender, recipient, ubiPerSecond, tokenAddress, startTime, stopTime);
+        return newStreamId;
     }
 
     /**

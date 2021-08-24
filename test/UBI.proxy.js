@@ -236,7 +236,7 @@ contract('UBI.sol', accounts => {
       const currentBlockTime = await testUtils.getCurrentBlockTime();
 
       const fromDate = moment(new Date(currentBlockTime * 1000)).add(2, "hours").toDate();
-      const toDate = moment(fromDate).add(1, "hour").toDate();
+      const toDate = moment(fromDate).add(2, "hour").toDate();
 
       // Create a stream from address 0 to address 1
       const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
@@ -269,7 +269,7 @@ contract('UBI.sol', accounts => {
       // Stream from NOW until the next 1 hour
       const currentBlockTime = await testUtils.getCurrentBlockTime();
 
-      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "hours").toDate();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(10, "minutes").toDate();
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Get accrued per second
