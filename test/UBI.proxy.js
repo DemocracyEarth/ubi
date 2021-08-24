@@ -291,7 +291,7 @@ contract('UBI.sol', accounts => {
         .to.be.revertedWith("Account is already a recipient on an active stream.");
     });
 
-    it("happy path - While stream is active human should not accrue any UBI and stream should accrue.", async () => {
+    it("happy path - While stream with full accruedPerSecond delegation is active, human should not accrue any UBI and stream should accrue.", async () => {
       setSubmissionIsRegistered(accounts[0].address, true);
       setSubmissionIsRegistered(addresses[1], false);
 
@@ -338,7 +338,7 @@ contract('UBI.sol', accounts => {
       setSubmissionIsRegistered(addresses[0], true);
       setSubmissionIsRegistered(addresses[2], false);
 
-      // Move blocktime to the same as the start time
+      // Create stream 1 minute after current blockTime
       const currentBlockTime = await testUtils.getCurrentBlockTime();
       const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       const toDate = moment(fromDate).add(1, "hour").toDate();
@@ -359,8 +359,134 @@ contract('UBI.sol', accounts => {
 
     });
 
-    it("require fail - Creating a stream with more than the remaining balance to deleghate should fail", () => {
-      expect(false, "NOT IMPLEMENTED");
+    it("require fail - Creating a stream from a non registerded human should fail", async () => {
+      // Unregister human
+      setSubmissionIsRegistered(addresses[1], false);
+
+      // Create stream 1 minute after current blockTime
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      await expect(testUtils.createStream(accounts[1], addresses[2], ubiPerSecond.toNumber(), fromDate, toDate, ubi)).to.be.revertedWith("Only registered humans can stream UBI.");
+    })
+
+    it("happy path - Creating a new stream after one has finished should not increment the number of active streams", async () => {
+      setSubmissionIsRegistered(addresses[0], true);
+      // Get the last created stream
+      const stream = await ubi.getStream(lastStreamId);
+
+      const prevStreamsCount = await ubi.getStreamsCount(addresses[0]);
+
+      // Move blocktime to be after stream stopTime
+      if (await testUtils.getCurrentBlockTime() < stream.stopTime.toNumber()) {
+        await testUtils.setNextBlockTime(stream.stopTime.toNumber() + 1, network);
+        expect(await testUtils.getCurrentBlockTime()).to.be.greaterThan(stream.stopTime.toNumber(), "Current blocktime should be after last stream stop time");
+      }
+
+      // Create a new stream
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
+      const currStreamsCount = await ubi.getStreamsCount(addresses[0]);
+      expect(currStreamsCount.toNumber()).to.eq(prevStreamsCount.toNumber(), "Creating a stream after another has finished should not increase stream count");
+    });
+
+    it("happy path - Creating a new stream while others are running or pending should increment the number of active streams", async () => {
+      setSubmissionIsRegistered(addresses[0], true);
+      // Get the last created stream
+      const stream = await ubi.getStream(lastStreamId);
+
+      const prevStreamsCount = await ubi.getStreamsCount(addresses[0]);
+
+      // Move blocktime to be after stream startTime
+      if (await testUtils.getCurrentBlockTime() < stream.startTime.toNumber()) {
+        await testUtils.setNextBlockTime(stream.startTime.toNumber(), network);
+        expect(await testUtils.getCurrentBlockTime()).to.be.eq(stream.startTime.toNumber(), "Current blocktime should be last stream start time");
+      }
+
+      // Create a new stream
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      lastStreamId = await testUtils.createStream(accounts[0], addresses[2], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
+      const currStreamsCount = await ubi.getStreamsCount(addresses[0]);
+      expect(currStreamsCount.toNumber()).to.eq(prevStreamsCount.toNumber() + 1, "Creating a stream after another has finished should not increase stream count");
+    });
+
+    it("happy path - Creating 2 streams with half accruedPerSecond per each should accrue the same value.", async () => {
+      setSubmissionIsRegistered(addresses[0], true);
+      // Get the last created stream
+      const stream = await ubi.getStream(lastStreamId);
+      // Move to the end of the stream
+      await testUtils.setNextBlockTime(stream.stopTime.toNumber(), network);
+      expect(await testUtils.getCurrentBlockTime()).to.eq(stream.stopTime.toNumber(), "Current block time should be the end of the last stream");
+
+      // Create a new stream
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      
+      // Create 2 streams with accruedPerSecond / 2
+      const firstStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.div(2).toNumber(), fromDate, toDate, ubi);
+      const secondStreamId = await testUtils.createStream(accounts[0], addresses[2], ubiPerSecond.div(2).toNumber(), fromDate, toDate, ubi);
+      lastStreamId = secondStreamId;
+      expect((await ubi.getStreamsCount(addresses[0])).toNumber()).to.eq(2, "There should only be 2 streams");
+
+      // Move blocktime to end of firts stream (2nd is the same)
+      const firstStream = await ubi.getStream(firstStreamId);
+      await testUtils.setNextBlockTime(firstStream.stopTime.toNumber(), network);
+
+      // Accrued balance should be half UBI for both streamn
+      const firstStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(firstStreamId, addresses[1], ubi)).toString());
+      const secondStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(secondStreamId, addresses[2], ubi)).toString());
+      expect(firstStreamBalance.toNumber()).to.eq(ubiPerSecond.div(2).multipliedBy(3600).toNumber(), "Invalid balance of first stream");
+      expect(secondStreamBalance.toNumber()).to.eq(ubiPerSecond.div(2).multipliedBy(3600).toNumber(), "Invalid balance of second stream");
+    })
+
+    it("happy path - Creating 1 stream with half accruedPerSecond per each should accrue half for the steram and half for the human.", async () => {
+      setSubmissionIsRegistered(addresses[0], true);
+      // Get the last created stream
+      const lastStream = await ubi.getStream(lastStreamId);
+      // Move to the end of the stream
+      if(await testUtils.getCurrentBlockTime() < lastStream.stopTime.toNumber()) {
+        await testUtils.setNextBlockTime(lastStream.stopTime.toNumber(), network);
+        expect(await testUtils.getCurrentBlockTime()).to.eq(lastStream.stopTime.toNumber(), "Current block time should be the end of the last stream");
+      }
+
+      // Create a new stream with half ubiPerSecond
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString()).div(2);
+      console.log("UBI PER SECOND", ubiPerSecond.toNumber());
+      // Create 2 streams with accruedPerSecond / 2
+      lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
+
+      // Move blocktime to start of stream
+      const stream = await ubi.getStream(lastStreamId);
+      await testUtils.setNextBlockTime(stream.startTime.toNumber(), network);
+
+      // get initial balance of stream and human
+      const currHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
+      const currStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi)).toString())
+
+      // Move blocktime to end of stream
+      await testUtils.setNextBlockTime(stream.stopTime.toNumber(), network);
+
+      console.log("STREAM TIME", stream.stopTime.toNumber() - stream.startTime.toNumber());
+
+      // get last balance of stream and human
+      const lastHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
+      const lastStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi)).toString())
+
+      // Accrued balance should be half UBI for both streamn
+      expect(lastHumanBalance.toNumber()).to.eq(currHumanBalance.plus(ubiPerSecond.multipliedBy(3600)).toNumber(), "Human should accrue only half of UBI");
+      expect(lastStreamBalance.toNumber()).to.eq(currStreamBalance.plus(ubiPerSecond.multipliedBy(3600)).toNumber(), "Stream should accrue only half of UBI");
     })
   })
 });

@@ -527,6 +527,7 @@ contract UBI is Initializable {
         public
         returns (uint256)
     {
+        require(proofOfHumanity.isRegistered(msg.sender), "Only registered humans can stream UBI.");
         require(recipient != address(0x00), "stream to the zero address");
         require(recipient != address(this), "stream to the contract itself");
         require(recipient != msg.sender, "stream to the caller");
@@ -644,4 +645,10 @@ contract UBI is Initializable {
     function getAccruedPerSecond() public view returns (uint256) {
       return accruedPerSecond;
     }
+
+    function getStreamsCount(address _human) public view returns (uint256) {
+      require(proofOfHumanity.isRegistered(_human), "The submission is not registered in Proof Of Humanity.");
+      return streamIdsOf[_human].length;
+    }
+  
 }
