@@ -349,7 +349,7 @@ contract UBI is Initializable {
     for(uint256 i = 0; i < streamIdsOf[_human].length; i++) {
       uint256 streamId = streamIdsOf[_human][i];
       Types.Stream memory stream = streams[streamId];
-      delegatedBalance = balanceOf(streamId, stream.recipient);
+      delegatedBalance = delegatedBalance.add(balanceOf(streamId, stream.recipient));
     }
 
     return getAccruedValue(_human).add(balance[_human]).sub(delegatedBalance);

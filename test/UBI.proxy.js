@@ -472,21 +472,19 @@ contract('UBI.sol', accounts => {
       await testUtils.setNextBlockTime(stream.startTime.toNumber(), network);
 
       // get initial balance of stream and human
-      const currHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
-      const currStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi)).toString())
+      const prevhumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
+      const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi)).toString())
 
       // Move blocktime to end of stream
       await testUtils.setNextBlockTime(stream.stopTime.toNumber(), network);
 
-      console.log("STREAM TIME", stream.stopTime.toNumber() - stream.startTime.toNumber());
-
       // get last balance of stream and human
-      const lastHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
+      const newHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
       const lastStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi)).toString())
 
       // Accrued balance should be half UBI for both streamn
-      expect(lastHumanBalance.toNumber()).to.eq(currHumanBalance.plus(ubiPerSecond.multipliedBy(3600)).toNumber(), "Human should accrue only half of UBI");
-      expect(lastStreamBalance.toNumber()).to.eq(currStreamBalance.plus(ubiPerSecond.multipliedBy(3600)).toNumber(), "Stream should accrue only half of UBI");
+      expect(newHumanBalance.toNumber()).to.eq(prevhumanBalance.plus(ubiPerSecond.multipliedBy(3600)).toNumber(), "Human should accrue only half of UBI");
+      expect(lastStreamBalance.toNumber()).to.eq(prevStreamBalance.plus(ubiPerSecond.multipliedBy(3600)).toNumber(), "Stream should accrue only half of UBI");
     })
   })
 });
