@@ -314,17 +314,10 @@ contract UBI is Initializable {
   */
   function permit(address _owner, address _spender, uint256 _value, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
     require(block.timestamp <= _deadline, "ERC20Permit: expired deadline");
-    bytes32 structHash = keccak256(
-      abi.encode(
-        permitTypehash, 
-        _owner,
-        _spender,
-        _value,
-        nonces[_owner],
-        _deadline
-      )
-    );
-    bytes32 hash = _hashTypedDataV4(structHash);
+    bytes32 structHash = keccak256(abi.encode(permitTypehash, _owner, _spender, _value, nonces[_owner], _deadline));
+    // TODO: Recalculate separator because of the possible change of chainId or just deploy a new version in that case?
+    // Also could have a `regenerateDomainSeparator` that builds the domainSeparator again using the current chainId 
+    bytes32 hash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
     address signer = ECDSA.recover(hash, _v, _r, _s);
     require(signer == _owner, "ERC20Permit: invalid signature");
     // Must be modified only here. Doesn't need SafeMath because can't reach overflow if incremented only here by one.
@@ -332,12 +325,6 @@ contract UBI is Initializable {
     nonces[_owner]++;
     allowance[_owner][_spender] = _value;
     emit Approval(_owner, _spender, _value);
-  }
-
-  function _hashTypedDataV4(bytes32 _structHash) internal view returns (bytes32) {
-    // TODO: Recalculate separator because of the possible change of chainId or just deploy a new version in that case?
-    //   Also could have a `regenerateDomainSeparator` that builds the domainSeparator again using the current chainId 
-    return keccak256(abi.encodePacked("\x19\x01", domainSeparator, _structHash));
   }
 
   /* Getters */
