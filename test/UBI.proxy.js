@@ -213,9 +213,10 @@ contract('UBI.sol', accounts => {
       setSubmissionIsRegistered(addresses[0], true);
       setSubmissionIsRegistered(addresses[1], false);
 
-      // Stream from NOW until the next 1 hour
       const currentBlockTime = await testUtils.getCurrentBlockTime();
-      const fromDate = moment(new Date(currentBlockTime * 1000)).add(10,"minutes").toDate();
+      // Stream starts at current blocktime + 10 minutes
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(10, "minutes").toDate();
+      // Stream lasts for 1 hour
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Get the value of accruedPerSecond
@@ -226,37 +227,44 @@ contract('UBI.sol', accounts => {
 
       // try to create stream with a value lower should revert
       await expect(testUtils.createStream(accounts[0], addresses[1], newStreamPaymentPerSecond.toNumber(), fromDate, toDate, ubi))
-            .to.be.revertedWith("Cannot delegate a value higher than accruedPerSecond");
+        .to.be.revertedWith("Cannot delegate a value higher than accruedPerSecond");
     });
 
     it("happy path - After creating a stream that starts in the future, human should accrue UBI until stream starts.", async () => {
       setSubmissionIsRegistered(accounts[0].address, true);
       setSubmissionIsRegistered(addresses[1], false);
 
-      // Stream from NOW until the next 1 hour
-      const currentBlockTime = await testUtils.getCurrentBlockTime();
-
-      const fromDate = moment(new Date(currentBlockTime * 1000)).add(2, "hours").toDate();
+      const initialBlockTime = await testUtils.getCurrentBlockTime();
+      // Stream starts at current blocktime + 1 hour
+      const fromDate = moment(new Date(initialBlockTime * 1000)).add(1, "hours").toDate();
+      // Stream lasts 2 hours
       const toDate = moment(fromDate).add(2, "hour").toDate();
 
       // Create a stream from address 0 to address 1
       const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
       // try to create stream with a value lower should revert
       lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
+      const blockTimeAfterStreamCreation = await testUtils.getCurrentBlockTime();
+
       // Get previous human balance 
       const prevHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
-      console.log("Prev Human balance", prevHumanBalance.toString());
-      // Get previous Stream balance
-      const initialStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId.toString(), addresses[1], ubi)).toString())
-      console.log("Initial stream balance", initialStreamBalance.toString());
-      expect(initialStreamBalance.toNumber()).to.eq(0, "Initial stream balance should be 0");
 
-      // Wait 1 hour
-      await testUtils.timeForward(testUtils.hoursToSeconds(1), network);
+      // Get previous Stream balance
+      const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId.toString(), addresses[1], ubi)).toString())
+      expect(prevStreamBalance.toNumber()).to.eq(0, "Initial stream balance should be 0");
+
+      // Get stream
+      const stream = await ubi.getStream(lastStreamId);
+
+      // Move blocktime to the same as the start time
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      await testUtils.timeForward(stream.startTime.toNumber() - currentBlockTime, network);
+      const newBlockTime = await testUtils.getCurrentBlockTime();
+      expect(newBlockTime).to.eq(stream.startTime.toNumber(), "Expected blocktime to be the start of the stream");
 
       // Get current human balance 
       const currHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
-      expect(currHumanBalance.toNumber()).to.eq(prevHumanBalance.plus(ubiPerSecond.multipliedBy(testUtils.hoursToSeconds(1))).toNumber());
+      expect(currHumanBalance.toNumber()).to.eq(prevHumanBalance.plus(ubiPerSecond.multipliedBy(newBlockTime - blockTimeAfterStreamCreation)).toNumber(), "Human balance ");
 
       const currentStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId.toString(), addresses[1], ubi)).toString())
       expect(currentStreamBalance.toNumber()).to.eq(0, "Current stream balance should still be 0");
@@ -277,7 +285,7 @@ contract('UBI.sol', accounts => {
       const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
 
       // try to create stream with a value lower should revert
-      await expect(testUtils.createStream(accounts[0],addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi))
+      await expect(testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi))
         .to.be.revertedWith("Account is already a recipient on an active stream.");
     });
 
@@ -288,50 +296,54 @@ contract('UBI.sol', accounts => {
       // Create a stream from address 0 to address 1
       const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
 
+      // get the original stream
       const stream = await ubi.getStream(lastStreamId);
-      console.log("Start Time", stream.startTime.toString());
-      console.log("End Time", stream.stopTime.toString());
-      
-      testUtils.timeForward(stream.startTime.toNumber() - testUtils.getCurrentBlockTime() -1, network);
+
+      // Move blocktime to the same as the start time
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      if (currentBlockTime < stream.startTime) {
+        await testUtils.timeForward(stream.startTime.toNumber() - currentBlockTime, network);
+        const newBlockTime = await testUtils.getCurrentBlockTime();
+        expect(newBlockTime).to.eq(stream.startTime.toNumber(), "Expected blocktime to be the start of the stream");
+      }
 
       // Get previous human balance 
       const prevHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
       // Get previous Stream balance
       const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi)).toString())
-
-      // Advanceuntil stream finishes
-      await testUtils.timeForward(stream.stopTime.toNumber() - stream.startTime.toNumber(), network);
+      
+      // Advance until stream finishes
+      const nextBlockTime = await testUtils.getCurrentBlockTime();
+      if (nextBlockTime < stream.stopTime.toNumber()) {
+        await testUtils.timeForward(stream.stopTime.toNumber() - nextBlockTime, network);
+        const lastBlockTime = await testUtils.getCurrentBlockTime();
+        expect(lastBlockTime).to.eq(stream.stopTime.toNumber(), "Expected blocktime to be the end of the stream");
+      }
 
       // Get current human balance 
       const currHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
       // Get current Stream balance
       const currStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi)).toString())
 
-      console.log("DIFF",currHumanBalance.minus(prevHumanBalance).toNumber());
-
-
       // Human should have accrued the balance of 1 hour
       expect(currHumanBalance.toNumber()).to.eq(prevHumanBalance.toNumber(), "Human should not increase balance after delegating all UBIs per second");
       // Stream should have accrued the balance of 1 hour
-      expect(currStreamBalance.toNumber()).to.eq(prevStreamBalance.plus(ubiPerSecond.multipliedBy(testUtils.hoursToSeconds(1))).toNumber(), "Stream should increase the balance in 1 UBI");
+      const lastBlockTime = await testUtils.getCurrentBlockTime();
+      expect(currStreamBalance.toNumber()).to.eq(prevStreamBalance.plus(ubiPerSecond.multipliedBy(lastBlockTime - nextBlockTime)).toNumber(), "Stream should increase the balance in 1 UBI");
     });
 
     it("happy path - When human stops being registered, stream should stop accruing.", async () => {
       setSubmissionIsRegistered(addresses[0], true);
       setSubmissionIsRegistered(addresses[2], false);
 
-      // Stream from NOW until the next 1 hour
+      // Move blocktime to the same as the start time
       const currentBlockTime = await testUtils.getCurrentBlockTime();
-
       const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Create a stream from address 0 to address 1
       const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
-      await ubi.connect(accounts[0]).createStream(addresses[1], ubi.address, testUtils.dateToSeconds(fromDate), testUtils.dateToSeconds(toDate), ubiPerSecond.toNumber(), 1);
-
-      // ID of last stream.
-      const streamId = BigNumber((await ubi.getStreamCount()).toString()).toNumber();  
+      lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
 
       // Wait 30 minutes
       await testUtils.timeForward(testUtils.hoursToSeconds(1), network);
@@ -340,13 +352,13 @@ contract('UBI.sol', accounts => {
       setSubmissionIsRegistered(addresses[0], false);
 
       // GetStream balance
-      const streamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId, addresses[1], ubi)).toString())
-      expect(streamBalance.toNumber()).to.eq(0);
+      const streamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi)).toString())
+      expect(streamBalance.toNumber()).to.eq(0, "Stream should not accrue if human is not registered");
 
     });
 
     it("require fail - Creating a stream with more than the remaining balance to deleghate should fail", () => {
-      expect(false,"NOT IMPLEMENTED");
+      expect(false, "NOT IMPLEMENTED");
     })
   })
 });

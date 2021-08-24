@@ -49,6 +49,7 @@ library Types {
         address sender;
         address tokenAddress;
         bool isEntity;
+        uint256 accruedSince;
     }
 }
 
@@ -344,13 +345,12 @@ contract UBI is Initializable {
   * @return The current balance including accrued Universal Basic Income of the user.
   **/
   function balanceOf(address _human) public view returns (uint256) {
-	uint256 delegatedBalance;
-	for(uint256 i = 0; i < streamIdsOf[_human].length; i++) {
-		uint256 streamId = streamIdsOf[_human][i];
-		uint256 streamBalance = balanceOf(streamId, streams[streamId].recipient);
-		console.log("STREAM BALANCE",streamBalance);
-		delegatedBalance = delegatedBalance.add(streamBalance);
-	}	
+    uint256 delegatedBalance;
+    for(uint256 i = 0; i < streamIdsOf[_human].length; i++) {
+      uint256 streamId = streamIdsOf[_human][i];
+      Types.Stream memory stream = streams[streamId];
+      delegatedBalance = balanceOf(streamId, stream.recipient);
+    }
 
     return getAccruedValue(_human).add(balance[_human]).sub(delegatedBalance);
   }
@@ -465,39 +465,28 @@ contract UBI is Initializable {
         Types.Stream memory stream = streams[streamId];
         BalanceOfLocalVars memory vars;
 
-		if(stream.startTime >= block.timestamp) return 0;
+        if(!proofOfHumanity.isRegistered(stream.sender)) return 0;
 
+        // Time accumulated by the stream
+        uint256 streamAccumulatedTime = deltaOf(streamId);
+        if(stream.accruedSince > 0) {
+          streamAccumulatedTime = streamAccumulatedTime.sub(block.timestamp.sub(stream.accruedSince));
+        }
 
-        vars.recipientBalance = stream.deposit;
-
-		// Account for the time between accruedSince ans startTime
-		uint nonStreamBalance;
-		if(accruedSince[stream.sender] < stream.startTime) {
-			
-			uint256 startTime = stream.startTime;
-			uint256 accruedSinceDelta = startTime.sub(accruedSince[stream.sender]);
-			
-			// Calculate how much accrued per second doesnt belong to the stream
-			nonStreamBalance = accruedSinceDelta.mul(accruedPerSecond);
-			
-		}
-		// Stream accrued balance is: (Total Accrued value - non stream accrued value) * rate of accruance.  (Withdraws not included)
-		uint256 streamAccruedValue = getAccruedValue(stream.sender).sub(nonStreamBalance).mul(stream.ratePerSecond.div(accruedPerSecond));
-		
-
-		/*
+        // Stream accumulated balance. This is not the real balcne of the stream but the amount that should have been accrued since the stream started.
+        uint256 streamAccruedValue = streamAccumulatedTime.mul(stream.ratePerSecond);  
+        
+        // Real remaining balance on the stream
+        uint256 realTimeRemainingBalance = stream.remainingBalance.add(streamAccruedValue);
+        
+        /*
          * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
          * We have to subtract the total amount withdrawn from the amount of money that has been
          * streamed until now.
          */
-		if(stream.stopTime < block.timestamp) return stream.remainingBalance;
-		
-		
-		
-		uint256 withdrawn = streamAccruedValue.sub(stream.remainingBalance);
+		    
 
-		uint256 realTimeRemainingBalance = stream.remainingBalance.add(streamAccruedValue);
-		assert(realTimeRemainingBalance <= streamAccruedValue);
+        assert(realTimeRemainingBalance <= streamAccruedValue);
 
         if (who == stream.recipient) return realTimeRemainingBalance;
         if (who == stream.sender) {
@@ -565,7 +554,8 @@ contract UBI is Initializable {
             sender: msg.sender,
             startTime: startTime,
             stopTime: stopTime,
-            tokenAddress: tokenAddress
+            tokenAddress: tokenAddress,
+            accruedSince: 0
         });
 
 		streamIds[msg.sender][recipient] = newStreamId;
