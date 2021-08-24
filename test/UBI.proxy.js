@@ -225,7 +225,7 @@ contract('UBI.sol', accounts => {
 
       // try to create stream with a value lower should revert
       await expect(testUtils.createStream(accounts[0], addresses[1], newStreamPaymentPerSecond.toNumber(), fromDate, toDate, ubi))
-            .to.be.revertedWith("Cannot delegate more than maximum accrued per second.");
+            .to.be.revertedWith("Cannot delegate a value higher than accruedPerSecond");
     });
 
     it("happy path - After creating a stream that starts in the future, human should accrue UBI until stream starts.", async () => {
@@ -242,12 +242,13 @@ contract('UBI.sol', accounts => {
       const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
       // try to create stream with a value lower should revert
       const streamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
-
       // Get previous human balance 
       const prevHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
+      console.log("Prev Human balance", prevHumanBalance.toString());
       // Get previous Stream balance
-      const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId.toString(), addresses[1], ubi)).toString())
-      expect(prevStreamBalance.toNumber()).to.eq(0);
+      const initialStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(streamId.toString(), addresses[1], ubi)).toString())
+      console.log("Initial stream balance", prevHumanBalance.toString());
+      expect(initialStreamBalance.toNumber()).to.eq(0, "Initial stream balance should be 0");
 
       // Wait 1 hour
       await testUtils.timeForward(testUtils.hoursToSeconds(1), network);
@@ -268,7 +269,7 @@ contract('UBI.sol', accounts => {
       const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "hours").toDate();
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
-
+      // Get accrued per second
       const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
 
       // try to create stream with a value lower should revert
@@ -333,5 +334,9 @@ contract('UBI.sol', accounts => {
       expect(streamBalance.toNumber()).to.eq(0);
 
     });
+
+    it("require fail - Creating a stream with more than the remaining balance to deleghate should fail", () => {
+      expect(false,"NOT IMPLEMENTED");
+    })
   })
 });

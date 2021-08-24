@@ -1,14 +1,22 @@
 const { default: BigNumber } = require("bignumber.js");
 const { ethers, expect } = require("hardhat");
+const logReader = require("./logReader");
 
 const testUtils = {
   async createStream(fromAccount, toAddress, streamPerSecond, from, to, ubi) {
 
     const nextStreamId = new BigNumber((await ubi.nextStreamId()).toString());
-    await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, ubi.address, testUtils.dateToSeconds(from), testUtils.dateToSeconds(to))
+    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, ubi.address, testUtils.dateToSeconds(from), testUtils.dateToSeconds(to))
+    const result = await tx.wait();
+    const createStreamEvents = logReader.getCreateStreamEvents(result.events);
+    expect(createStreamEvents && createStreamEvents.length > 0, "createStream should emit event CreateStream");
+    const streamId = createStreamEvents[0].args[0];
+    expect(streamId.toNumber()).to.eq(nextStreamId.toNumber(), "CreateStream emited with incorrect streamId value")
+    
     const newNextStreamId = new BigNumber((await ubi.nextStreamId()).toString());
+
     expect(newNextStreamId.toNumber()).to.be.equal(nextStreamId.plus(1).toNumber());
-    return newNextStreamId;
+    return nextStreamId;
     
 
     // const previousDelegate = await ubi.getDelegateOf(fromAccount.address);
@@ -88,6 +96,7 @@ const testUtils = {
     const block = await ethers.provider.getBlock(blockNumber);
     return block.timestamp;
   }
+
 }
 
 module.exports = testUtils;

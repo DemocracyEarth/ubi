@@ -9,7 +9,6 @@ pragma solidity 0.7.3;
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-
 /**
  * @title ProofOfHumanity Interface
  * @dev See https://github.com/Proof-Of-Humanity/Proof-Of-Humanity.
@@ -40,8 +39,8 @@ interface IPoster {
  */
 library Types {
     struct Stream {
-        uint256 deposit;
-        uint256 ratePerSecond;
+        uint256 deposit; // This will be autocalculated based on the start and stop time
+        uint256 ratePerSecond; // The rate of UBI to drip to this stream from the current accrued value
         uint256 remainingBalance;
         uint256 startTime;
         uint256 stopTime;
@@ -445,23 +444,24 @@ contract UBI is Initializable {
     function balanceOf(uint256 streamId, address who) public view streamExists(streamId) returns (uint256) {
         Types.Stream memory stream = streams[streamId];
         BalanceOfLocalVars memory vars;
+		if(stream.startTime <= block.timestamp) return 0;
 
-        uint256 delta = deltaOf(streamId);
-        vars.recipientBalance = delta.mul(stream.ratePerSecond);
 
+        vars.recipientBalance = stream.deposit;
+
+		uint256 streamAccruedValue = getAccruedValue(stream.sender).mul(stream.ratePerSecond.div(accruedPerSecond));
         /*
          * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
          * We have to subtract the total amount withdrawn from the amount of money that has been
          * streamed until now.
          */
-        if (stream.deposit > stream.remainingBalance) {
-            vars.withdrawalAmount = stream.deposit.sub(stream.remainingBalance);
-            vars.recipientBalance = vars.recipientBalance.sub(vars.withdrawalAmount);
-        }
+		if(stream.stopTime <= block.timestamp) return stream.remainingBalance;
 
-        if (who == stream.recipient) return vars.recipientBalance;
+		uint256 realTimeRemainingBalance = stream.remainingBalance.add(streamAccruedValue);
+
+        if (who == stream.recipient) return realTimeRemainingBalance;
         if (who == stream.sender) {
-            vars.senderBalance = stream.remainingBalance.sub(vars.recipientBalance);
+            vars.senderBalance = stream.deposit - realTimeRemainingBalance;
             return vars.senderBalance;
         }
         return 0;
@@ -471,7 +471,7 @@ contract UBI is Initializable {
 
     struct CreateStreamLocalVars {
         uint256 duration;
-        uint256 ratePerSecond;
+        uint256 ubiPerSecond;
     }
 
     /**
@@ -488,13 +488,13 @@ contract UBI is Initializable {
      *  Throws if the contract is not allowed to transfer enough tokens.
      *  Throws if there is a token transfer failure.
      * @param recipient The address towards which the money is streamed.
-     * @param deposit The amount of money to be streamed.
+     * @param ubiPerSecond The amount of UBI to be streamed every second. MUST be <= accruedPerSecond
      * @param tokenAddress The ERC20 token to use as streaming currency.
      * @param startTime The unix timestamp for when the stream starts.
      * @param stopTime The unix timestamp for when the stream stops.
      * @return The uint256 id of the newly created stream.
      */
-    function createStream(address recipient, uint256 deposit, address tokenAddress, uint256 startTime, uint256 stopTime)
+    function createStream(address recipient, uint256 ubiPerSecond, address tokenAddress, uint256 startTime, uint256 stopTime)
         public
         returns (uint256)
     {
@@ -502,23 +502,24 @@ contract UBI is Initializable {
         require(recipient != address(this), "stream to the contract itself");
         require(recipient != msg.sender, "stream to the caller");
         require(tokenAddress == address(this),"token address can only be UBI");
-        require(deposit > 0, "deposit is zero");
+        require(ubiPerSecond > 0, "UBI per second is zero");
         require(startTime >= block.timestamp, "start time before block.timestamp");
         require(stopTime > startTime, "stop time before the start time");
-        require(deposit <= accruedPerSecond, "Cannot delegate more than maximum accrued per second.");
-
+        require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
+		console.log("START TIME", startTime);
+		console.log("STOP TIME", stopTime);
         CreateStreamLocalVars memory vars;
         vars.duration = stopTime.sub(startTime);
 
-        vars.ratePerSecond = deposit.div(vars.duration);
-
         /* Create and store the stream object. */
         uint256 streamId = nextStreamId;
+		// Create the stream
         streams[streamId] = Types.Stream({
-            remainingBalance: 0,
-            deposit: deposit,
+			// Total deposit is calculated from duration and ubiPerSecond
+            deposit: accruedPerSecond.mul(vars.duration).mul(ubiPerSecond.div(accruedPerSecond)),
+            ratePerSecond: ubiPerSecond, // how many UBI to delegate per second.
+            remainingBalance: 0, // Starts with 0. Accumulates as time passes.
             isEntity: true,
-            ratePerSecond: vars.ratePerSecond,
             recipient: recipient,
             sender: msg.sender,
             startTime: startTime,
@@ -526,10 +527,20 @@ contract UBI is Initializable {
             tokenAddress: tokenAddress
         });
 
+        // uint256 accruePerSecond; // Original is deposit. The type remains but the name changes because it has different meaning.
+        // uint256 ratePerSecond;
+        // uint256 remainingBalance;
+        // uint256 startTime;
+        // uint256 stopTime;
+        // address recipient;
+        // address sender;
+        // address tokenAddress;
+        // bool isEntity;
+
         /* Increment the next stream id. */
         nextStreamId = nextStreamId.add(1);
 
-        emit CreateStream(streamId, msg.sender, recipient, deposit, tokenAddress, startTime, stopTime);
+        emit CreateStream(streamId, msg.sender, recipient, ubiPerSecond, tokenAddress, startTime, stopTime);
         return streamId;
     }
 
