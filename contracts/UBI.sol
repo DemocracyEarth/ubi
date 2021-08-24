@@ -8,6 +8,7 @@ pragma solidity 0.7.3;
 
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "./interfaces/ISablier.sol";
 import "hardhat/console.sol";
 
 /**
@@ -62,7 +63,7 @@ library Types {
  * The accrued tokens are updated directly on every wallet using the `balanceOf` function.
  * The tokens get effectively minted and persisted in memory when someone interacts with the contract doing a `transfer` or `burn`.
  */
-contract UBI is Initializable {
+contract UBI is Initializable, ISablier {
 
   /* Events */
 
@@ -80,36 +81,6 @@ contract UBI is Initializable {
    * a call to {approve}. `value` is the new allowance.
    */
   event Approval(address indexed owner, address indexed spender, uint256 value);
-
-  /**
-     * @notice Emits when a stream is successfully created.
-     */
-    event CreateStream(
-        uint256 indexed streamId,
-        address indexed sender,
-        address indexed recipient,
-        uint256 deposit,
-        address tokenAddress,
-        uint256 startTime,
-        uint256 stopTime
-    );
-
-   /**
-     * @notice Emits when the recipient of a stream withdraws a portion or all their pro rata share of the stream.
-     */
-    event WithdrawFromStream(uint256 indexed streamId, address indexed recipient, uint256 amount);
-
-    /**
-     * @notice Emits when a stream is successfully cancelled and tokens are transferred back on a pro rata basis.
-     */
-    event CancelStream(
-        uint256 indexed streamId,
-        address indexed sender,
-        address indexed recipient,
-        uint256 senderBalance,
-        uint256 recipientBalance
-    );
-
 
   using SafeMath for uint256;
 
@@ -411,6 +382,7 @@ contract UBI is Initializable {
      * @param streamId The id of the stream to query.
      */
     function getStream(uint256 streamId)
+        override
         external
         view
         streamExists(streamId)
@@ -461,7 +433,7 @@ contract UBI is Initializable {
      * @param streamId The id of the stream for which to query the balance.
      * @param who The address for which to query the balance.
      */
-    function balanceOf(uint256 streamId, address who) public view streamExists(streamId) returns (uint256) {
+    function balanceOf(uint256 streamId, address who) override public view streamExists(streamId) returns (uint256) {
         Types.Stream memory stream = streams[streamId];
         BalanceOfLocalVars memory vars;
 
@@ -524,6 +496,7 @@ contract UBI is Initializable {
      * @return The uint256 id of the newly created stream.
      */
     function createStream(address recipient, uint256 ubiPerSecond, address tokenAddress, uint256 startTime, uint256 stopTime)
+        override
         public
         returns (uint256)
     {
@@ -595,6 +568,7 @@ contract UBI is Initializable {
      * @param amount The amount of tokens to withdraw.
      */
     function withdrawFromStream(uint256 streamId, uint256 amount)
+        override
         external
         streamExists(streamId)
         onlySenderOrRecipient(streamId)
@@ -624,6 +598,7 @@ contract UBI is Initializable {
      * @return bool true=success, otherwise false.
      */
     function cancelStream(uint256 streamId)
+        override
         external
         streamExists(streamId)
         onlySenderOrRecipient(streamId)
