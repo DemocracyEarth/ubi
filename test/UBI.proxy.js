@@ -256,9 +256,11 @@ contract('UBI.sol', accounts => {
       // Get stream
       const stream = await ubi.getStream(lastStreamId);
 
-      // Move blocktime to the same as the start time
+      // Move blocktime to the start of the stream
       const currentBlockTime = await testUtils.getCurrentBlockTime();
-      await testUtils.timeForward(stream.startTime.toNumber() - currentBlockTime, network);
+      if (currentBlockTime < stream.startTime.toNumber()) {
+        await testUtils.setNextBlockTime(stream.startTime.toNumber(), network);
+      }
       const newBlockTime = await testUtils.getCurrentBlockTime();
       expect(newBlockTime).to.eq(stream.startTime.toNumber(), "Expected blocktime to be the start of the stream");
 
@@ -299,10 +301,10 @@ contract('UBI.sol', accounts => {
       // get the original stream
       const stream = await ubi.getStream(lastStreamId);
 
-      // Move blocktime to the same as the start time
+      // Move blocktime to the start of the stream
       const currentBlockTime = await testUtils.getCurrentBlockTime();
       if (currentBlockTime < stream.startTime) {
-        await testUtils.timeForward(stream.startTime.toNumber() - currentBlockTime, network);
+        await testUtils.setNextBlockTime(stream.startTime.toNumber(), network);
         const newBlockTime = await testUtils.getCurrentBlockTime();
         expect(newBlockTime).to.eq(stream.startTime.toNumber(), "Expected blocktime to be the start of the stream");
       }
@@ -311,11 +313,11 @@ contract('UBI.sol', accounts => {
       const prevHumanBalance = BigNumber((await testUtils.ubiBalanceOfHuman(addresses[0], ubi)).toString());
       // Get previous Stream balance
       const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi)).toString())
-      
-      // Advance until stream finishes
+
+      // Move block time to the end of the stream
       const nextBlockTime = await testUtils.getCurrentBlockTime();
       if (nextBlockTime < stream.stopTime.toNumber()) {
-        await testUtils.timeForward(stream.stopTime.toNumber() - nextBlockTime, network);
+        await testUtils.setNextBlockTime(stream.stopTime.toNumber(), network);
         const lastBlockTime = await testUtils.getCurrentBlockTime();
         expect(lastBlockTime).to.eq(stream.stopTime.toNumber(), "Expected blocktime to be the end of the stream");
       }
@@ -345,7 +347,7 @@ contract('UBI.sol', accounts => {
       const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
       lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
 
-      // Wait 30 minutes
+      // Wait 1 hour
       await testUtils.timeForward(testUtils.hoursToSeconds(1), network);
 
       // Unregister human

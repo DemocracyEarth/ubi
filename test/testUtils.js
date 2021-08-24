@@ -51,6 +51,11 @@ const testUtils = {
     await network.provider.send("evm_mine");
   },
 
+  async setNextBlockTime(time, network) {
+    await network.provider.send("evm_setNextBlockTimestamp", [time])
+    await network.provider.send("evm_mine");
+  },
+
   dateToSeconds(date) {
     return Math.ceil(date.getTime() / 1000)
   },
