@@ -438,33 +438,29 @@ contract UBI is Initializable, ISablier {
         BalanceOfLocalVars memory vars;
 
         if(!proofOfHumanity.isRegistered(stream.sender)) return 0;
+        if(stream.startTime > block.timestamp) return 0;
 
         // Time accumulated by the stream
         uint256 streamAccumulatedTime = deltaOf(streamId);
+
+        // If there were withdrawals, take them into account.
         if(stream.accruedSince > 0) {
-          streamAccumulatedTime = streamAccumulatedTime.sub(block.timestamp.sub(stream.accruedSince));
+          // If stream is stil active use blocktime to calculate delta, else use stream.stoptime
+          streamAccumulatedTime = (block.timestamp < stream.stopTime) ? block.timestamp.sub(stream.accruedSince) : stream.stopTime.sub(stream.accruedSince);
         }
 
-        // Stream accumulated balance. This is not the real balcne of the stream but the amount that should have been accrued since the stream started.
+        // Stream accumulated balance.
         uint256 streamAccruedValue = streamAccumulatedTime.mul(stream.ratePerSecond);  
-        
-        // Real remaining balance on the stream
-        uint256 realTimeRemainingBalance = stream.remainingBalance.add(streamAccruedValue);
+      
         
         /*
          * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
          * We have to subtract the total amount withdrawn from the amount of money that has been
          * streamed until now.
          */
-		    
 
-        assert(realTimeRemainingBalance <= streamAccruedValue);
-
-        if (who == stream.recipient) return realTimeRemainingBalance;
-        if (who == stream.sender) {
-            vars.senderBalance = stream.deposit - realTimeRemainingBalance;
-            return vars.senderBalance;
-        }
+        if (who == stream.recipient) return streamAccruedValue;
+        if (who == stream.sender) return stream.deposit - streamAccruedValue;
         return 0;
     }
 
@@ -577,14 +573,16 @@ contract UBI is Initializable, ISablier {
         require(amount > 0, "amount is zero");
         Types.Stream memory stream = streams[streamId];
 
-        uint256 recipientBalance = balanceOf(streamId, stream.recipient);
-        require(recipientBalance >= amount, "amount exceeds the available balance");
+        uint256 streamBalance = balanceOf(streamId, stream.recipient);
+        require(streamBalance >= amount, "amount exceeds the available balance");
 
-        streams[streamId].remainingBalance = stream.remainingBalance.sub(amount);
+        // Consolidate stream and recipient balance
+        streams[streamId].accruedSince = block.timestamp < stream.stopTime ? block.timestamp : stream.stopTime;
+        balance[stream.recipient] = balance[stream.recipient].add(streamBalance);
+        
+        // TODO: Clear streams
 
-        if (streams[streamId].remainingBalance == 0) delete streams[streamId];
-
-        transfer(stream.recipient, amount);
+        //transfer(stream.recipient, amount);
         emit WithdrawFromStream(streamId, stream.recipient, amount);
         return true;
     }

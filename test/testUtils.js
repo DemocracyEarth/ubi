@@ -68,7 +68,7 @@ const testUtils = {
    * @param {*} ubi 
    * @returns 
    */
-  async ubiBalanceOfHuman(address, ubi) {
+  async ubiBalanceOfWallet(address, ubi) {
     return await ubi["balanceOf(address)"](address);
   },
 
