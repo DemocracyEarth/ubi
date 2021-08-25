@@ -97,6 +97,9 @@ contract UBI is Initializable {
   /// @dev Nonces for permit function. Must be modified only through permit function, where is incremented only by one.
   mapping (address => uint256) public nonces;
 
+  /// @dev Chain id used for domain separator.
+  uint256 public chainId;
+
   /// @dev Typehash used for permit function.
   bytes32 public permitTypehash;
 
@@ -132,23 +135,9 @@ contract UBI is Initializable {
     balance[msg.sender] = _initialSupply;
     totalSupply = _initialSupply;
 
-    // TODO: Verify if version number is correct. Can we receive version value through the initializer as param?
-    string memory version = "2";
-    uint256 chainId;
-    assembly {
-      chainId := chainid()
-    }
+    chainId = _getCurrentChainId();
     permitTypehash = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-    // TODO: Domain separator can receive a salt as last parameter
-    domainSeparator = keccak256(
-      abi.encode(
-        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-        keccak256(bytes(name)),
-        keccak256(bytes(version)),
-        chainId,
-        address(this)
-      )
-    ); 
+    domainSeparator = _buildDomainSeparator();
   }
 
   /* External */
@@ -191,6 +180,13 @@ contract UBI is Initializable {
   */
   function changeProofOfHumanity(IProofOfHumanity _proofOfHumanity) external onlyByGovernor {
     proofOfHumanity = _proofOfHumanity;
+  }
+
+  /**
+  * @dev Returns the domain separator used in the encoding of the signature for `permit`, as defined by {EIP712}.
+  */
+  function DOMAIN_SEPARATOR() external view returns (bytes32) {
+    return _buildDomainSeparator();
   }
 
   /** @dev Transfers `_amount` to `_recipient` and withdraws accrued tokens.
@@ -316,9 +312,9 @@ contract UBI is Initializable {
     require(_owner != address(0), "ERC20Permit: invalid owner");
     require(block.timestamp <= _deadline, "ERC20Permit: expired deadline");
     bytes32 structHash = keccak256(abi.encode(permitTypehash, _owner, _spender, _value, nonces[_owner], _deadline));
-    // TODO: Recalculate separator because of the possible change of chainId or just deploy a new version in that case?
-    // Also could have a `regenerateDomainSeparator` that builds the domainSeparator again using the current chainId.
-    // See: https://eips.ethereum.org/EIPS/eip-1965
+    if (_getCurrentChainId() != chainId) {
+      domainSeparator = _buildDomainSeparator();
+    }
     bytes32 hash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
     address signer = ECDSA.recover(hash, _v, _r, _s);
     require(signer == _owner, "ERC20Permit: invalid signature");
@@ -327,6 +323,34 @@ contract UBI is Initializable {
     nonces[_owner]++;
     allowance[_owner][_spender] = _value;
     emit Approval(_owner, _spender, _value);
+  }
+
+  /**
+  * @dev Builds and returns the domain separator used in the encoding of the signature for `permit` using the current
+  * chain id.
+  */
+  function _buildDomainSeparator() internal view returns (bytes32) {
+    // TODO: Verify if version number is correct.
+    string memory version = "2";
+    // TODO: Domain separator can receive a salt as last parameter.
+    return keccak256(
+      abi.encode(
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+        keccak256(bytes(name)),
+        keccak256(bytes(version)),
+        _getCurrentChainId(),
+        address(this)
+      )
+    ); 
+  }
+
+  /**
+  * @dev Returns the current chain id.
+  */
+  function _getCurrentChainId() internal pure returns (uint256 currentChainId) {
+    assembly {
+      currentChainId := chainid()
+    }
   }
 
   /* Getters */
