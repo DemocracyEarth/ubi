@@ -313,10 +313,12 @@ contract UBI is Initializable {
   * @param _s The signature s value.
   */
   function permit(address _owner, address _spender, uint256 _value, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
+    require(_owner != address(0), "ERC20Permit: invalid owner");
     require(block.timestamp <= _deadline, "ERC20Permit: expired deadline");
     bytes32 structHash = keccak256(abi.encode(permitTypehash, _owner, _spender, _value, nonces[_owner], _deadline));
     // TODO: Recalculate separator because of the possible change of chainId or just deploy a new version in that case?
-    // Also could have a `regenerateDomainSeparator` that builds the domainSeparator again using the current chainId 
+    // Also could have a `regenerateDomainSeparator` that builds the domainSeparator again using the current chainId.
+    // See: https://eips.ethereum.org/EIPS/eip-1965
     bytes32 hash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
     address signer = ECDSA.recover(hash, _v, _r, _s);
     require(signer == _owner, "ERC20Permit: invalid signature");
