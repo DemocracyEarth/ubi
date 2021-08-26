@@ -61,7 +61,7 @@ contract('UBI.sol', accounts => {
     altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
     altPoster = mockAddress;
 
-    ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+    ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
 
     // Set zero address as not registered
     setSubmissionIsRegistered(ethers.constants.AddressZero, false);
@@ -247,7 +247,7 @@ contract('UBI.sol', accounts => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Get the value of accruedPerSecond
-      const accruedPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      const accruedPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
 
       // Generate invalid payment per second
       const newStreamPaymentPerSecond = accruedPerSecond.plus(1);
@@ -268,7 +268,7 @@ contract('UBI.sol', accounts => {
       const toDate = moment(fromDate).add(2, "hour").toDate();
 
       // Create a stream from address 0 to address 1
-      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
       // try to create stream with a value lower should revert
       lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
       const blockTimeAfterStreamCreation = await testUtils.getCurrentBlockTime();
@@ -309,7 +309,7 @@ contract('UBI.sol', accounts => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Get accrued per second
-      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
 
       // try to create stream with a value lower should revert
       await expect(testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi))
@@ -327,7 +327,7 @@ contract('UBI.sol', accounts => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Get accrued per second
-      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
 
       // try to create stream with a value lower should revert
       await expect(testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi))
@@ -339,7 +339,7 @@ contract('UBI.sol', accounts => {
       setSubmissionIsRegistered(addresses[1], false);
 
       // Create a stream from address 0 to address 1
-      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
 
       // get the original stream
       const stream = await ubi.getStream(lastStreamId);
@@ -387,7 +387,7 @@ contract('UBI.sol', accounts => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Create a stream from address 0 to address 1
-      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
       lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
 
       // Wait 1 hour
@@ -410,7 +410,7 @@ contract('UBI.sol', accounts => {
       const currentBlockTime = await testUtils.getCurrentBlockTime();
       const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       const toDate = moment(fromDate).add(1, "hour").toDate();
-      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
       await expect(testUtils.createStream(accounts[1], addresses[2], ubiPerSecond.toNumber(), fromDate, toDate, ubi)).to.be.revertedWith("Only registered humans can stream UBI.");
     })
 
@@ -427,7 +427,7 @@ contract('UBI.sol', accounts => {
       const currentBlockTime = await testUtils.getCurrentBlockTime();
       const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       const toDate = moment(fromDate).add(1, "hour").toDate();
-      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
 
       // Create stream with half ubiPerSecond delegation
       lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.div(2).toNumber(), fromDate, toDate, ubi);
@@ -447,7 +447,7 @@ contract('UBI.sol', accounts => {
       const currentBlockTime = await testUtils.getCurrentBlockTime();
       const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       const toDate = moment(fromDate).add(1, "hour").toDate();
-      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
 
       // Create another stream with half of ubiperSecond delegation (previous stream is half already)
       lastStreamId = await testUtils.createStream(accounts[0], addresses[2], ubiPerSecond.div(2).toNumber(), fromDate, toDate, ubi);
@@ -467,7 +467,7 @@ contract('UBI.sol', accounts => {
       const currentBlockTime = await testUtils.getCurrentBlockTime();
       const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       const toDate = moment(fromDate).add(1, "hour").toDate();
-      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
 
       // Create 2 streams with accruedPerSecond / 2
       const firstStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.div(2).toNumber(), fromDate, toDate, ubi);
@@ -500,7 +500,7 @@ contract('UBI.sol', accounts => {
       const currentBlockTime = await testUtils.getCurrentBlockTime();
       const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       const toDate = moment(fromDate).add(1, "hour").toDate();
-      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString()).div(2);
+      const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString()).div(2);
       // Create 1 streams with half of accrued per second.
       lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
 
@@ -529,7 +529,7 @@ contract('UBI.sol', accounts => {
 
       // initial variables
       const currentBlockTime = await testUtils.getCurrentBlockTime();
-      const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+      const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
 
       // Create a stream with total accrued per second
       const fromDate1 = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
@@ -554,7 +554,7 @@ contract('UBI.sol', accounts => {
         const currentBlockTime = await testUtils.getCurrentBlockTime();
         const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
         const toDate = moment(fromDate).add(1, "hour").toDate();
-        const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString()).div(2);
+        const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString()).div(2);
 
         // Create 1 stream with accruedPerSecond.
         lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
@@ -586,7 +586,7 @@ contract('UBI.sol', accounts => {
         setSubmissionIsRegistered(addresses[0], true);
 
         // Get accrued per second
-        const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+        const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
 
         // New stream will start in 1 minute and last for 1 hour
         const currentBlockTime = await testUtils.getCurrentBlockTime();
@@ -634,7 +634,7 @@ contract('UBI.sol', accounts => {
         await testUtils.goToEndOfStream(lastStreamId, ubi, network);
 
         // Get accrued per second
-        const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+        const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
 
         // New stream will start in 1 minute and last for 1 hour
         const currentBlockTime = await testUtils.getCurrentBlockTime();
@@ -683,7 +683,7 @@ contract('UBI.sol', accounts => {
         const currentBlockTime = await testUtils.getCurrentBlockTime();
         const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
         const toDate = moment(fromDate).add(1, "hour").toDate();
-        const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString()).div(2);
+        const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString()).div(2);
 
         // Create 1 stream with accruedPerSecond.
         lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate, toDate, ubi);
@@ -733,7 +733,7 @@ contract('UBI.sol', accounts => {
         const currentBlockTime = await testUtils.getCurrentBlockTime();
         const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
         const toDate = moment(fromDate).add(1, "hour").toDate();
-        const ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString()).div(2);
+        const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString()).div(2);
 
         //  Get number of stream for the creator of stream 
         const initialStreamCount = BigNumber((await ubi.getStreamsCount(addresses[0])).toString());

@@ -649,13 +649,8 @@ contract UBI is Initializable, ISablier {
         return true;
     }
 
-    function getAccruedPerSecond() public view returns (uint256) {
-      return accruedPerSecond;
-    }
-
     function getStreamsCount(address _human) public view returns (uint256) {
       require(proofOfHumanity.isRegistered(_human), "The submission is not registered in Proof Of Humanity.");
       return streamIdsOf[_human].length;
-    }
-  
+    } 
 }
