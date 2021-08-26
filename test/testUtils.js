@@ -69,7 +69,22 @@ const testUtils = {
    * @returns 
    */
   async ubiBalanceOfWallet(address, ubi) {
-    return await ubi["balanceOf(address)"](address);
+    return BigNumber((await ubi["balanceOf(address)"](address)).toString());
+  },
+
+  /**
+   * Get consolidated balance of UBI on a human.
+   * This means that gets the actual balance minus the accruedValue
+   * ethers.js dopesnt support overload methods (because of the js nature).
+   * UBI contract has 2 overloads of balanceOf. One for ERC-20 and one for EIP-1620 
+   * @param {*} address 
+   * @param {*} ubi 
+   * @returns 
+   */
+   async ubiConsolidatedBalanceOfWallet(address, ubi) {
+    const balance = BigNumber((await ubi["balanceOf(address)"](address)).toString());
+    const accrued = BigNumber((await ubi.getAccruedValue(address)).toString());
+    return balance.minus(accrued);
   },
 
   /**
@@ -82,7 +97,7 @@ const testUtils = {
     * @returns 
     */
   async ubiBalanceOfStream(streamId, address, ubi) {
-    return await ubi["balanceOf(uint256,address)"](streamId, address);
+    return BigNumber((await ubi["balanceOf(uint256,address)"](streamId, address)).toString());
   },
   hoursToSeconds(hours) {
     return hours * 3600;

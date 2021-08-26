@@ -7,199 +7,224 @@ const moment = require("moment");
 const ONE_HOUR = 3600;
 const TWO_HOURS = 3600 * 2;
 
+let accounts;
+
+
+
 /**
  @summary Tests for UBI.sol
 */
 contract('UBI.sol', accounts => {
-  describe('UBI Coin and Proof of Humanity', () => {
-    before(async () => {
-      accounts = await ethers.getSigners();
+  before(async () => {
+    accounts = await ethers.getSigners();
 
-      [_addresses, mockProofOfHumanity, mockPoster] = await Promise.all([
-        Promise.all(accounts.map((account) => account.getAddress())),
-        waffle.deployMockContract(
-          accounts[0],
-          require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
-        ),
-        waffle.deployMockContract(
-          accounts[9],
-          require("../artifacts/contracts/UBI.sol/IPoster.json").abi
-        ),
-      ]);
-      setSubmissionIsRegistered = (submissionID, isRegistered) =>
-        mockProofOfHumanity.mock.isRegistered
-          .withArgs(submissionID)
-          .returns(isRegistered);
-      setPost = (content) =>
-        mockPoster.mock.post
-          .withArgs(content)
-          .returns();
+    [_addresses, mockProofOfHumanity, mockPoster] = await Promise.all([
+      Promise.all(accounts.map((account) => account.getAddress())),
+      waffle.deployMockContract(
+        accounts[0],
+        require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
+      ),
+      waffle.deployMockContract(
+        accounts[9],
+        require("../artifacts/contracts/UBI.sol/IPoster.json").abi
+      ),
+    ]);
+    setSubmissionIsRegistered = (submissionID, isRegistered) =>
+      mockProofOfHumanity.mock.isRegistered
+        .withArgs(submissionID)
+        .returns(isRegistered);
+    setPost = (content) =>
+      mockPoster.mock.post
+        .withArgs(content)
+        .returns();
 
-      setSubmissionInfo = (submissionID, info) => {
-        mockProofOfHumanity.mock.getSubmissionInfo
-          .withArgs(submissionID)
-          .returns({
-            submissionTime: info.submissionTime
-          });
-      }
+    setSubmissionInfo = (submissionID, info) => {
+      mockProofOfHumanity.mock.getSubmissionInfo
+        .withArgs(submissionID)
+        .returns({
+          submissionTime: info.submissionTime
+        });
+    }
 
-      addresses = _addresses;
+    addresses = _addresses;
 
-      UBICoin = await ethers.getContractFactory("UBI");
+    UBICoin = await ethers.getContractFactory("UBI");
 
-      ubi = await upgrades.deployProxy(UBICoin,
-        [deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address],
-        { initializer: 'initialize', unsafeAllowCustomTypes: true }
-      );
+    ubi = await upgrades.deployProxy(UBICoin,
+      [deploymentParams.INITIAL_SUPPLY, deploymentParams.TOKEN_NAME, deploymentParams.TOKEN_SYMBOL, deploymentParams.ACCRUED_PER_SECOND, mockProofOfHumanity.address],
+      { initializer: 'initialize', unsafeAllowCustomTypes: true }
+    );
 
-      const mockAddress = mockPoster.address;
-      await ubi.deployed();
+    const mockAddress = mockPoster.address;
+    await ubi.deployed();
 
-      altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
-      altPoster = mockAddress;
+    altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
+    altPoster = mockAddress;
 
-      ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
+    ubiPerSecond = BigNumber((await ubi.getAccruedPerSecond()).toString());
 
-      // Set zero address as not registered
-      setSubmissionIsRegistered(ethers.constants.AddressZero, false);
+    // Set zero address as not registered
+    setSubmissionIsRegistered(ethers.constants.AddressZero, false);
+  });
+
+  const ubiCoinTests = () => {
+
+    it("happy path - return a value previously initialized.", async () => {
+      // Check that the value passed to the constructor is set.
+      expect((await ubi.accruedPerSecond()).toString()).to.equal(deploymentParams.ACCRUED_PER_SECOND.toString());
     });
 
-    describe("UBI basic use cases", () => {
+    it("happy path - check that the initial `accruedSince` value is 0.", async () => {
+      expect((await ubi.accruedSince(addresses[1])).toString()).to.equal('0');
+    });
 
-      it("happy path - return a value previously initialized.", async () => {
-        // Check that the value passed to the constructor is set.
-        expect((await ubi.accruedPerSecond()).toString()).to.equal(deploymentParams.ACCRUED_PER_SECOND.toString());
-      });
+    it("require fail - The submission is not registered in Proof Of Humanity.", async () => {
+      // Make sure it reverts if the submission is not registered.
+      await setSubmissionIsRegistered(addresses[1], false);
+      await expect(
+        ubi.startAccruing(addresses[1])
+      ).to.be.revertedWith(
+        "The submission is not registered in Proof Of Humanity."
+      );
+    });
 
-      it("happy path - check that the initial `accruedSince` value is 0.", async () => {
-        expect((await ubi.accruedSince(addresses[1])).toString()).to.equal('0');
-      });
+    it("happy path - allow registered submissions to start accruing UBI.", async () => {
+      // Start accruing UBI and check that the current block number was set.
+      await setSubmissionIsRegistered(addresses[1], true);
+      await ubi.startAccruing(addresses[1]);
+      const accruedSince = await ubi.accruedSince(addresses[1]);
+      expect((await ubi.accruedSince(addresses[1])).toString()).to.equal(
+        accruedSince.toString()
+      );
+    });
 
-      it("require fail - The submission is not registered in Proof Of Humanity.", async () => {
-        // Make sure it reverts if the submission is not registered.
-        await setSubmissionIsRegistered(addresses[1], false);
-        await expect(
-          ubi.startAccruing(addresses[1])
-        ).to.be.revertedWith(
-          "The submission is not registered in Proof Of Humanity."
-        );
-      });
+    it("require fail - The submission is already accruing UBI.", async () => {
+      // Make sure it reverts if you try to accrue UBI while already accruing UBI.
+      await expect(
+        ubi.startAccruing(addresses[1])
+      ).to.be.revertedWith("The submission is already accruing UBI.");
+    });
 
-      it("happy path - allow registered submissions to start accruing UBI.", async () => {
-        // Start accruing UBI and check that the current block number was set.
-        await setSubmissionIsRegistered(addresses[1], true);
-        await ubi.startAccruing(addresses[1]);
-        const accruedSince = await ubi.accruedSince(addresses[1]);
-        expect((await ubi.accruedSince(addresses[1])).toString()).to.equal(
-          accruedSince.toString()
-        );
-      });
+    it("happy path - a submission removed from Proof of Humanity no longer accrues value,  but keeps its consolidated balance.", async () => {
+      // get the consolidated balance of the wallet
+      const prevConsolidatedBalance = await testUtils.ubiConsolidatedBalanceOfWallet(addresses[1], ubi);
+      await network.provider.send("evm_increaseTime", [7200]);
+      await network.provider.send("evm_mine");
+      await setSubmissionIsRegistered(addresses[1], false);
+      await network.provider.send("evm_increaseTime", [3600]);
+      await network.provider.send("evm_mine");
+      expect((await testUtils.ubiBalanceOfWallet(addresses[1], ubi)).toNumber()).to.equal(prevConsolidatedBalance.toNumber());
+    });
 
-      it("require fail - The submission is already accruing UBI.", async () => {
-        // Make sure it reverts if you try to accrue UBI while already accruing UBI.
-        await expect(
-          ubi.startAccruing(addresses[1])
-        ).to.be.revertedWith("The submission is already accruing UBI.");
-      });
+    it("happy path - a submission with interrupted accruing still keeps consolidated balance.", async () => {
+      await ubi.transfer(addresses[1], 555);
+      // get the consolidated balance of the wallet
+      const prevConsolidatedBalance = await testUtils.ubiConsolidatedBalanceOfWallet(addresses[1], ubi);
+      await setSubmissionIsRegistered(addresses[1], true);
+      await network.provider.send("evm_increaseTime", [7200]);
+      await network.provider.send("evm_mine");
+      await setSubmissionIsRegistered(addresses[1], false);
+      await network.provider.send("evm_increaseTime", [7200]);
+      await network.provider.send("evm_mine");
+      const newConsolidatedBalance = await testUtils.ubiConsolidatedBalanceOfWallet(addresses[1], ubi)
+      expect(newConsolidatedBalance.toNumber()).to.equal(prevConsolidatedBalance.toNumber());
+    });
 
-      it("happy path - a submission removed from Proof of Humanity no longer accrues value.", async () => {
-        await network.provider.send("evm_increaseTime", [7200]);
-        await network.provider.send("evm_mine");
-        await setSubmissionIsRegistered(addresses[1], false);
-        await network.provider.send("evm_increaseTime", [3600]);
-        await network.provider.send("evm_mine");
-        expect((await testUtils.ubiBalanceOfWallet(addresses[1], ubi)).toString()).to.equal('0');
-      });
-
-      it("happy path - a submission with interrupted accruing still keeps withdrawn coins.", async () => {
-        await ubi.transfer(addresses[1], 555);
-        await setSubmissionIsRegistered(addresses[1], true);
-        await network.provider.send("evm_increaseTime", [7200]);
-        await network.provider.send("evm_mine");
-        await setSubmissionIsRegistered(addresses[1], false);
-        await network.provider.send("evm_increaseTime", [7200]);
-        await network.provider.send("evm_mine");
-        expect((await testUtils.ubiBalanceOfWallet(addresses[1], ubi)).toString()).to.equal('555');
-      });
-
-      it("happy path - a submission that natively accrued keeps transfered coins upon interruption.", async () => {
+    it("happy path - a submission that natively accrued keeps transfered coins upon interruption.", async () => {
+      // No longer valid since the account could have received UBI before registering.
+      if ((await ubi.accruedSince(accounts[3].address)).toNumber() === 0) {
         await setSubmissionIsRegistered(accounts[3].address, true);
         expect((await testUtils.ubiBalanceOfWallet(addresses[3], ubi)).toString()).to.equal('0');
         await ubi.startAccruing(accounts[3].address);
-        await network.provider.send("evm_increaseTime", [7200]);
-        await network.provider.send("evm_mine");
-        await ubi.connect(accounts[3]).transfer(addresses[1], 55);
-        expect((await testUtils.ubiBalanceOfWallet(addresses[1], ubi)).toString()).to.equal('610');
-      });
+      }
 
-      it("happy path - check that Mint and Transfer events get called when it corresponds.", async () => {
-        const owner = accounts[9];
-        const initialBalance = await testUtils.ubiBalanceOfWallet(owner.address, ubi);
-        await setSubmissionIsRegistered(owner.address, true);
-        await ubi.startAccruing(owner.address);
-        await network.provider.send("evm_increaseTime", [1]);
-        await network.provider.send("evm_mine");
-        expect(await testUtils.ubiBalanceOfWallet(owner.address, ubi)).to.be.above(initialBalance);
-        await expect(ubi.connect(owner).transfer(addresses[8], 18000))
-          .to.emit(ubi, "Transfer")
-        await expect(ubi.connect(owner).burn('199999999966000'))
-          .to.emit(ubi, "Transfer")
-        await setSubmissionIsRegistered(owner.address, false);
-        await expect(ubi.connect(owner).burn('100000000000000'))
-          .to.emit(ubi, "Transfer")
-        expect(await testUtils.ubiBalanceOfWallet(owner.address, ubi)).to.be.at.least(3000);
-      });
+      // get the consolidated balance of the wallet
+      const initialBalance = await testUtils.ubiBalanceOfWallet(addresses[1], ubi);
 
-      it("require fail - The submission is still registered in Proof Of Humanity.", async () => {
-        // Make sure it reverts if the submission is still registered.
-        await setSubmissionIsRegistered(addresses[6], true);
-        await ubi.startAccruing(addresses[6]);
-        await expect(
-          ubi.reportRemoval(addresses[6])
-        ).to.be.revertedWith(
-          "The submission is still registered in Proof Of Humanity."
-        );
-      });
+      await network.provider.send("evm_increaseTime", [7200]);
+      await network.provider.send("evm_mine");
+      await ubi.connect(accounts[3]).transfer(addresses[1], 55);
 
-      it("happy path - allows anyone to report a removed submission for their accrued UBI.", async () => {
-        // Report submission and verify that `accruingSinceBlock` was reset.
-        // Also verify that the accrued UBI was sent correctly.
-        await ubi.accruedSince(addresses[1]);
-        await ubi.reportRemoval(addresses[1]);
-        expect((await ubi.accruedSince(addresses[1])).toString()).to.equal('0');
-      });
-
-      it("happy path - returns 0 for submissions that are not accruing UBI.", async () => {
-        expect((await ubi.getAccruedValue(addresses[5])).toString()).to.equal('0');
-      });
-
-      it("happy path - allow governor to change `proofOfHumanity`.", async () => {
-        // Make sure it reverts if we are not the governor.
-        await expect(
-          ubi.connect(accounts[1]).changeProofOfHumanity(altProofOfHumanity.address)
-        ).to.be.revertedWith("The caller is not the governor.");
-
-        // Set the value to an alternative proof of humanity registry
-        const originalProofOfHumanity = await ubi.proofOfHumanity();
-        await ubi.changeProofOfHumanity(altProofOfHumanity.address);
-        expect(await ubi.proofOfHumanity()).to.equal(altProofOfHumanity.address);
-        expect(await ubi.proofOfHumanity()).to.not.equal(originalProofOfHumanity);
-
-        await ubi.changeProofOfHumanity(originalProofOfHumanity)
-      });
-
-      it("happy path - allow to burn and post.", async () => {
-        await setSubmissionIsRegistered(addresses[0], true);
-        await setPost('hello world');
-        const previousBalance = new BigNumber((await testUtils.ubiBalanceOfWallet(addresses[0], ubi)).toString());
-        await ubi.burnAndPost(ethers.utils.parseEther("0.01"), altPoster, 'hello world');
-        const newBalance = new BigNumber((await testUtils.ubiBalanceOfWallet(addresses[0], ubi)).toString());
-        expect(newBalance.toNumber()).to.lessThan(previousBalance.toNumber());
-      });
+      expect((await testUtils.ubiBalanceOfWallet(addresses[1], ubi)).toNumber()).to.equal(initialBalance.plus(55).toNumber());
     });
-  });
 
-  describe("UBI streams", () => {
+    it("happy path - check that Mint and Transfer events get called when it corresponds.", async () => {
+      const owner = accounts[9];
+      await setSubmissionIsRegistered(owner.address, true);
+
+      const initialBalance = await testUtils.ubiBalanceOfWallet(owner.address, ubi);
+
+      if ((await ubi.accruedSince(owner.address)).toNumber() === 0) {
+        expect((await testUtils.ubiBalanceOfWallet(owner.address, ubi)).toString()).to.equal('0');
+        await ubi.startAccruing(owner.address);
+      }
+
+      await testUtils.timeForward(1, network);
+
+      expect((await testUtils.ubiBalanceOfWallet(owner.address, ubi)).toNumber()).to.be.above(initialBalance.toNumber());
+      await expect(ubi.connect(owner).transfer(addresses[8], 18000))
+        .to.emit(ubi, "Transfer")
+      await expect(ubi.connect(owner).burn('199999999966000'))
+        .to.emit(ubi, "Transfer")
+      await setSubmissionIsRegistered(owner.address, false);
+      await expect(ubi.connect(owner).burn('100000000000000'))
+        .to.emit(ubi, "Transfer")
+      expect((await testUtils.ubiBalanceOfWallet(owner.address, ubi)).toNumber()).to.be.at.least(3000);
+    });
+
+    it("require fail - The submission is still registered in Proof Of Humanity.", async () => {
+      // Make sure it reverts if the submission is still registered.
+      await setSubmissionIsRegistered(addresses[6], true);
+      if ((await ubi.accruedSince(addresses[6])).toNumber() === 0) {
+        expect((await testUtils.ubiBalanceOfWallet(addresses[6], ubi)).toString()).to.equal('0');
+        await ubi.startAccruing(addresses[6]);
+      }
+
+      await expect(
+        ubi.reportRemoval(addresses[6])
+      ).to.be.revertedWith(
+        "The submission is still registered in Proof Of Humanity."
+      );
+    });
+
+    it("happy path - allows anyone to report a removed submission for their accrued UBI.", async () => {
+      // Report submission and verify that `accruingSinceBlock` was reset.
+      // Also verify that the accrued UBI was sent correctly.
+      await ubi.accruedSince(addresses[1]);
+      await ubi.reportRemoval(addresses[1]);
+      expect((await ubi.accruedSince(addresses[1])).toString()).to.equal('0');
+    });
+
+    it("happy path - returns 0 for submissions that are not accruing UBI.", async () => {
+      expect((await ubi.getAccruedValue(addresses[5])).toString()).to.equal('0');
+    });
+
+    it("happy path - allow governor to change `proofOfHumanity`.", async () => {
+      // Make sure it reverts if we are not the governor.
+      await expect(
+        ubi.connect(accounts[1]).changeProofOfHumanity(altProofOfHumanity.address)
+      ).to.be.revertedWith("The caller is not the governor.");
+
+      // Set the value to an alternative proof of humanity registry
+      const originalProofOfHumanity = await ubi.proofOfHumanity();
+      await ubi.changeProofOfHumanity(altProofOfHumanity.address);
+      expect(await ubi.proofOfHumanity()).to.equal(altProofOfHumanity.address);
+      expect(await ubi.proofOfHumanity()).to.not.equal(originalProofOfHumanity);
+
+      await ubi.changeProofOfHumanity(originalProofOfHumanity)
+    });
+
+    it("happy path - allow to burn and post.", async () => {
+      await setSubmissionIsRegistered(addresses[0], true);
+      await setPost('hello world');
+      const previousBalance = new BigNumber((await testUtils.ubiBalanceOfWallet(addresses[0], ubi)).toString());
+      await ubi.burnAndPost(ethers.utils.parseEther("0.01"), altPoster, 'hello world');
+      const newBalance = new BigNumber((await testUtils.ubiBalanceOfWallet(addresses[0], ubi)).toString());
+      expect(newBalance.toNumber()).to.lessThan(previousBalance.toNumber());
+    });
+  };
+
+  const ubiStreamTests = () => {
 
     let lastStreamId;
     before(async () => {
@@ -328,9 +353,9 @@ contract('UBI.sol', accounts => {
       }
 
       // Get previous human balance 
-      const prevHumanBalance = BigNumber((await testUtils.ubiBalanceOfWallet(addresses[0], ubi)).toString());
+      const prevHumanBalance = await testUtils.ubiBalanceOfWallet(addresses[0], ubi);
       // Get previous Stream balance
-      const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi)).toString())
+      const prevStreamBalance = await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi);
 
       // Move block time to the end of the stream
       const nextBlockTime = await testUtils.getCurrentBlockTime();
@@ -735,5 +760,11 @@ contract('UBI.sol', accounts => {
         expect(lastStreamCount.toNumber()).to.eq(initialStreamCount.toNumber(), "Stream count should decrease after recipient withdraws from a completed stream");
       })
     });
-  })
+  }
+
+  describe('UBI Coin and Proof of Humanity', ubiCoinTests);
+
+  describe("UBI streams", ubiStreamTests);
+
+  describe('UBI Coin after streams', ubiCoinTests);
 });
