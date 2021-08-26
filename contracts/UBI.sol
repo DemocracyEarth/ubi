@@ -528,9 +528,9 @@ contract UBI is Initializable, ISablier {
 
         /* Create and store the stream object. */
         uint256 newStreamId = prevStreamId.add(1);
-		// Create the stream
+		    // Create the stream
         streams[newStreamId] = Types.Stream({
-			// Total deposit is calculated from duration and ubiPerSecond
+			  // Total deposit is calculated from duration and ubiPerSecond
             deposit: accruedPerSecond.mul(vars.duration).mul(ubiPerSecond.div(accruedPerSecond)),
             ratePerSecond: ubiPerSecond, // how many UBI to delegate per second.
             remainingBalance: 0, // Starts with 0. Accumulates as time passes.
@@ -543,24 +543,24 @@ contract UBI is Initializable, ISablier {
             accruedSince: 0
         });
 
-		streamIds[msg.sender][recipient] = newStreamId;
+		    streamIds[msg.sender][recipient] = newStreamId;
 
-		// Clear previous streamId if existed
-		if(existingStreamId > 0) {
-			// This looks for the element that contains the existingStreamId
-			// and replaces the newStreamId. This makes the list's order unreliable.
-			for(uint256 i = 0; i < streamIdsOf[msg.sender].length; i++) {
-				
-				// If it's existing stream id, demove it from the array and replace it with the new
-				if(streamIdsOf[msg.sender][i] == existingStreamId) {
-					streamIdsOf[msg.sender][i] = newStreamId;
-					break;
-				} 
-			}
-		} else {
-			// If id didn't exist, just add it.
-			streamIdsOf[msg.sender].push(newStreamId);
-		}
+        // Clear previous streamId if existed
+        if(existingStreamId > 0) {
+          // This looks for the element that contains the existingStreamId
+          // and replaces the newStreamId. This makes the list's order unreliable.
+          for(uint256 i = 0; i < streamIdsOf[msg.sender].length; i++) {
+            
+            // If it's existing stream id, demove it from the array and replace it with the new
+            if(streamIdsOf[msg.sender][i] == existingStreamId) {
+              streamIdsOf[msg.sender][i] = newStreamId;
+              break;
+            } 
+          }
+        } else {
+          // If id didn't exist, just add it.
+          streamIdsOf[msg.sender].push(newStreamId);
+        }
 
         /* Increment the next stream id. */
         prevStreamId = newStreamId;
@@ -595,7 +595,26 @@ contract UBI is Initializable, ISablier {
         streams[streamId].accruedSince = block.timestamp < stream.stopTime ? block.timestamp - 1 : stream.stopTime;
         balance[stream.recipient] = balance[stream.recipient].add(amount);
         
-        // TODO:  Clear streams 🗑️
+        // If withdrawing all available balance and stream is completed, remove it from the list of streams
+        if(amount == streamBalance && block.timestamp >= stream.stopTime) {
+          uint256 lastIndex = streamIdsOf[stream.sender].length - 1;
+
+          for(uint256 i = 0; i < streamIdsOf[stream.sender].length; i++) {
+            // If stream is found
+            if(streamIdsOf[stream.sender][i] == streamId) {
+              // If it's not the last element on the array
+              if(i < lastIndex) {
+                // Replace the found stream with the last element on the array
+                streamIdsOf[stream.sender][i] = streamIdsOf[stream.sender][lastIndex];
+              }
+              // Delete the last element on the list
+              streamIdsOf[stream.sender].pop();
+              break;
+            }
+          }
+          delete streamIds[stream.sender][stream.recipient];
+          delete streams[streamId];
+        }
 
         //transfer(stream.recipient, amount);
         emit WithdrawFromStream(streamId, stream.recipient, amount);
