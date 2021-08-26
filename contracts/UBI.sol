@@ -438,7 +438,7 @@ contract UBI is Initializable, ISablier {
         BalanceOfLocalVars memory vars;
 
         if(!proofOfHumanity.isRegistered(stream.sender)) return 0;
-        if(stream.startTime > block.timestamp) return 0;
+        if(stream.startTime >= block.timestamp) return 0;
 
         // Time accumulated by the stream
         uint256 streamAccumulatedTime = deltaOf(streamId);
@@ -446,7 +446,7 @@ contract UBI is Initializable, ISablier {
         // If there were withdrawals, take them into account.
         if(stream.accruedSince > 0) {
           // If stream is stil active use blocktime to calculate delta, else use stream.stoptime
-          streamAccumulatedTime = (block.timestamp < stream.stopTime) ? block.timestamp.sub(stream.accruedSince) : stream.stopTime.sub(stream.accruedSince);
+          streamAccumulatedTime = streamAccumulatedTime.sub(stream.accruedSince.sub(stream.startTime));
         }
 
         // Stream accumulated balance.
@@ -505,9 +505,24 @@ contract UBI is Initializable, ISablier {
         require(startTime >= block.timestamp, "start time before block.timestamp");
         require(stopTime > startTime, "stop time before the start time");
         require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
-		uint256 existingStreamId = streamIds[msg.sender][recipient];
-     	require(existingStreamId == 0 || streams[existingStreamId].stopTime <= block.timestamp, "Account is already a recipient on an active stream.");
-		
+		    uint256 existingStreamId = streamIds[msg.sender][recipient];
+     	  require(existingStreamId == 0 || streams[existingStreamId].stopTime <= block.timestamp, "Account is already a recipient on an active stream.");
+
+        // Calculate available balance to delegate for the given period.
+        uint256 availableUbiPerSecond = accruedPerSecond;
+        for(uint256 i = 0; i < streamIdsOf[msg.sender].length; i++) {
+          uint256 streamId = streamIdsOf[msg.sender][i];
+          Types.Stream memory otherStream = streams[streamId];
+          // if stream has already ended, do not take into consideration
+          if(otherStream.stopTime < block.timestamp) continue;
+          // If streams overlap subtract the delegated balance from the available ubi per second
+          if(startTime <= otherStream.stopTime && stopTime > otherStream.startTime) {
+            availableUbiPerSecond = availableUbiPerSecond.sub(otherStream.ratePerSecond);
+          }
+        }
+
+        require(ubiPerSecond <= availableUbiPerSecond, "Delegated value exceeds available balance for the given stream period");
+
         CreateStreamLocalVars memory vars;
         vars.duration = stopTime.sub(startTime);
 
@@ -576,11 +591,11 @@ contract UBI is Initializable, ISablier {
         uint256 streamBalance = balanceOf(streamId, stream.recipient);
         require(streamBalance >= amount, "amount exceeds the available balance");
 
-        // Consolidate stream and recipient balance
-        streams[streamId].accruedSince = block.timestamp < stream.stopTime ? block.timestamp : stream.stopTime;
-        balance[stream.recipient] = balance[stream.recipient].add(streamBalance);
+        // Consolidate stream and recipient balance. I'm not sure I understand WHY we need -1, but if not, the balance is invalid on withdrawal while stream is active.
+        streams[streamId].accruedSince = block.timestamp < stream.stopTime ? block.timestamp - 1 : stream.stopTime;
+        balance[stream.recipient] = balance[stream.recipient].add(amount);
         
-        // TODO: Clear streams
+        // TODO:  Clear streams 🗑️
 
         //transfer(stream.recipient, amount);
         emit WithdrawFromStream(streamId, stream.recipient, amount);

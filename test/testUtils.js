@@ -96,6 +96,28 @@ const testUtils = {
     const blockNumber = await ethers.provider.getBlockNumber();
     const block = await ethers.provider.getBlock(blockNumber);
     return block.timestamp;
+  },
+
+  async goToStartOfStream(streamId, ubi, network) {
+    // Get the last created stream
+    const stream = await ubi.getStream(streamId);
+      
+    // Move to the end of the stream if needd
+    if (await testUtils.getCurrentBlockTime() < stream.startTime.toNumber()) {
+      await testUtils.setNextBlockTime(stream.startTime.toNumber(), network);
+      expect(await testUtils.getCurrentBlockTime()).to.eq(stream.startTime.toNumber(), "Current block time should be the start of the stream");
+    }
+  },
+
+  async goToEndOfStream(streamId, ubi, network) {
+    // Get the last created stream
+    const stream = await ubi.getStream(streamId);
+      
+    // Move to the end of the stream if needd
+    if (await testUtils.getCurrentBlockTime() < stream.stopTime.toNumber()) {
+      await testUtils.setNextBlockTime(stream.stopTime.toNumber(), network);
+      expect(await testUtils.getCurrentBlockTime()).to.eq(stream.stopTime.toNumber(), "Current block time should be the end of the stream");
+    }
   }
 
 }
