@@ -1,6 +1,7 @@
 const { default: BigNumber } = require("bignumber.js");
 const { expect } = require("chai");
 const deploymentParams = require('../deployment-params');
+const { signERC2612Permit } = require("eth-permit");
 
 /**
  @summary Tests for UBI.sol
@@ -44,6 +45,13 @@ contract('UBI.sol', accounts => {
 
       altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
       altPoster = mockAddress;
+
+      permitDomain = {
+        name: await ubi.name(),
+        version: "2",
+        chainId: (await ethers.provider.getNetwork()).chainId,
+        verifyingContract: ubi.address
+      };
     });
 
     it("happy path - return a value previously initialized.", async () => {
@@ -174,5 +182,173 @@ contract('UBI.sol', accounts => {
       expect(newBalance).to.lessThan(previousBalance);
     });
 
+    it("require fail - permit signature expired", async () => {
+      const owner = accounts[0];
+      const spender = accounts[1];
+      const deadline = 0;
+      const value = ethers.utils.parseEther('2').toString();
+  
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal('0');
+  
+      const signature = await signERC2612Permit(
+        owner.provider,
+        permitDomain,
+        owner.address,
+        spender.address,
+        value,
+        deadline
+      );
+  
+      await expect(
+        ubi.permit(owner.address, spender.address, value, deadline, signature.v, signature.r, signature.s)
+      ).to.be.revertedWith("ERC20Permit: expired deadline");
+  
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal('0');
+    });
+
+    it("happy path - permit increases allowance to expected value", async () => {
+      const owner = accounts[0];
+      const spender = accounts[1];
+      const value = ethers.utils.parseEther('2').toString();
+  
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal('0');
+  
+      const signature = await signERC2612Permit(
+        owner.provider,
+        permitDomain,
+        owner.address,
+        spender.address,
+        value
+      );
+
+      await ubi.permit(
+        owner.address, spender.address, value, signature.deadline, signature.v, signature.r, signature.s
+      );
+  
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal(value);
+    });
+
+    it("require fail - permit signature already used", async () => {
+      const owner = accounts[0];
+      const spender = accounts[1];
+      const expectedAllowanceBeforePermit = ethers.utils.parseEther('2').toString();
+      const value = ethers.utils.parseEther('3').toString();
+  
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal(expectedAllowanceBeforePermit);
+  
+      const signature = await signERC2612Permit(
+        owner.provider,
+        permitDomain,
+        owner.address,
+        spender.address,
+        value
+      );
+
+      await ubi.permit(
+        owner.address, spender.address, value, signature.deadline, signature.v, signature.r, signature.s
+      );
+  
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal(value);
+
+      await expect(
+        ubi.permit(owner.address, spender.address, value, signature.deadline, signature.v, signature.r, signature.s)
+      ).to.be.revertedWith("ERC20Permit: invalid signature");
+
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal(value);
+    });
+
+    it("happy path - permit setting allowance to zero", async () => {
+      const owner = accounts[0];
+      const spender = accounts[1];
+      const expectedAllowanceBeforePermit = ethers.utils.parseEther('3').toString();
+
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal(expectedAllowanceBeforePermit);
+  
+      const signature = await signERC2612Permit(
+        owner.provider,
+        permitDomain,
+        owner.address,
+        spender.address,
+        '0'
+      );
+
+      await ubi.permit(
+        owner.address, spender.address, 0, signature.deadline, signature.v, signature.r, signature.s
+      );
+  
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal('0');
+    });
+
+    it("require fail - permit signature built with invalid nonce", async () => {
+      const owner = accounts[0];
+      const spender = accounts[1];
+      const value = ethers.utils.parseEther('3').toString();
+      const currentNonce = await ubi.nonces(owner.address);
+      const invalidNonce = currentNonce + 1;
+  
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal('0');
+
+      const signature = await signERC2612Permit(
+        owner.provider,
+        permitDomain,
+        owner.address,
+        spender.address,
+        value,
+        null,
+        invalidNonce
+      );
+
+      await expect(
+        ubi.permit(owner.address, spender.address, value, signature.deadline, signature.v, signature.r, signature.s)
+      ).to.be.revertedWith("ERC20Permit: invalid signature");
+
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal('0');
+    });
+
+    it("require fail - permit with owner as zero address", async () => {
+      const owner = accounts[0];
+      const spender = accounts[1];
+      const value = ethers.utils.parseEther('3').toString();
+      const invalidOwner = ethers.constants.AddressZero;
+  
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal('0');
+
+      const signature = await signERC2612Permit(
+        owner.provider,
+        permitDomain,
+        owner.address,
+        spender.address,
+        value
+      );
+
+      await expect(
+        ubi.permit(invalidOwner, spender.address, value, signature.deadline, signature.v, signature.r, signature.s)
+      ).to.be.revertedWith("ERC20Permit: invalid owner");
+
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal('0');
+    });
+
+    it("happy path - permit called by a third party increases allowance to expected value", async () => {
+      const owner = accounts[0];
+      const spender = accounts[1];
+      const thirdParty = accounts[2];
+      const value = ethers.utils.parseEther('2').toString();
+  
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal('0');
+  
+      const signature = await signERC2612Permit(
+        owner.provider,
+        permitDomain,
+        owner.address,
+        spender.address,
+        value
+      );
+
+      await ubi.connect(thirdParty).permit(
+        owner.address, spender.address, value, signature.deadline, signature.v, signature.r, signature.s
+      );
+  
+      expect((await ubi.allowance(owner.address, spender.address))).to.be.equal(value);
+    });
   });
-})
+});
