@@ -330,9 +330,7 @@ contract UBI is Initializable {
   * chain id.
   */
   function _buildDomainSeparator() internal view returns (bytes32) {
-    // TODO: Verify if version number is correct.
     string memory version = "2";
-    // TODO: Domain separator can receive a salt as last parameter.
     return keccak256(
       abi.encode(
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
