@@ -40,6 +40,7 @@
     "solidity-coverage": "^0.7.14"
   },
   "dependencies": {
+    "moment": "^2.29.1",
     "poster": "git+https://github.com/auryn-macmillan/poster.git"
   }
 }

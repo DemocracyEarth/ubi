@@ -36,13 +36,23 @@ module.exports = {
     }
   },
   solidity: {
-    version: "0.7.3",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200
+    compilers: [{
+      version: "0.7.3",
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200
+        }
       }
-    }
+    }, {
+      version: "0.5.17",
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200
+        }
+      }
+    }]
   },
   etherscan: {
     apiKey: ETHERSCAN_API_KEY
