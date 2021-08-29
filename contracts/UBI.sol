@@ -125,9 +125,6 @@ contract UBI is Initializable, ISablier {
   /// @dev A mapping containing UNORDERED lists of the stream ids of each sender.
   /// @notice This does not guarantee to contain valid streams (may have ended).
   mapping (address => uint256[]) public streamIdsOf;
-
-  /// @dev The total value delegated.
-  mapping (address => uint256) public delegated;
   
   /* Modifiers */
 
@@ -681,7 +678,6 @@ contract UBI is Initializable, ISablier {
             balance[stream.recipient] = balance[stream.recipient].add(streamBalance);
             streams[streamId].withdrawn = streams[streamId].withdrawn.add(streamBalance);
             totalSupply = totalSupply.add(streamBalance);
-            delegated[stream.sender] = delegated[stream.sender].add(streamBalance);
 
             // New supply for sender = total acrued value - pending stream values - cancelled stream value
             // CONSOLIDATE SENDER BALANCE
