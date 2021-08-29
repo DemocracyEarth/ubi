@@ -479,6 +479,7 @@ contract UBI is Initializable, ISablier {
     function createStream(address recipient, uint256 ubiPerSecond, address tokenAddress, uint256 startTime, uint256 stopTime)
         public
         override
+        nonReentrant
         returns (uint256)
     {
         require(proofOfHumanity.isRegistered(msg.sender), "Only registered humans can stream UBI.");
@@ -565,6 +566,7 @@ contract UBI is Initializable, ISablier {
     function withdrawFromStream(uint256 streamId, uint256 amount)
         external
         override
+        nonReentrant
         streamExists(streamId)
         onlySenderOrRecipient(streamId)
         returns (bool)
@@ -657,6 +659,7 @@ contract UBI is Initializable, ISablier {
     function cancelStream(uint256 streamId)
         external
         override
+        nonReentrant
         streamExists(streamId)
         onlySenderOrRecipient(streamId)
         returns (bool)
