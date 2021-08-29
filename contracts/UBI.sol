@@ -50,7 +50,7 @@ library Types {
         address sender;
         address tokenAddress;
         bool isEntity;
-        uint256 accruedSince;
+        uint256 withdrawn;
     }
 }
 
@@ -316,14 +316,8 @@ contract UBI is Initializable, ISablier {
   * @return The current balance including accrued Universal Basic Income of the user.
   **/
   function balanceOf(address _human) public view returns (uint256) {
-    uint256 delegatedBalance;
-    for(uint256 i = 0; i < streamIdsOf[_human].length; i++) {
-      uint256 streamId = streamIdsOf[_human][i];
-      Types.Stream memory stream = streams[streamId];
-      delegatedBalance = delegatedBalance.add(balanceOf(streamId, stream.recipient));
-    }
-
-    return getAccruedValue(_human).add(balance[_human]).sub(delegatedBalance);
+    uint256 pendingDelegatedAccruedValue = getDelegatedAccruedValue(_human);
+    return getAccruedValue(_human).add(balance[_human]).sub(pendingDelegatedAccruedValue);
   }
 
   /**
@@ -342,13 +336,17 @@ contract UBI is Initializable, ISablier {
      */
     mapping(uint256 => Types.Stream) private streams;
 
-	/// @dev Get the streamId from human and recipient addresses.
-  	mapping (address => mapping(address => uint256)) public streamIds;
+	/// @dev Get the streamIds from human and recipient addresses.
+  /// A recipient can have multiple streams with a sender.
+  	mapping (address => mapping(address => uint256[])) public streamIds;
 
 			
 	/// @dev A mapping containing UNORDERED lists of the stream ids of each sender.
 	/// @notice This does not guarantee to contain valid streams (may have ended).
 	mapping (address => uint256[]) public streamIdsOf;
+
+    /// @dev The total value delegated.
+    mapping (address => uint256) public delegated;
 
 
     /*** Modifiers ***/
@@ -436,31 +434,25 @@ contract UBI is Initializable, ISablier {
     function balanceOf(uint256 streamId, address who) override public view streamExists(streamId) returns (uint256) {
         Types.Stream memory stream = streams[streamId];
         BalanceOfLocalVars memory vars;
+        if(!stream.isEntity) return 0;
 
         if(!proofOfHumanity.isRegistered(stream.sender)) return 0;
-        if(stream.startTime >= block.timestamp) return 0;
+        if(stream.startTime > block.timestamp) return 0;
+        // If who is sender, always returns 0
+        if (who == stream.sender) return 0;
 
         // Time accumulated by the stream
         uint256 streamAccumulatedTime = deltaOf(streamId);
+        
+        // UBI accrued by the scream
+        uint256 streamAccruedValue = streamAccumulatedTime.mul(stream.ratePerSecond);
 
-        // If there were withdrawals, take them into account.
-        if(stream.accruedSince > 0) {
-          // If stream is stil active use blocktime to calculate delta, else use stream.stoptime
-          streamAccumulatedTime = streamAccumulatedTime.sub(stream.accruedSince.sub(stream.startTime));
+        // If there were withdrawals, subtract them from the stream accrued value
+        if(stream.withdrawn > 0) {
+          streamAccruedValue = streamAccruedValue.sub(stream.withdrawn);
         }
 
-        // Stream accumulated balance.
-        uint256 streamAccruedValue = streamAccumulatedTime.mul(stream.ratePerSecond);  
-      
-        
-        /*
-         * If the stream `balance` does not equal `deposit`, it means there have been withdrawals.
-         * We have to subtract the total amount withdrawn from the amount of money that has been
-         * streamed until now.
-         */
-
         if (who == stream.recipient) return streamAccruedValue;
-        if (who == stream.sender) return stream.deposit - streamAccruedValue;
         return 0;
     }
 
@@ -505,20 +497,23 @@ contract UBI is Initializable, ISablier {
         require(startTime >= block.timestamp, "start time before block.timestamp");
         require(stopTime > startTime, "stop time before the start time");
         require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
-		    uint256 existingStreamId = streamIds[msg.sender][recipient];
-     	  require(existingStreamId == 0 || streams[existingStreamId].stopTime <= block.timestamp, "Account is already a recipient on an active stream.");
+
+        for(uint256 i = 0; i < streamIds[msg.sender][recipient].length; i ++) {
+          uint256 existingStreamId = streamIds[msg.sender][recipient][i];
+     	    require(!(startTime < streams[existingStreamId].stopTime && streams[existingStreamId].startTime < stopTime), "Account is already a recipient on an active or overlaping stream.");
+        }
 
         // Calculate available balance to delegate for the given period.
         uint256 availableUbiPerSecond = accruedPerSecond;
         for(uint256 i = 0; i < streamIdsOf[msg.sender].length; i++) {
-          uint256 streamId = streamIdsOf[msg.sender][i];
-          Types.Stream memory otherStream = streams[streamId];
-          // if stream has already ended, do not take into consideration
-          if(otherStream.stopTime < block.timestamp) continue;
-          // If streams overlap subtract the delegated balance from the available ubi per second
-          if(startTime <= otherStream.stopTime && stopTime > otherStream.startTime) {
-            availableUbiPerSecond = availableUbiPerSecond.sub(otherStream.ratePerSecond);
-          }
+            uint256 streamId = streamIdsOf[msg.sender][i];
+            Types.Stream memory otherStream = streams[streamId];
+            // if stream has already ended, do not take into consideration
+            if(otherStream.stopTime < block.timestamp) continue;
+            // If streams overlap subtract the delegated balance from the available ubi per second
+            if(startTime <= otherStream.stopTime && stopTime > otherStream.startTime) {
+                availableUbiPerSecond = availableUbiPerSecond.sub(otherStream.ratePerSecond);
+            }
         }
 
         require(ubiPerSecond <= availableUbiPerSecond, "Delegated value exceeds available balance for the given stream period");
@@ -540,27 +535,12 @@ contract UBI is Initializable, ISablier {
             startTime: startTime,
             stopTime: stopTime,
             tokenAddress: tokenAddress,
-            accruedSince: 0
+            withdrawn: 0
         });
 
-		    streamIds[msg.sender][recipient] = newStreamId;
 
-        // Clear previous streamId if existed
-        if(existingStreamId > 0) {
-          // This looks for the element that contains the existingStreamId
-          // and replaces the newStreamId. This makes the list's order unreliable.
-          for(uint256 i = 0; i < streamIdsOf[msg.sender].length; i++) {
-            
-            // If it's existing stream id, demove it from the array and replace it with the new
-            if(streamIdsOf[msg.sender][i] == existingStreamId) {
-              streamIdsOf[msg.sender][i] = newStreamId;
-              break;
-            } 
-          }
-        } else {
-          // If id didn't exist, just add it.
-          streamIdsOf[msg.sender].push(newStreamId);
-        }
+        streamIds[msg.sender][recipient].push(newStreamId);
+        streamIdsOf[msg.sender].push(newStreamId);
 
         /* Increment the next stream id. */
         prevStreamId = newStreamId;
@@ -591,34 +571,53 @@ contract UBI is Initializable, ISablier {
         uint256 streamBalance = balanceOf(streamId, stream.recipient);
         require(streamBalance >= amount, "amount exceeds the available balance");
 
-        // Consolidate stream and recipient balance. I'm not sure I understand WHY we need -1, but if not, the balance is invalid on withdrawal while stream is active.
-        streams[streamId].accruedSince = block.timestamp < stream.stopTime ? block.timestamp - 1 : stream.stopTime;
+
+        // Consolidate sender balance
+        uint256 newSupplyFrom;
+        if (accruedSince[stream.sender] != 0 && proofOfHumanity.isRegistered(stream.sender)) {
+            newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[stream.sender]));
+            totalSupply = totalSupply.add(newSupplyFrom);
+            accruedSince[stream.sender] = block.timestamp;
+        }
+        // Sender balance is the current balance
+        balance[stream.sender] = balanceOf(stream.sender);
+
+        // Consolidate stream and recipient balance.
+        streams[streamId].withdrawn = amount;
         balance[stream.recipient] = balance[stream.recipient].add(amount);
         
+        // DELETE STREAM IF REQUIRED
         // If withdrawing all available balance and stream is completed, remove it from the list of streams
         if(amount == streamBalance && block.timestamp >= stream.stopTime) {
-          uint256 lastIndex = streamIdsOf[stream.sender].length - 1;
-
-          for(uint256 i = 0; i < streamIdsOf[stream.sender].length; i++) {
-            // If stream is found
-            if(streamIdsOf[stream.sender][i] == streamId) {
-              // If it's not the last element on the array
-              if(i < lastIndex) {
-                // Replace the found stream with the last element on the array
-                streamIdsOf[stream.sender][i] = streamIdsOf[stream.sender][lastIndex];
-              }
-              // Delete the last element on the list
-              streamIdsOf[stream.sender].pop();
-              break;
-            }
-          }
-          delete streamIds[stream.sender][stream.recipient];
-          delete streams[streamId];
+          deleteStream(streamId);
         }
 
         //transfer(stream.recipient, amount);
         emit WithdrawFromStream(streamId, stream.recipient, amount);
         return true;
+    }
+
+    function deleteStream(uint256 streamId) internal streamExists(streamId) {
+      
+      Types.Stream memory stream = streams[streamId];
+      // Get the index of the last item
+      uint256 indexOfLastItem = streamIdsOf[stream.sender].length - 1;
+
+      for(uint256 i = 0; i < streamIdsOf[stream.sender].length; i++) {
+        // If stream is found
+        if(streamIdsOf[stream.sender][i] == streamId) {
+          // If it's not the last element on the array
+          if(i < indexOfLastItem) {
+            // Replace the found stream with the last element on the array
+            streamIdsOf[stream.sender][i] = streamIdsOf[stream.sender][indexOfLastItem];
+          }
+          // Delete the last element on the list
+          streamIdsOf[stream.sender].pop();
+          break;
+        }
+      }
+      delete streamIds[stream.sender][stream.recipient];
+      delete streams[streamId];
     }
 
     /**
@@ -637,15 +636,43 @@ contract UBI is Initializable, ISablier {
         returns (bool)
     {
         Types.Stream memory stream = streams[streamId];
-        uint256 senderBalance = balanceOf(streamId, stream.sender);
-        uint256 recipientBalance = balanceOf(streamId, stream.recipient);
+        if(block.timestamp > stream.startTime ) {
 
-        delete streams[streamId];
+            // CONSOLIDATE RECIPIENT BALANCE.
+            // Stores the current stream balance
+            uint256 streamBalance;
 
-        if (recipientBalance > 0) transfer(stream.recipient, recipientBalance);
-        if (senderBalance > 0) transfer(stream.sender, senderBalance);
+            // Stream balance.
+            streamBalance = balanceOf(streamId, stream.recipient);
+            
+            // Sender balance
+            uint256 senderBalance = balanceOf(stream.sender);
 
-        emit CancelStream(streamId, stream.sender, stream.recipient, senderBalance, recipientBalance);
+            // Consolidate stream and recipient balance by sending the available balance from stream to recipient.
+            balance[stream.recipient] = balance[stream.recipient].add(streamBalance);
+            streams[streamId].withdrawn = streams[streamId].withdrawn.add(streamBalance);
+            totalSupply = totalSupply.add(streamBalance);
+            delegated[stream.sender] = delegated[stream.sender].add(streamBalance);
+            
+            // New supply for sender = total acrued value - pending stream values - cancelled stream value
+            // CONSOLIDATE SENDER BALANCE
+            
+            // Get pending streams balance from accruedSince to the current block time
+            uint256 pendingStreamValue = getDelegatedAccruedValue(stream.sender);
+
+            uint256 totalAccrued = accruedPerSecond.mul(block.timestamp.sub(accruedSince[stream.sender]));
+            
+
+            uint256 newSupplyForSender = totalAccrued.sub(pendingStreamValue).sub(streamBalance);
+            balance[stream.sender] = balance[stream.sender].add(newSupplyForSender);
+            accruedSince[stream.sender] = block.timestamp;
+        } 
+        
+        // Delete the stream
+        deleteStream(streamId);            
+
+      
+        emit CancelStream(streamId, stream.sender, stream.recipient, 0, 0);
         return true;
     }
 
@@ -653,4 +680,48 @@ contract UBI is Initializable, ISablier {
       require(proofOfHumanity.isRegistered(_human), "The submission is not registered in Proof Of Humanity.");
       return streamIdsOf[_human].length;
     } 
+
+    function getStreamsOf(address _human) public view returns (uint256[] memory) {
+      return streamIdsOf[_human];
+    }
+
+    /**
+     * @dev gets the delegated accrued value.
+     * This sums the accrued value of all active streams from the human's `accruedSince` to `block.timestamp`
+     */
+    function getDelegatedAccruedValue(address _human) public view returns (uint256) {
+      uint256 delegatedAccruedValue;
+      // Iterate on each stream id of the human and calculate the currently delegated accrued value
+      for(uint256 i = 0; i < streamIdsOf[_human].length; i++) {
+        
+        uint256 streamId = streamIdsOf[_human][i];
+        
+        Types.Stream memory stream = streams[streamId];
+        if(!stream.isEntity) continue;
+        if(!proofOfHumanity.isRegistered(stream.sender)) continue;
+        
+        // If range does not overlap with current stream, skip
+        if(!(stream.stopTime >= accruedSince[_human] && stream.startTime <= block.timestamp)) continue;
+        
+        // Time delegated to the stream
+        uint256 streamAccumulatedTime = deltaOf(streamId);
+
+        // If there is accumulated time and the human accrued after the stream started, subtract delta of  accrued since and startTime
+        if(streamAccumulatedTime > 0 && accruedSince[_human] > stream.startTime) {
+            streamAccumulatedTime = streamAccumulatedTime.sub(accruedSince[_human].sub(stream.startTime));
+        }
+
+        // Total setram accrued value is the accumulated time * stream's ratePerSecond
+        uint256 totalStreamAccruedValue = streamAccumulatedTime.mul(stream.ratePerSecond);
+        
+        // Subtract withdrawn value
+        if(stream.withdrawn > 0) {
+            totalStreamAccruedValue = totalStreamAccruedValue.sub(stream.withdrawn);
+        }
+        
+        // Add the stream accrued value to the pending delegated balance
+        delegatedAccruedValue = delegatedAccruedValue.add(totalStreamAccruedValue);
+      }
+      return delegatedAccruedValue;
+    }
 }
