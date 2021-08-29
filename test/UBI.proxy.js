@@ -597,6 +597,28 @@ contract('UBI.sol', accounts => {
                 .to.be.revertedWith("Delegated value exceeds available balance for the given stream period");
         })
 
+        it("require fail - Creating circular delegation should fail", async () => {
+            // Move to the end of the last stream
+            await testUtils.goToEndOfStream(lastStreamId, ubi, network);
+            
+            setSubmissionIsRegistered(addresses[0], true);
+            setSubmissionIsRegistered(addresses[1], true);
+
+            // initial variables
+            const currentBlockTime = await testUtils.getCurrentBlockTime();
+            const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
+
+            // Create a stream with total accrued per second
+            const fromDate1 = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+            const toDate1 = moment(fromDate1).add(1, "hour").toDate();
+            lastStreamId = await testUtils.createStream(accounts[0], addresses[1], ubiPerSecond.toNumber(), fromDate1, toDate1, ubi);
+
+            // Create another stream with inverse delegator and delegate
+            await expect(testUtils.createStream(accounts[1], addresses[0], ubiPerSecond.toNumber(), fromDate1, toDate1, ubi))
+                .to.be.revertedWith("Circular delegation not allowed.");
+
+        })
+
         //// WITHDRAWAL TEST
         describe("UBI stream withdrawals", () => {
             it("happy path - After stream is finished, and recipient withdraws the balance, stream balance should be 0 and recipient balance should be the stream total", async () => {

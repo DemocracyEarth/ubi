@@ -36,26 +36,6 @@ interface IPoster {
 }
 
 /**
- * @title Sablier Types
- * @author Sablier
- */
-library Types {
-    struct Stream {
-        uint256 deposit; // This will be autocalculated based on the start and stop time
-        uint256 ratePerSecond; // The rate of UBI to drip to this stream from the current accrued value
-        uint256 remainingBalance;
-        uint256 startTime;
-        uint256 stopTime;
-        address recipient;
-        address sender;
-        address tokenAddress;
-        bool isEntity;
-        uint256 withdrawn;
-    }
-}
-
-
-/**
  * @title Universal Basic Income
  * @dev UBI is an ERC20 compatible token that is connected to a Proof of Humanity registry.
  *
@@ -114,8 +94,63 @@ contract UBI is Initializable, ISablier {
   /// @dev Timestamp since human started accruing.
   mapping(address => uint256) public accruedSince;
 
+  /*** REENTRANCY GUARD (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/security/ReentrancyGuard.sol) ***/
+  // The values being non-zero value makes deployment a bit more expensive,
+  // but in exchange the refund on every call to nonReentrant will be lower in
+  // amount. Since refunds are capped to a percentage of the total
+  // transaction's gas, it is best to keep them low in cases like this one, to
+  // increase the likelihood of the full refund coming into effect.
+  uint256 private constant _NOT_ENTERED = 1;
+  uint256 private constant _ENTERED = 2;
+  uint256 private _reentrancyStatus;
 
+  /*** Sablier Storage Properties ***/
+
+  /**
+  * @dev Counter for new stream ids. Stores the last used stream id.
+  * @notice 0 is an invalid stream. it's used to check for empty streams on `streamIds` mapping
+  */
+  uint256 public prevStreamId;
+
+  /**
+  * @dev The stream objects identifiable by their unsigned integer ids.
+  */
+  mapping(uint256 => Types.Stream) private streams;
+
+  /// @dev Get the streamIds from human and recipient addresses.
+  /// A recipient can have multiple streams with a sender.
+  mapping (address => mapping(address => uint256[])) public streamIdsOfSenderAndRecipient;
+
+    
+  /// @dev A mapping containing UNORDERED lists of the stream ids of each sender.
+  /// @notice This does not guarantee to contain valid streams (may have ended).
+  mapping (address => uint256[]) public streamIdsOf;
+
+  /// @dev The total value delegated.
+  mapping (address => uint256) public delegated;
+  
   /* Modifiers */
+
+  /**
+  * @dev Prevents a contract from calling itself, directly or indirectly.
+  * Calling a `nonReentrant` function from another `nonReentrant`
+  * function is not supported. It is possible to prevent this from happening
+  * by making the `nonReentrant` function external, and make it call a
+  * `private` function that does the actual work.
+  */
+  modifier nonReentrant() {
+    // On the first call to nonReentrant, _notEntered will be true
+    require(_reentrancyStatus != _ENTERED, "ReentrancyGuard: reentrant call");
+
+    // Any calls to nonReentrant after this point will fail
+    _reentrancyStatus = _ENTERED;
+
+    _;
+
+    // By storing the original value once again, a refund is triggered (see
+    // https://eips.ethereum.org/EIPS/eip-2200)
+    _reentrancyStatus = _NOT_ENTERED;
+  }
 
   /// @dev Verifies that the sender has ability to modify governed parameters.
   modifier onlyByGovernor() {
@@ -323,31 +358,6 @@ contract UBI is Initializable, ISablier {
   /**
    * EIP-1620 (from sablier)
    */
-   /*** Storage Properties ***/
-
-    /**
-     * @dev Counter for new stream ids. Stores the last used stream id.
-	 * @notice 0 is an invalid stream. it's used to check for empty streams on `streamIds` mapping
-     */
-    uint256 public prevStreamId;
-
-    /**
-     * @dev The stream objects identifiable by their unsigned integer ids.
-     */
-    mapping(uint256 => Types.Stream) private streams;
-
-	/// @dev Get the streamIds from human and recipient addresses.
-  /// A recipient can have multiple streams with a sender.
-  	mapping (address => mapping(address => uint256[])) public streamIds;
-
-			
-	/// @dev A mapping containing UNORDERED lists of the stream ids of each sender.
-	/// @notice This does not guarantee to contain valid streams (may have ended).
-	mapping (address => uint256[]) public streamIdsOf;
-
-    /// @dev The total value delegated.
-    mapping (address => uint256) public delegated;
-
 
     /*** Modifiers ***/
 
@@ -419,12 +429,6 @@ contract UBI is Initializable, ISablier {
         return stream.stopTime - stream.startTime;
     }
 
-    struct BalanceOfLocalVars {
-        uint256 recipientBalance;
-        uint256 withdrawalAmount;
-        uint256 senderBalance;
-    }
-
     /**
      * @notice Returns the available funds for the given stream id and address.
      * @dev Throws if the id does not point to a valid stream.
@@ -433,7 +437,6 @@ contract UBI is Initializable, ISablier {
      */
     function balanceOf(uint256 streamId, address who) override public view streamExists(streamId) returns (uint256) {
         Types.Stream memory stream = streams[streamId];
-        BalanceOfLocalVars memory vars;
         if(!stream.isEntity) return 0;
 
         if(!proofOfHumanity.isRegistered(stream.sender)) return 0;
@@ -454,13 +457,6 @@ contract UBI is Initializable, ISablier {
 
         if (who == stream.recipient) return streamAccruedValue;
         return 0;
-    }
-
-    /*** Public Effects & Interactions Functions ***/
-
-    struct CreateStreamLocalVars {
-        uint256 duration;
-        uint256 ubiPerSecond;
     }
 
     /**
@@ -498,9 +494,20 @@ contract UBI is Initializable, ISablier {
         require(stopTime > startTime, "stop time before the start time");
         require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
 
-        for(uint256 i = 0; i < streamIds[msg.sender][recipient].length; i ++) {
-          uint256 existingStreamId = streamIds[msg.sender][recipient][i];
-     	    require(!(startTime < streams[existingStreamId].stopTime && streams[existingStreamId].startTime < stopTime), "Account is already a recipient on an active or overlaping stream.");
+        // Multiple streams to teh same recipient only allowed if none is active on the new stream's time period
+        for(uint256 i = 0; i < streamIdsOfSenderAndRecipient[msg.sender][recipient].length; i ++) {
+          uint256 existingStreamId = streamIdsOfSenderAndRecipient[msg.sender][recipient][i];
+          if(existingStreamId > 0) require(!(startTime < streams[existingStreamId].stopTime && streams[existingStreamId].startTime < stopTime), "Account is already a recipient on an active or overlaping stream.");
+        }
+
+        // Avoid circular delegation validating that the recipient did not delegate to the sender
+        for(uint256 i = 0 ; i < streamIdsOf[recipient].length; i++) {
+          uint256 recipientStreamId = streamIdsOf[recipient][i];
+          
+          // If the of this stream is the same as the sender and overlaps, fail with circular delegation exception
+          if(recipientStreamId > 0 && streams[recipientStreamId].recipient == msg.sender) {
+     	      require(!(startTime < streams[recipientStreamId].stopTime && streams[recipientStreamId].startTime < stopTime), "Circular delegation not allowed.");
+          }
         }
 
         // Calculate available balance to delegate for the given period.
@@ -518,15 +525,14 @@ contract UBI is Initializable, ISablier {
 
         require(ubiPerSecond <= availableUbiPerSecond, "Delegated value exceeds available balance for the given stream period");
 
-        CreateStreamLocalVars memory vars;
-        vars.duration = stopTime.sub(startTime);
+        uint256 duration = stopTime.sub(startTime);
 
         /* Create and store the stream object. */
         uint256 newStreamId = prevStreamId.add(1);
 		    // Create the stream
         streams[newStreamId] = Types.Stream({
 			  // Total deposit is calculated from duration and ubiPerSecond
-            deposit: accruedPerSecond.mul(vars.duration).mul(ubiPerSecond.div(accruedPerSecond)),
+            deposit: accruedPerSecond.mul(duration).mul(ubiPerSecond.div(accruedPerSecond)),
             ratePerSecond: ubiPerSecond, // how many UBI to delegate per second.
             remainingBalance: 0, // Starts with 0. Accumulates as time passes.
             isEntity: true,
@@ -538,8 +544,7 @@ contract UBI is Initializable, ISablier {
             withdrawn: 0
         });
 
-
-        streamIds[msg.sender][recipient].push(newStreamId);
+        streamIdsOfSenderAndRecipient[msg.sender][recipient].push(newStreamId);
         streamIdsOf[msg.sender].push(newStreamId);
 
         /* Increment the next stream id. */
@@ -597,9 +602,12 @@ contract UBI is Initializable, ISablier {
         return true;
     }
 
+    /// @dev Deletes the given stream from related variables
     function deleteStream(uint256 streamId) internal streamExists(streamId) {
       
       Types.Stream memory stream = streams[streamId];
+      
+      // DELETE FROM streamIdsOf
       // Get the index of the last item
       uint256 indexOfLastItem = streamIdsOf[stream.sender].length - 1;
 
@@ -616,7 +624,26 @@ contract UBI is Initializable, ISablier {
           break;
         }
       }
-      delete streamIds[stream.sender][stream.recipient];
+
+      // DELETE FROM streamIds
+      indexOfLastItem = streamIdsOfSenderAndRecipient[stream.sender][stream.recipient].length - 1;
+
+      // For each stream with the recipient
+      for(uint256 i = 0;i < streamIdsOfSenderAndRecipient[stream.sender][stream.recipient].length; i++) {
+          // If stream is found
+        if(streamIdsOfSenderAndRecipient[stream.sender][stream.recipient][i] == streamId) {
+          // If it's not the last element on the array
+          if(i < indexOfLastItem) {
+            // Replace the found stream with the last element on the array
+            streamIdsOfSenderAndRecipient[stream.sender][stream.recipient][i] = streamIdsOfSenderAndRecipient[stream.sender][stream.recipient][indexOfLastItem];
+          }
+          // Delete the last element on the list
+          streamIdsOfSenderAndRecipient[stream.sender][stream.recipient].pop();
+          break;
+        }
+      }
+
+      // Delete the stream      
       delete streams[streamId];
     }
 
