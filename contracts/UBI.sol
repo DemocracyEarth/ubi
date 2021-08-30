@@ -510,12 +510,14 @@ contract UBI is Initializable, ISablier {
         require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
 
         // Check that we are not exceeding the max allowed.
-        require(streamIdsOf[msg.sender].length +1 <= maxStreamsAllowed, "max streams exceeded"); 
+        require(streamIdsOf[msg.sender].length + 1 <= maxStreamsAllowed, "max streams exceeded");
 
         // Multiple streams to teh same recipient only allowed if none is active on the new stream's time period
         for(uint256 i = 0; i < streamIdsOfSenderAndRecipient[msg.sender][recipient].length; i ++) {
           uint256 existingStreamId = streamIdsOfSenderAndRecipient[msg.sender][recipient][i];
-          if(existingStreamId > 0) require(!overlapsWith(startTime, stopTime, streams[existingStreamId].startTime, streams[existingStreamId].stopTime), "Account is already a recipient on an active or overlaping stream.");
+          if(existingStreamId > 0) require(
+            !overlapsWith(startTime, stopTime, streams[existingStreamId].startTime, streams[existingStreamId].stopTime),
+            "Account is already a recipient on an active or overlaping stream.");
         }
 
         // Avoid circular delegation validating that the recipient did not delegate to the sender
@@ -525,7 +527,7 @@ contract UBI is Initializable, ISablier {
           // If the recipient of this stream is the same as the sender and overlaps, fail with circular delegation exception
           if(recipientStreamId > 0 && streams[recipientStreamId].recipient == msg.sender) {
             // Get overlap flag
-            bool overlaps = overlapsWith(startTime, stopTime, streams[recipientStreamId].startTime, streams[recipientStreamId].stopTime);     
+            bool overlaps = overlapsWith(startTime, stopTime, streams[recipientStreamId].startTime, streams[recipientStreamId].stopTime);
      	      require(!overlaps, "Circular delegation not allowed.");
           }
         }
