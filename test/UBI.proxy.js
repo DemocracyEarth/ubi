@@ -61,7 +61,9 @@ contract('UBI.sol', accounts => {
         altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
         altPoster = mockAddress;
 
+        // Global contract variables
         ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
+        maxStreamsAllowed = BigNumber((await ubi.maxStreamsAllowed()).toString());
 
         // Set zero address as not registered
         setSubmissionIsRegistered(ethers.constants.AddressZero, false);
@@ -508,16 +510,13 @@ contract('UBI.sol', accounts => {
             const secondStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(secondStreamId, addresses[2], ubi)).toString());
             expect(firstStreamBalance.toNumber()).to.eq(ubiPerSecond.div(2).multipliedBy(3600).toNumber(), "Invalid balance of first stream");
             expect(secondStreamBalance.toNumber()).to.eq(ubiPerSecond.div(2).multipliedBy(3600).toNumber(), "Invalid balance of second stream");
+
+            // Withdraw streams to clear them from list
+            await ubi.connect(accounts[1]).withdrawFromStream(firstStreamId.toString(), firstStreamBalance.toString());
+            await ubi.connect(accounts[2]).withdrawFromStream(secondStreamId.toString(), secondStreamBalance.toString());
         });
 
         it("happy path - After a stream finishes, total pending delegated value should increase by the total balance of the stream", async () => {
-            // Get the last created stream
-            const lastStream = await ubi.getStream(lastStreamId);
-            // Move to the end of the stream
-            if (await testUtils.getCurrentBlockTime() < lastStream.stopTime.toNumber()) {
-                await testUtils.setNextBlockTime(lastStream.stopTime.toNumber(), network);
-                expect(await testUtils.getCurrentBlockTime()).to.eq(lastStream.stopTime.toNumber(), "Current block time should be the end of the last stream");
-            }
 
             // Get the initial pending delegated value
             const initialPendingDelegatedValue = BigNumber((await ubi.getDelegatedAccruedValue(addresses[0])).toString());
@@ -543,7 +542,10 @@ contract('UBI.sol', accounts => {
 
             // Should be equal to initial + 1 hour of UBI accruance
             expect(finalPendingDelegatedValue.toNumber()).to.eq(initialPendingDelegatedValue.plus(finalStreamBalance).toNumber(), "Pending delegated value should account for last finished stream.");
-
+            
+            // Withdraw streams to clear them from list
+            await ubi.connect(accounts[1]).withdrawFromStream(lastStreamId.toString(), finalStreamBalance.toString());
+            
         });
 
         it("happy path - Creating 1 streams with half accruedPerSecond should accrue half for the stream and half for the human.", async () => {
@@ -576,11 +578,94 @@ contract('UBI.sol', accounts => {
             // Accrued balance should be half UBI for both streamn
             expect(newHumanBalance.toNumber()).to.eq(prevhumanBalance.plus(ubiPerSecond.multipliedBy(3600)).toNumber(), "Human should accrue only half of UBI");
             expect(lastStreamBalance.toNumber()).to.eq(prevStreamBalance.plus(ubiPerSecond.multipliedBy(3600)).toNumber(), "Stream should accrue only half of UBI");
+
+            await testUtils.clearAllStreamsFrom(accounts[0], ubi, network);
         })
+
+        it("require fail - Creating more than `maxStreamsAllowed` on the same time window should fail", async () => {
+            // Calculate corresponding ubi per second to delegate to each stream 
+            const ubiPerSecondPerDelegate = ubiPerSecond.div(maxStreamsAllowed.toNumber());
+            
+            const streamsCount = BigNumber((await ubi.getStreamsCount(addresses[0])).toString());
+            const availableStreams = maxStreamsAllowed.minus(streamsCount);
+            expect(availableStreams.toNumber() > 0, "No available streams to run test");
+
+
+            // Create a new stream with half ubiPerSecond
+            const currentBlockTime = await testUtils.getCurrentBlockTime();
+            const fromDate = moment(new Date(currentBlockTime * 1000)).add(10, "minutes").toDate();
+            const toDate = moment(fromDate).add(1, "hour").toDate();
+
+            const delegatesToCreate = availableStreams.toNumber() + 1;
+
+            let testPassed = false;
+            // Create multiple streams with same date period
+            for (let i = 0; i < delegatesToCreate; i++) {
+                // Address index is always i+1 to avoid self delegation
+                const addressIndex = i+1;
+                // If this iteration is expectedd to fail
+                if (addressIndex > availableStreams) {
+                    await expect(testUtils.createStream(accounts[0], addresses[addressIndex], ubiPerSecondPerDelegate.toString(), fromDate, toDate, ubi))
+                        .to.be.revertedWith("max streams exceeded");
+                    // End the test
+                    testPassed = true;
+                    break;
+                } else {
+                    lastStreamId = await testUtils.createStream(accounts[0], addresses[addressIndex], ubiPerSecondPerDelegate.toNumber(), fromDate, toDate, ubi);
+                }
+            }
+            
+            await testUtils.clearAllStreamsFrom(accounts[0], ubi, network);
+            expect(testPassed).to.eq(true);
+        });
+
+        it("happy path - Creating more than `maxStreamsAllowed` on different time should fail succeed", async () => {
+            
+            // Calculate corresponding ubi per second to delegate to each stream 
+            const ubiPerSecondPerDelegate = ubiPerSecond.div(maxStreamsAllowed.toNumber());
+            
+            const streamsCount = BigNumber((await ubi.getStreamsCount(addresses[0])).toString());
+            const availableStreams = maxStreamsAllowed.minus(streamsCount);
+            expect(availableStreams.toNumber() > 0, "No available streams to run test");
+
+            const delegatesToCreate = availableStreams.toNumber() + 1;
+
+            let testPassed = false;
+            // Create multiple streams with same date period
+            lastStreamId = 0;
+            for (let i = 0; i < delegatesToCreate; i++) {
+                // If last Stream ID is set, move to the end of the stream
+                if(lastStreamId) {
+                    await testUtils.goToEndOfStream(lastStreamId, ubi, network);
+                }
+                // Get streams parameters
+                const currentBlockTime = await testUtils.getCurrentBlockTime();
+                const fromDate = moment(new Date(currentBlockTime * 1000)).add(10, "minutes").toDate();
+                const toDate = moment(fromDate).add(1, "hour").toDate();
+
+                // Address index is always i+1 to avoid self delegation
+                const addressIndex = i+1;
+                // If this iteration is expectedd to fail
+                if (addressIndex > availableStreams) {
+                    await expect(testUtils.createStream(accounts[0], addresses[addressIndex], ubiPerSecondPerDelegate.toString(), fromDate, toDate, ubi))
+                        .to.be.revertedWith("max streams exceeded");
+                    // End the test
+                    testPassed = true;
+                    break;
+                } else {
+                    lastStreamId = await testUtils.createStream(accounts[0], addresses[addressIndex], ubiPerSecondPerDelegate.toNumber(), fromDate, toDate, ubi);
+                }
+            }
+            
+            await testUtils.clearAllStreamsFrom(accounts[0], ubi, network);
+            expect(testPassed).to.eq(true);
+        });
 
         it("require fail - Creating 2 overlaping streams that, when overlaped, sum more than the allowed ubiPerSecond should fail", async () => {
             setSubmissionIsRegistered(addresses[0], true);
-
+            // Withdraw from all streams to clear the path for more tests
+            const streamIds = await ubi.getStreamsOf(addresses[0]);
+            console.log("STTREAM IDS", streamIds.length);
             // initial variables
             const currentBlockTime = await testUtils.getCurrentBlockTime();
             const ubiPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
@@ -616,7 +701,6 @@ contract('UBI.sol', accounts => {
             // Create another stream with inverse delegator and delegate
             await expect(testUtils.createStream(accounts[1], addresses[0], ubiPerSecond.toNumber(), fromDate1, toDate1, ubi))
                 .to.be.revertedWith("Circular delegation not allowed.");
-
         })
 
         //// WITHDRAWAL TEST
@@ -681,7 +765,7 @@ contract('UBI.sol', accounts => {
                 expect(initialStreamBalance.toNumber()).to.eq(0, "Initial stream balance should be 0");
 
                 // Move fwd 30 mins
-                await testUtils.timeForward((30 * 60), network);
+                await testUtils.goToMiddleOfStream(lastStreamId, ubi, network);
 
                 // The new stream balance should be half a UBI (ubiPerSecond * 30 * 60).
                 const currentStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[1], ubi)).toString());
@@ -1020,5 +1104,5 @@ contract('UBI.sol', accounts => {
 
     describe("UBI streams", ubiStreamTests);
 
-    //describe('UBI Coin after streams', ubiCoinTests);
+    describe('UBI Coin after streams', ubiCoinTests);
 });

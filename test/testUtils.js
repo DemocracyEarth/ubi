@@ -142,6 +142,19 @@ const testUtils = {
       await testUtils.setNextBlockTime(stream.stopTime.toNumber(), network);
       expect(await testUtils.getCurrentBlockTime()).to.eq(stream.stopTime.toNumber(), "Current block time should be the end of the stream");
     }
+  },
+
+  async clearAllStreamsFrom(account, ubi, network) {
+    // Withdraw from all streams to clear the path for more tests
+    const streamIds = await ubi.getStreamsOf(account.address);
+    for (let i = 0; i < streamIds.length; i++) {
+      const stream = await ubi.getStream(streamIds[i].toString());
+
+      // Move to the end of stream.  `goToEndOfStream` is safe to use if end has passed already
+      await testUtils.goToEndOfStream(streamIds[i].toNumber(), ubi, network);
+      const streamBalance = await testUtils.ubiBalanceOfStream(streamIds[i].toString(), stream.recipient, ubi);
+      await ubi.connect(account).withdrawFromStream(streamIds[i].toString(), streamBalance.toString());
+    }
   }
 
 }

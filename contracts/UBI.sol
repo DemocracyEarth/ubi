@@ -94,6 +94,9 @@ contract UBI is Initializable, ISablier {
   /// @dev Timestamp since human started accruing.
   mapping(address => uint256) public accruedSince;
 
+  /// @dev Maximum number of streams allowed.
+  uint256 public maxStreamsAllowed;
+
   /*** REENTRANCY GUARD (https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/security/ReentrancyGuard.sol) ***/
   // The values being non-zero value makes deployment a bit more expensive,
   // but in exchange the refund on every call to nonReentrant will be lower in
@@ -175,7 +178,10 @@ contract UBI is Initializable, ISablier {
 
     balance[msg.sender] = _initialSupply;
     totalSupply = _initialSupply;
+    
     prevStreamId = 0;
+    _reentrancyStatus = _NOT_ENTERED;
+    maxStreamsAllowed = 10;
   }
 
   /* External */
@@ -456,6 +462,17 @@ contract UBI is Initializable, ISablier {
         return 0;
     }
 
+    // /**
+    //  * @dev Get the active streams of a sender, from a given range
+    //  */
+    // function getActiveStreamsCount(address sender, uint256 from, uint256 to) {
+    //   uint256 count;
+    //   // Find all streams 
+    //   for(uint256 i = 0; i < streamIdsOf[sender]; i++) {
+    //     if()
+    //   }
+    // }
+
     /**
      * @notice Creates a new stream funded by `msg.sender` and paid towards `recipient`.
      * @dev Throws if the recipient is the zero address, the contract itself or the caller.
@@ -492,36 +509,39 @@ contract UBI is Initializable, ISablier {
         require(stopTime > startTime, "stop time before the start time");
         require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
 
+        // Check that we are not exceeding the max allowed.
+        require(streamIdsOf[msg.sender].length +1 <= maxStreamsAllowed, "max streams exceeded"); 
+
         // Multiple streams to teh same recipient only allowed if none is active on the new stream's time period
         for(uint256 i = 0; i < streamIdsOfSenderAndRecipient[msg.sender][recipient].length; i ++) {
           uint256 existingStreamId = streamIdsOfSenderAndRecipient[msg.sender][recipient][i];
-          if(existingStreamId > 0) require(!(startTime < streams[existingStreamId].stopTime && streams[existingStreamId].startTime < stopTime), "Account is already a recipient on an active or overlaping stream.");
+          if(existingStreamId > 0) require(!overlapsWith(startTime, stopTime, streams[existingStreamId].startTime, streams[existingStreamId].stopTime), "Account is already a recipient on an active or overlaping stream.");
         }
 
         // Avoid circular delegation validating that the recipient did not delegate to the sender
         for(uint256 i = 0 ; i < streamIdsOf[recipient].length; i++) {
           uint256 recipientStreamId = streamIdsOf[recipient][i];
 
-          // If the of this stream is the same as the sender and overlaps, fail with circular delegation exception
+          // If the recipient of this stream is the same as the sender and overlaps, fail with circular delegation exception
           if(recipientStreamId > 0 && streams[recipientStreamId].recipient == msg.sender) {
-     	      require(!(startTime < streams[recipientStreamId].stopTime && streams[recipientStreamId].startTime < stopTime), "Circular delegation not allowed.");
+            // Get overlap flag
+            bool overlaps = overlapsWith(startTime, stopTime, streams[recipientStreamId].startTime, streams[recipientStreamId].stopTime);     
+     	      require(!overlaps, "Circular delegation not allowed.");
           }
         }
 
         // Calculate available balance to delegate for the given period.
-        uint256 availableUbiPerSecond = accruedPerSecond;
+        uint256 delegatedBalance;
         for(uint256 i = 0; i < streamIdsOf[msg.sender].length; i++) {
           uint256 streamId = streamIdsOf[msg.sender][i];
           Types.Stream memory otherStream = streams[streamId];
-          // if stream has already ended, do not take into consideration
-          if(otherStream.stopTime < block.timestamp) continue;
           // If streams overlap subtract the delegated balance from the available ubi per second
-          if(startTime <= otherStream.stopTime && stopTime > otherStream.startTime) {
-              availableUbiPerSecond = availableUbiPerSecond.sub(otherStream.ratePerSecond);
+          if(overlapsWith(otherStream.startTime, otherStream.stopTime, startTime, stopTime)) {
+              delegatedBalance = delegatedBalance.add(otherStream.ratePerSecond);
           }
         }
 
-        require(ubiPerSecond <= availableUbiPerSecond, "Delegated value exceeds available balance for the given stream period");
+        require(ubiPerSecond <= accruedPerSecond.sub(delegatedBalance), "Delegated value exceeds available balance for the given stream period");
 
         uint256 duration = stopTime.sub(startTime);
 
@@ -711,6 +731,13 @@ contract UBI is Initializable, ISablier {
 
     function getStreamsOf(address _human) public view returns (uint256[] memory) {
       return streamIdsOf[_human];
+    }
+
+    /**
+     * @dev find out if 2 date ranges overlap
+     */
+    function overlapsWith(uint256 _startA, uint256 _endA, uint256 _startB, uint256 _endB) public pure returns (bool) {
+      return (_startA <= _endB && _endA >= _startB);
     }
 
     /**
