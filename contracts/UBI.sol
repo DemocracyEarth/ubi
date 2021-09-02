@@ -232,12 +232,13 @@ contract UBI is Initializable, ISablier {
   */
   function transfer(address _recipient, uint256 _amount) public returns (bool) {
     uint256 newSupplyFrom;
+    uint256 pendingDelegatedAccruedValue = getDelegatedAccruedValue(msg.sender);
     if (accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
         totalSupply = totalSupply.add(newSupplyFrom);
         accruedSince[msg.sender] = block.timestamp;
     }
-    balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(_amount, "ERC20: transfer amount exceeds balance");
+    balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: transfer amount exceeds balance");
     balance[_recipient] = balance[_recipient].add(_amount);
     emit Transfer(msg.sender, _recipient, _amount);
     return true;
@@ -250,13 +251,14 @@ contract UBI is Initializable, ISablier {
   */
   function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
     uint256 newSupplyFrom;
+    uint256 pendingDelegatedAccruedValue = getDelegatedAccruedValue(_sender);
     allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: transfer amount exceeds allowance");
     if (accruedSince[_sender] != 0 && proofOfHumanity.isRegistered(_sender)) {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_sender]));
         totalSupply = totalSupply.add(newSupplyFrom);
         accruedSince[_sender] = block.timestamp;
     }
-    balance[_sender] = balance[_sender].add(newSupplyFrom).sub(_amount, "ERC20: transfer amount exceeds balance");
+    balance[_sender] = balance[_sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: transfer amount exceeds balance");
     balance[_recipient] = balance[_recipient].add(_amount);
     emit Transfer(_sender, _recipient, _amount);
     return true;
@@ -299,11 +301,12 @@ contract UBI is Initializable, ISablier {
   */
   function burn(uint256 _amount) public {
     uint256 newSupplyFrom;
+    uint256 pendingDelegatedAccruedValue = getDelegatedAccruedValue(msg.sender);
     if(accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
       newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
       accruedSince[msg.sender] = block.timestamp;
     }
-    balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(_amount, "ERC20: burn amount exceeds balance");
+    balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: burn amount exceeds balance");
     totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
     emit Transfer(msg.sender, address(0), _amount);
   }
@@ -326,11 +329,12 @@ contract UBI is Initializable, ISablier {
   function burnFrom(address _account, uint256 _amount) public {
     uint256 newSupplyFrom;
     allowance[_account][msg.sender] = allowance[_account][msg.sender].sub(_amount, "ERC20: burn amount exceeds allowance");
+    uint256 pendingDelegatedAccruedValue = getDelegatedAccruedValue(_account);
     if (accruedSince[_account] != 0 && proofOfHumanity.isRegistered(_account)) {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_account]));
         accruedSince[_account] = block.timestamp;
     }
-    balance[_account] = balance[_account].add(newSupplyFrom).sub(_amount, "ERC20: burn amount exceeds balance");
+    balance[_account] = balance[_account].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: burn amount exceeds balance");
     totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
     emit Transfer(_account, address(0), _amount);
   }
