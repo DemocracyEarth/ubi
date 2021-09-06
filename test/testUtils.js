@@ -13,7 +13,7 @@ const testUtils = {
     const streamId = createStreamEvents[0].args[0];
     expect(streamId.toNumber()).to.eq(prevStreamId.plus(1).toNumber(), "CreateStream emited with incorrect streamId value")
     return streamId;
-    
+
 
     // const previousDelegate = await ubi.getDelegateOf(fromAccount.address);
     // const prevDelegateAccruingFactor = new BigNumber((await ubi.getAccruingFactor(previousDelegate)).toString());
@@ -81,7 +81,7 @@ const testUtils = {
    * @param {*} ubi 
    * @returns 
    */
-   async ubiConsolidatedBalanceOfWallet(address, ubi) {
+  async ubiConsolidatedBalanceOfWallet(address, ubi) {
     const balance = BigNumber((await ubi["balanceOf(address)"](address)).toString());
     const accrued = BigNumber((await ubi.getAccruedValue(address)).toString());
     return balance.minus(accrued);
@@ -116,7 +116,7 @@ const testUtils = {
   async goToStartOfStream(streamId, ubi, network) {
     // Get the last created stream
     const stream = await ubi.getStream(streamId);
-      
+
     // Move to the end of the stream if needd
     if (await testUtils.getCurrentBlockTime() < stream.startTime.toNumber()) {
       await testUtils.setNextBlockTime(stream.startTime.toNumber(), network);
@@ -124,14 +124,36 @@ const testUtils = {
     }
   },
 
+  async goToMiddleOfStream(streamId, ubi, network) {
+    const stream = await ubi.getStream(streamId);
+    // Move to the middle of the stream
+    const stopTime = BigNumber(stream.stopTime.toNumber());
+    const startTime = BigNumber(stream.startTime.toNumber());
+    const duration = stopTime.minus(startTime);
+    await testUtils.setNextBlockTime(startTime.plus(duration.div(2)).toNumber(), network);
+  },
+
   async goToEndOfStream(streamId, ubi, network) {
     // Get the last created stream
     const stream = await ubi.getStream(streamId);
-      
+
     // Move to the end of the stream if needd
     if (await testUtils.getCurrentBlockTime() < stream.stopTime.toNumber()) {
       await testUtils.setNextBlockTime(stream.stopTime.toNumber(), network);
       expect(await testUtils.getCurrentBlockTime()).to.eq(stream.stopTime.toNumber(), "Current block time should be the end of the stream");
+    }
+  },
+
+  async clearAllStreamsFrom(account, ubi, network) {
+    // Withdraw from all streams to clear the path for more tests
+    const streamIds = await ubi.getStreamsOf(account.address);
+    for (let i = 0; i < streamIds.length; i++) {
+      const stream = await ubi.getStream(streamIds[i].toString());
+
+      // Move to the end of stream.  `goToEndOfStream` is safe to use if end has passed already
+      await testUtils.goToEndOfStream(streamIds[i].toNumber(), ubi, network);
+      const streamBalance = await testUtils.ubiBalanceOfStream(streamIds[i].toString(), stream.recipient, ubi);
+      await ubi.connect(account).withdrawFromStream(streamIds[i].toString(), streamBalance.toString());
     }
   }
 
