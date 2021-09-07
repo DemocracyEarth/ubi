@@ -63,7 +63,6 @@ contract('UBI_v2.sol', accounts => {
         // Global contract variables
         accruedPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
         maxStreamsAllowed = BigNumber((await ubi.maxStreamsAllowed()).toString());
-        console.log("Max streams allowed", maxStreamsAllowed.toNumber());
 
         // Set zero address as not registered
         setSubmissionIsRegistered(ethers.constants.AddressZero, false);
