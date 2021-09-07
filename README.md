@@ -73,7 +73,7 @@ Latest release is [`version 0.2.0`](https://github.com/DemocracyEarth/ubi/releas
 
     ```js
      const UBI = await ethers.getContractFactory("UBI")
-     const ubi = await UBI.attach('0xDdAdE19B13833d1bF52c1fe1352d41A8DD9fE8C9') // Replace with your token address
+     const ubi = await UBI.attach('0x703960D03533B1D34fF4996DC6604f0Bc74ED198') // Replace with your token address
     ```
 
 ### Upgrade
