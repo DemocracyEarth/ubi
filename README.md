@@ -16,13 +16,11 @@ Built in collaboration with [Kleros](https://github.com/kleros) and the [Proof o
 
 ## Features
 
-- ERC20 token that can `mint` new supply for verified humans over time at a given rate. 
-- Tokens get streamed directly to a users wallet.
+- ERC20 token that gets streamed to verified humans.
 - Interfaces with `ProofOfHumanity` to get curated list of verified humans.
-- `ProofOfHumanity` registry can be updated with governance mechanism.
-- Implements `ERC20Upgradeable` contracts with [OpenZeppelin](https://github.com/openzeppelin) proxy libraries.
+- Streams can be redirected to any other account on Ethereum.
 
-Built with [Hardhat](https://github.com/nomiclabs/hardhat). 
+Built with [Hardhat](https://github.com/nomiclabs/hardhat) using [OpenZeppelin](https://github.com/openzeppelin) proxy libraries.
 
 Latest release is [`version 0.2.0`](https://github.com/DemocracyEarth/ubi/releases)
 
