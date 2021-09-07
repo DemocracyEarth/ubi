@@ -24,17 +24,6 @@ interface IProofOfHumanity {
     );
 }
 
-
-/**
- * @title Poster Interface
- * @dev See https://github.com/auryn-macmillan/poster
- */
-interface IPoster {
-  event NewPost(bytes32 id, address user, string content);
-
-  function post(string memory content) external;
-}
-
 /**
  * @title Universal Basic Income
  * @dev UBI is an ERC20 compatible token that is connected to a Proof of Humanity registry.
@@ -178,10 +167,13 @@ contract UBI_v2 is Initializable, ISablier {
 
     balance[msg.sender] = _initialSupply;
     totalSupply = _initialSupply;
-    
-    prevStreamId = 0;
+  }
+
+  function upgrade() public onlyByGovernor {
+    require(_reentrancyStatus == 0, "Contract already upgraded");
+    require(maxStreamsAllowed == 0, "Contract already upgraded");
     _reentrancyStatus = _NOT_ENTERED;
-    maxStreamsAllowed = 10;
+    maxStreamsAllowed = 100;
   }
 
   /* External */
@@ -309,17 +301,6 @@ contract UBI_v2 is Initializable, ISablier {
     balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: burn amount exceeds balance");
     totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
     emit Transfer(msg.sender, address(0), _amount);
-  }
-
-  /** @dev Burns `_amount` of tokens and posts content in a Poser contract.
-  *  @param _amount The quantity of tokens to burn in base units.
-  *  @param _poster the address of the poster contract.
-  *  @param content bit of strings to signal.
-  */
-  function burnAndPost(uint256 _amount, address _poster, string memory content) public {
-    burn(_amount);
-    IPoster poster = IPoster(_poster);
-    poster.post(content);
   }
 
   /** @dev Burns `_amount` of tokens from `_account` and withdraws accrued tokens.
@@ -784,5 +765,12 @@ contract UBI_v2 is Initializable, ISablier {
         delegatedAccruedValue = delegatedAccruedValue.add(totalStreamAccruedValue);
       }
       return delegatedAccruedValue;
+    }
+
+    /**
+     * @dev Set the max number of stream allowed per human.
+     */
+    function setMaxStreamsAllowed(uint256 newValue) external onlyByGovernor {
+      maxStreamsAllowed = newValue;
     }
 }
