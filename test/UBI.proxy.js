@@ -15,7 +15,7 @@ let accounts;
 /**
  @summary Tests for UBI.sol
 */
-contract('UBI_v2.sol', accounts => {
+contract('UBI.sol', accounts => {
     before(async () => {
         accounts = await ethers.getSigners();
 
@@ -23,7 +23,7 @@ contract('UBI_v2.sol', accounts => {
             Promise.all(accounts.map((account) => account.getAddress())),
             waffle.deployMockContract(
                 accounts[0],
-                require("../artifacts/contracts/UBI_v2.sol/IProofOfHumanity.json").abi
+                require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
             )
         ]);
         setSubmissionIsRegistered = (submissionID, isRegistered) =>
@@ -48,7 +48,7 @@ contract('UBI_v2.sol', accounts => {
             { initializer: 'initialize', unsafeAllowCustomTypes: true }
         );
 
-        UBICoin = await ethers.getContractFactory("UBI_v2");
+        UBICoin = await ethers.getContractFactory("UBI");
         ubi = await upgrades.upgradeProxy(ubi.address, UBICoin);
         await ubi.deployed();
 
@@ -58,12 +58,11 @@ contract('UBI_v2.sol', accounts => {
         // For testing purposes only, we define a max of 10 streams allowed
         await ubi.setMaxStreamsAllowed(10);
 
-        altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI_v2.sol/IProofOfHumanity.json").abi);
+        altProofOfHumanity = await waffle.deployMockContract(accounts[0], require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi);
 
         // Global contract variables
         accruedPerSecond = BigNumber((await ubi.accruedPerSecond()).toString());
         maxStreamsAllowed = BigNumber((await ubi.maxStreamsAllowed()).toString());
-        console.log("Max streams allowed", maxStreamsAllowed.toNumber());
 
         // Set zero address as not registered
         setSubmissionIsRegistered(ethers.constants.AddressZero, false);

@@ -3,7 +3,7 @@ const deploymentParams = require('../deployment-params');
 async function main() {
   
   // Get contract factory
-  const ubiv2 = await ethers.getContractFactory("UBI_v2");
+  const ubiv2 = await ethers.getContractFactory("UBI");
   
   // Attach the deployed contract
   const deployed = ubiv2.attach(deploymentParams.PROXY_CONTRACT_ADDRESS_KOVAN);
