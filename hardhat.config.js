@@ -24,25 +24,35 @@ module.exports = {
     develop: {
       url: "http://localhost:8545",
     },
-    /* 
-    kovan: {
+    /* kovan: {
       url: `https://kovan.infura.io/v3/${INFURA_API_KEY}`,
       accounts: [`0x${KOVAN_PRIVATE_KEY}`],
       gasMultiplier: 3
-    }, 
-    */
+    }, */
     coverage: {
       url: "http://localhost:8555"
     }
   },
   solidity: {
-    version: "0.7.3",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200
+    compilers: [{
+      version: "0.7.3",
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200
+        }
       }
-    }
+    }, {
+      version: "0.6.8"
+    }, {
+      version: "0.5.17",
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200
+        }
+      }
+    }]
   },
   etherscan: {
     apiKey: ETHERSCAN_API_KEY
