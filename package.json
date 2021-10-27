@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "eth-permit": "^0.1.10",
+    "moment": "^2.29.1",
     "poster": "git+https://github.com/auryn-macmillan/poster.git"
   }
 }
