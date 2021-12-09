@@ -54,7 +54,7 @@ contract('UBI.sol', accounts => {
 
         // Initialize values on upgraded contract.
         await ubi.upgrade();
-        
+
         // For testing purposes only, we define a max of 10 streams allowed
         await ubi.setMaxStreamsAllowed(10);
 
@@ -580,7 +580,7 @@ contract('UBI.sol', accounts => {
             const ubiPerSecondPerDelegate = accruedPerSecond.div(maxStreamsAllowed.toNumber());
 
             const streamsCount = BigNumber((await ubi.getStreamsCount(addresses[0])).toString());
-            
+
             const availableStreams = maxStreamsAllowed.minus(streamsCount);
             expect(availableStreams.toNumber() > 0, "No available streams to run test");
 
@@ -613,7 +613,7 @@ contract('UBI.sol', accounts => {
             expect(testPassed).to.eq(true);
         });
 
-        it("happy path - Creating more than `maxStreamsAllowed` on different time should fail succeed", async () => {
+        it("happy path - Creating more than `maxStreamsAllowed` on different time should succeed", async () => {
 
             // Calculate corresponding ubi per second to delegate to each stream 
             const ubiPerSecondPerDelegate = accruedPerSecond.div(maxStreamsAllowed.toNumber());
@@ -694,6 +694,34 @@ contract('UBI.sol', accounts => {
             await expect(testUtils.createStream(accounts[1], addresses[0], accruedPerSecond.toNumber(), fromDate1, toDate1, ubi))
                 .to.be.revertedWith("Circular delegation not allowed.");
         })
+
+        it("happy path - after delegating and withdrawing from recipient, getting balance of delegator should work correctly", async () => {
+            setSubmissionIsRegistered(addresses[0], true);
+            setSubmissionIsRegistered(addresses[2], false);
+
+            // Delegate half of UBI per second
+            const delegatedPerSecond = 10000000000000;
+
+            await testUtils.clearAllStreamsFrom(accounts[0], ubi, network);
+
+            // Create a new stream with half ubiPerSecond
+            const currentBlockTime = await testUtils.getCurrentBlockTime();
+            const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+            const toDate = moment(fromDate).add(1, "hour").toDate();
+
+            // Create 1 streams with half of accrued per second.
+            lastStreamId = await testUtils.createStream(accounts[0], addresses[2], delegatedPerSecond, fromDate, toDate, ubi);
+
+            // Move blocktime to start of stream
+            const stream = await ubi.getStream(lastStreamId);
+            await testUtils.setNextBlockTime(stream.startTime.toNumber() + 1800, network);
+            const lastStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, addresses[2], ubi)).toString())
+            await ubi.connect(accounts[2]).withdrawFromStream(lastStreamId, lastStreamBalance.toString());
+            
+            // Fetching balance should work correctly
+            await testUtils.ubiBalanceOfWallet(addresses[0], ubi);
+
+        });
 
         //// WITHDRAWAL TEST
         describe("UBI stream withdrawals", () => {
