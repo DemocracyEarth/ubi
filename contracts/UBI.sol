@@ -490,7 +490,7 @@ contract UBI is Initializable, ISablier {
         require(recipient != msg.sender, "stream to the caller");
         require(tokenAddress == address(this),"token address can only be UBI");
         require(ubiPerSecond > 0, "UBI per second is zero");
-        require(startTime >= block.timestamp, "start time before block.timestamp");
+        require(startTime > block.timestamp, "start time should be in the future");
         require(stopTime > startTime, "stop time before the start time");
         require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
 
@@ -757,8 +757,8 @@ contract UBI is Initializable, ISablier {
         uint256 totalStreamAccruedValue = streamAccumulatedTime.mul(stream.ratePerSecond);
 
         // Subtract withdrawn value
-        if(stream.withdrawn > 0) {
-            totalStreamAccruedValue = totalStreamAccruedValue.sub(stream.withdrawn);
+        if(stream.withdrawn > 0 && totalStreamAccruedValue > 0) {
+          totalStreamAccruedValue = totalStreamAccruedValue.sub(stream.withdrawn);
         }
 
         // Add the stream accrued value to the pending delegated balance
