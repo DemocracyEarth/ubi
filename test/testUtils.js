@@ -152,8 +152,8 @@ const testUtils = {
 
       // Move to the end of stream.  `goToEndOfStream` is safe to use if end has passed already
       await testUtils.goToEndOfStream(streamIds[i].toNumber(), ubi, network);
-      const streamBalance = await testUtils.ubiBalanceOfStream(streamIds[i].toString(), stream.recipient, ubi);
-      await ubi.connect(account).withdrawFromStream(streamIds[i].toString(), streamBalance.toString());
+      //const streamBalance = await testUtils.ubiBalanceOfStream(streamIds[i].toString(), stream.recipient, ubi);
+      await ubi.connect(account).withdrawFromStream(streamIds[i].toString());
     }
   }
 

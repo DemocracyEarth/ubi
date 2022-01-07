@@ -16,6 +16,7 @@ library Types {
         address tokenAddress;
         bool isEntity;
         uint256 withdrawn;
+        uint256 accruedSince;
     }
 }
 
@@ -84,7 +85,7 @@ interface ISablier {
         uint256 stopTime
     ) external returns (uint256 streamId);
 
-    function withdrawFromStream(uint256 streamId, uint256 funds)
+    function withdrawFromStream(uint256 streamId)
         external
         returns (bool);
 

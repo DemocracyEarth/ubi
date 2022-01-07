@@ -8,6 +8,7 @@ pragma solidity 0.7.3;
 
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./interfaces/ISablier.sol";
 import "hardhat/console.sol";
@@ -489,9 +490,14 @@ contract UBI is Initializable, ISablier {
      */
     function deltaOf(uint256 streamId) public view streamExists(streamId) returns (uint256 delta) {
         Types.Stream memory stream = streams[streamId];
-        if (block.timestamp <= stream.startTime) return 0;
-        if (block.timestamp < stream.stopTime) return block.timestamp - stream.startTime;
-        return stream.stopTime - stream.startTime;
+        if (block.timestamp <= stream.startTime) return 0; // Stream not started
+        if(stream.accruedSince > stream.stopTime) return 0; // All stream withdrawn
+        
+      if(stream.accruedSince > 0) {	
+        return Math.min(stream.stopTime, block.timestamp).sub(stream.accruedSince);
+      } else {
+        return Math.min(stream.stopTime, block.timestamp).sub(stream.startTime);
+      }
     }
 
     /**
@@ -516,9 +522,9 @@ contract UBI is Initializable, ISablier {
         uint256 streamAccruedValue = streamAccumulatedTime.mul(stream.ratePerSecond);
 
         // If there were withdrawals, subtract them from the stream accrued value
-        if(stream.withdrawn > 0) {
-          streamAccruedValue = streamAccruedValue.sub(stream.withdrawn);
-        }
+        // if(stream.withdrawn > 0) {
+        //   streamAccruedValue = streamAccruedValue.sub(stream.withdrawn);
+        // }
 
         if (who == stream.recipient) return streamAccruedValue;
         return 0;
@@ -625,7 +631,8 @@ contract UBI is Initializable, ISablier {
           startTime: startTime,
           stopTime: stopTime,
           tokenAddress: tokenAddress,
-          withdrawn: 0
+          withdrawn: 0,
+          accruedSince: 0
         });
 
         streamIdsOfSenderAndRecipient[msg.sender][recipient].push(newStreamId);
@@ -642,12 +649,10 @@ contract UBI is Initializable, ISablier {
      * @notice Withdraws from the contract to the recipient's account.
      * @dev Throws if the id does not point to a valid stream.
      *  Throws if the caller is not the sender or the recipient of the stream.
-     *  Throws if the amount exceeds the available balance.
      *  Throws if there is a token transfer failure.
      * @param streamId The id of the stream to withdraw tokens from.
-     * @param amount The amount of tokens to withdraw.
      */
-    function withdrawFromStream(uint256 streamId, uint256 amount)
+    function withdrawFromStream(uint256 streamId)
         external
         override
         nonReentrant
@@ -655,11 +660,9 @@ contract UBI is Initializable, ISablier {
         onlySenderOrRecipient(streamId)
         returns (bool)
     {
-        require(amount > 0, "amount is zero");
         Types.Stream memory stream = streams[streamId];
 
         uint256 streamBalance = balanceOf(streamId, stream.recipient);
-        require(streamBalance >= amount, "amount exceeds the available balance");
 
 
         // Consolidate sender balance
@@ -673,17 +676,18 @@ contract UBI is Initializable, ISablier {
         balance[stream.sender] = balanceOf(stream.sender);
 
         // Consolidate stream and recipient balance.
-        streams[streamId].withdrawn = amount;
-        balance[stream.recipient] = balance[stream.recipient].add(amount);
+        streams[streamId].withdrawn = streamBalance;
+        streams[streamId].accruedSince = block.timestamp;
+        balance[stream.recipient] = balance[stream.recipient].add(streamBalance);
 
         // DELETE STREAM IF REQUIRED
         // If withdrawing all available balance and stream is completed, remove it from the list of streams
-        if(amount == streamBalance && block.timestamp >= stream.stopTime) {
+        if(block.timestamp >= stream.stopTime) {
           deleteStream(streamId);
         }
 
         //transfer(stream.recipient, amount);
-        emit WithdrawFromStream(streamId, stream.recipient, amount);
+        emit WithdrawFromStream(streamId, stream.recipient, streamBalance);
         return true;
     }
 
@@ -764,6 +768,7 @@ contract UBI is Initializable, ISablier {
             // Consolidate stream and recipient balance by sending the available balance from stream to recipient.
             balance[stream.recipient] = balance[stream.recipient].add(streamBalance);
             streams[streamId].withdrawn = streams[streamId].withdrawn.add(streamBalance);
+            streams[streamId].accruedSince = block.timestamp;
             totalSupply = totalSupply.add(streamBalance);
 
             // New supply for sender = total acrued value - pending stream values - cancelled stream value
@@ -826,17 +831,19 @@ contract UBI is Initializable, ISablier {
         uint256 streamAccumulatedTime = deltaOf(streamId);
 
         // If there is accumulated time and the human accrued after the stream started, subtract delta of  accrued since and startTime
-        if(streamAccumulatedTime > 0 && accruedSince[_human] > stream.startTime) {
-            streamAccumulatedTime = streamAccumulatedTime.sub(accruedSince[_human].sub(stream.startTime));
+        if(streamAccumulatedTime > 0 && accruedSince[_human] > Math.max(stream.startTime, stream.accruedSince)) {
+            streamAccumulatedTime = streamAccumulatedTime.sub(accruedSince[_human].sub(Math.max(stream.startTime, stream.accruedSince)));
         }
 
         // Total setram accrued value is the accumulated time * stream's ratePerSecond
         uint256 totalStreamAccruedValue = streamAccumulatedTime.mul(stream.ratePerSecond);
 
         // Subtract withdrawn value
-        if(stream.withdrawn > 0 && totalStreamAccruedValue > 0) {
-          totalStreamAccruedValue = totalStreamAccruedValue.sub(stream.withdrawn);
-        }
+        // if(stream.withdrawn > 0 && totalStreamAccruedValue > 0) {
+        //   console.log("totalStreamAccruedValue",totalStreamAccruedValue);
+        //   console.log("stream.withdrawn", stream.withdrawn);
+        //   totalStreamAccruedValue = totalStreamAccruedValue.sub(stream.withdrawn);
+        // }
 
         // Add the stream accrued value to the pending delegated balance
         delegatedAccruedValue = delegatedAccruedValue.add(totalStreamAccruedValue);
