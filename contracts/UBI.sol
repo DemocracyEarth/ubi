@@ -9,6 +9,7 @@ pragma solidity 0.7.3;
 import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./interfaces/ISablier.sol";
 import "hardhat/console.sol";
 
@@ -83,6 +84,18 @@ contract UBI is Initializable, ISablier {
 
   /// @dev Timestamp since human started accruing.
   mapping(address => uint256) public accruedSince;
+
+  /// @dev Nonces for permit function. Must be modified only through permit function, where is incremented only by one.
+  mapping (address => uint256) public nonces;
+
+  /// @dev Chain id used for domain separator.
+  uint256 public chainId;
+
+  /// @dev Typehash used for permit function.
+  bytes32 public permitTypehash;
+
+  /// @dev Domain separator used for permit function.
+  bytes32 public domainSeparator;
 
   /// @dev Maximum number of streams allowed.
   uint256 public maxStreamsAllowed;
@@ -168,6 +181,10 @@ contract UBI is Initializable, ISablier {
 
     balance[msg.sender] = _initialSupply;
     totalSupply = _initialSupply;
+
+    chainId = _getCurrentChainId();
+    permitTypehash = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+    domainSeparator = _buildDomainSeparator();
   }
 
   function upgrade() public onlyByGovernor {
@@ -217,6 +234,13 @@ contract UBI is Initializable, ISablier {
   */
   function changeProofOfHumanity(IProofOfHumanity _proofOfHumanity) external onlyByGovernor {
     proofOfHumanity = _proofOfHumanity;
+  }
+
+  /**
+  * @dev Returns the domain separator used in the encoding of the signature for `permit`, as defined by {EIP712}.
+  */
+  function DOMAIN_SEPARATOR() external view returns (bytes32) {
+    return _buildDomainSeparator();
   }
 
   /** @dev Transfers `_amount` to `_recipient` and withdraws accrued tokens.
@@ -319,6 +343,59 @@ contract UBI is Initializable, ISablier {
     balance[_account] = balance[_account].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: burn amount exceeds balance");
     totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
     emit Transfer(_account, address(0), _amount);
+  }
+
+  /**
+  * @dev Approves, through a message signed by the `_owner`, `_spender` to spend `_value` tokens from `_owner`.
+  * @param _owner The address of the token owner.
+  * @param _spender The address of the spender.
+  * @param _value The amount of tokens to approve.
+  * @param _deadline The expiration time until which the signature will be considered valid.
+  * @param _v The signature v value.
+  * @param _r The signature r value.
+  * @param _s The signature s value.
+  */
+  function permit(address _owner, address _spender, uint256 _value, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
+    require(_owner != address(0), "ERC20Permit: invalid owner");
+    require(block.timestamp <= _deadline, "ERC20Permit: expired deadline");
+    bytes32 structHash = keccak256(abi.encode(permitTypehash, _owner, _spender, _value, nonces[_owner], _deadline));
+    if (_getCurrentChainId() != chainId) {
+      domainSeparator = _buildDomainSeparator();
+    }
+    bytes32 hash = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+    address signer = ECDSA.recover(hash, _v, _r, _s);
+    require(signer == _owner, "ERC20Permit: invalid signature");
+    // Must be modified only here. Doesn't need SafeMath because can't reach overflow if incremented only here by one.
+    // See: https://www.schneier.com/blog/archives/2009/09/the_doghouse_cr.html
+    nonces[_owner]++;
+    allowance[_owner][_spender] = _value;
+    emit Approval(_owner, _spender, _value);
+  }
+
+  /**
+  * @dev Builds and returns the domain separator used in the encoding of the signature for `permit` using the current
+  * chain id.
+  */
+  function _buildDomainSeparator() internal view returns (bytes32) {
+    string memory version = "2";
+    return keccak256(
+      abi.encode(
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+        keccak256(bytes(name)),
+        keccak256(bytes(version)),
+        _getCurrentChainId(),
+        address(this)
+      )
+    ); 
+  }
+
+  /**
+  * @dev Returns the current chain id.
+  */
+  function _getCurrentChainId() internal pure returns (uint256 currentChainId) {
+    assembly {
+      currentChainId := chainid()
+    }
   }
 
   /* Getters */
