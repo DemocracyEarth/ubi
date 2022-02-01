@@ -1,30 +1,26 @@
 pragma solidity >=0.5.17;
 
 /**
- * @title Sablier Types
- * @author Sablier
+ * @title IStreamable Types
+ * @author Sablier - juanu.eth
  */
 library Types {
     struct Stream {
-        uint256 deposit; // This will be autocalculated based on the start and stop time
         uint256 ratePerSecond; // The rate of UBI to drip to this stream from the current accrued value
-        uint256 remainingBalance;
         uint256 startTime;
         uint256 stopTime;
         address recipient;
         address sender;
-        address tokenAddress;
         bool isEntity;
-        uint256 withdrawn;
         uint256 accruedSince;
     }
 }
 
 /**
- * @title ISablier
- * @author Sablier
+ * @title IStreamable
+ * @author Sablier - juanu.eth
  */
-interface ISablier {
+interface IStreamable {
     /**
      * @notice Emits when a stream is successfully created.
      */
@@ -32,8 +28,7 @@ interface ISablier {
         uint256 indexed streamId,
         address indexed sender,
         address indexed recipient,
-        uint256 deposit,
-        address tokenAddress,
+        uint256 ratePerSecond,
         uint256 startTime,
         uint256 stopTime
     );
@@ -53,12 +48,10 @@ interface ISablier {
     event CancelStream(
         uint256 indexed streamId,
         address indexed sender,
-        address indexed recipient,
-        uint256 senderBalance,
-        uint256 recipientBalance
+        address indexed recipient
     );
 
-    function balanceOf(uint256 streamId, address who)
+    function balanceOf(uint256 streamId)
         external
         view
         returns (uint256 balance);
@@ -69,8 +62,6 @@ interface ISablier {
         returns (
             address sender,
             address recipient,
-            uint256 deposit,
-            address token,
             uint256 startTime,
             uint256 stopTime,
             uint256 remainingBalance,
@@ -86,8 +77,7 @@ interface ISablier {
     ) external returns (uint256 streamId);
 
     function withdrawFromStream(uint256 streamId)
-        external
-        returns (bool);
+        external;
 
-    function cancelStream(uint256 streamId) external returns (bool);
+    function cancelStream(uint256 streamId) external;
 }
