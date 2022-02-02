@@ -58,7 +58,7 @@ contract UBI is Initializable, IStreamable {
 
   /* Storage */
 
-  mapping (address => uint256) private balance;
+  mapping (address => uint256) private ubiBalance;
 
   mapping (address => mapping (address => uint256)) public allowance;
 
@@ -180,7 +180,7 @@ contract UBI is Initializable, IStreamable {
     proofOfHumanity = _proofOfHumanity;
     governor = msg.sender;
 
-    balance[msg.sender] = _initialSupply;
+    ubiBalance[msg.sender] = _initialSupply;
     totalSupply = _initialSupply;
 
     chainId = _getCurrentChainId();
@@ -219,7 +219,7 @@ contract UBI is Initializable, IStreamable {
 
     accruedSince[_human] = 0;
 
-    balance[msg.sender] = balance[msg.sender].add(newSupply);
+    ubiBalance[msg.sender] = ubiBalance[msg.sender].add(newSupply);
     totalSupply = totalSupply.add(newSupply);
   }
 
@@ -256,8 +256,8 @@ contract UBI is Initializable, IStreamable {
         totalSupply = totalSupply.add(newSupplyFrom);
         accruedSince[msg.sender] = block.timestamp;
     }
-    balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: transfer amount exceeds balance");
-    balance[_recipient] = balance[_recipient].add(_amount);
+    ubiBalance[msg.sender] = ubiBalance[msg.sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: transfer amount exceeds balance");
+    ubiBalance[_recipient] = ubiBalance[_recipient].add(_amount);
     emit Transfer(msg.sender, _recipient, _amount);
     return true;
   }
@@ -276,8 +276,8 @@ contract UBI is Initializable, IStreamable {
         totalSupply = totalSupply.add(newSupplyFrom);
         accruedSince[_sender] = block.timestamp;
     }
-    balance[_sender] = balance[_sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: transfer amount exceeds balance");
-    balance[_recipient] = balance[_recipient].add(_amount);
+    ubiBalance[_sender] = ubiBalance[_sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: transfer amount exceeds balance");
+    ubiBalance[_recipient] = ubiBalance[_recipient].add(_amount);
     emit Transfer(_sender, _recipient, _amount);
     return true;
   }
@@ -324,7 +324,7 @@ contract UBI is Initializable, IStreamable {
       newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
       accruedSince[msg.sender] = block.timestamp;
     }
-    balance[msg.sender] = balance[msg.sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: burn amount exceeds balance");
+    ubiBalance[msg.sender] = ubiBalance[msg.sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: burn amount exceeds balance");
     totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
     emit Transfer(msg.sender, address(0), _amount);
   }
@@ -341,7 +341,7 @@ contract UBI is Initializable, IStreamable {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_account]));
         accruedSince[_account] = block.timestamp;
     }
-    balance[_account] = balance[_account].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: burn amount exceeds balance");
+    ubiBalance[_account] = ubiBalance[_account].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: burn amount exceeds balance");
     totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
     emit Transfer(_account, address(0), _amount);
   }
@@ -667,14 +667,14 @@ contract UBI is Initializable, IStreamable {
 
             totalSupply = totalSupply.add(newSupplyFrom);
 
-            balance[stream.sender] = balanceOf(stream.sender);
+            ubiBalance[stream.sender] = balanceOf(stream.sender);
 
             // Update accruedSince
             accruedSince[stream.sender] = block.timestamp;
         }        
 
         // Consolidate stream balance.
-        balance[stream.recipient] = balance[stream.recipient].add(streamBalance);
+        ubiBalance[stream.recipient] = ubiBalance[stream.recipient].add(streamBalance);
         streams[streamId].accruedSince = Math.min(block.timestamp, stream.stopTime);
         // DELETE STREAM IF REQUIRED
         // If withdrawing all available balance and stream is completed, remove it from the list of streams
