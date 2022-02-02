@@ -446,7 +446,7 @@ contract UBI is Initializable, IStreamable {
       }  
 
       // Total balance is: Last balance + (accrued balance - delegated accrued balance)
-      return getAccruedValue(_human).add(balance[_human]).sub(pendingDelegatedAccruedValue);
+      return getAccruedValue(_human).add(ubiBalance[_human]).sub(pendingDelegatedAccruedValue);
   }
 
     /*** Modifiers ***/
