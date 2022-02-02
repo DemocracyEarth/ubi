@@ -611,8 +611,6 @@ contract UBI is Initializable, IStreamable {
 
         require(ubiPerSecond <= accruedPerSecond.sub(delegatedBalance), "Delegated value exceeds available balance for the given stream period");
 
-        uint256 duration = stopTime.sub(startTime);
-
         /* Create and store the stream object. */
         uint256 newStreamId = prevStreamId.add(1);
 		    // Create the stream
