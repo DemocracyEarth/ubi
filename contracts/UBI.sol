@@ -574,7 +574,6 @@ contract UBI is Initializable, IStreamable {
         require(startTime > block.timestamp, "start time should be in the future");
         require(stopTime > startTime, "stop time before the start time");
         require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
-        ])
 
         // Check that we are not exceeding the max allowed.
         require(streamIdsOf[msg.sender].length + 1 <= maxStreamsAllowed, "max streams exceeded");
