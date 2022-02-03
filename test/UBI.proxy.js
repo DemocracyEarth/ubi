@@ -950,7 +950,14 @@ contract('UBI.sol', accounts => {
 
         //// WITHDRAWAL TEST
         describe("UBI stream withdrawals", () => {
+
             it("happy path - After stream is finished, and recipient withdraws the balance, stream balance should be 0 and recipient balance should be the stream total", async () => {
+
+                // ARRANGE
+
+                // Unsubscribe to make recipient stop receiving UBI
+                await setSubmissionIsRegistered(addresses[1], false);
+                await ubi.reportRemoval(addresses[1]);
 
                 // Move blocktime to the end of the last stream
                 await testUtils.goToEndOfStream(lastStreamId, ubi, network);
@@ -976,9 +983,11 @@ contract('UBI.sol', accounts => {
                 const prevRecipientBalance = BigNumber((await testUtils.ubiBalanceOfWallet(addresses[1], ubi)).toString());
                 const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, ubi)).toString());
 
+                // ACT
                 // Recipient withdraws balance 
                 await ubi.connect(accounts[1]).withdrawFromStream(lastStreamId);
 
+                // ASSERT
                 // Balance was withdrawn from completed stream so it shouldnt exist any more
                 await expect(testUtils.ubiBalanceOfStream(lastStreamId, ubi))
                     .to.be.revertedWith("stream does not exist");
