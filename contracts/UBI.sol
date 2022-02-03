@@ -565,7 +565,7 @@ contract UBI is Initializable, IStreamable {
         nonReentrant
         returns (uint256)
     {
-        require(proofOfHumanity.isRegistered(msg.sender), "Only registered humans can stream UBI.");
+        require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "Only registered humans accruing UBI can stream UBI.");
         require(recipient != address(0x00), "stream to the zero address");
         require(recipient != address(this), "stream to the contract itself");
         require(recipient != msg.sender, "stream to the caller");
@@ -574,6 +574,7 @@ contract UBI is Initializable, IStreamable {
         require(startTime > block.timestamp, "start time should be in the future");
         require(stopTime > startTime, "stop time before the start time");
         require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
+        ])
 
         // Check that we are not exceeding the max allowed.
         require(streamIdsOf[msg.sender].length + 1 <= maxStreamsAllowed, "max streams exceeded");
