@@ -438,7 +438,24 @@ contract('UBI.sol', accounts => {
 
             // try to create stream with a non registered account
             await expect(testUtils.createStream(accounts[1], addresses[2], accruedPerSecond.toNumber(), fromDate, toDate, ubi))
-                .to.be.revertedWith("Only registered humans can stream UBI.");
+                .to.be.revertedWith("Only registered humans accruing UBI can stream UBI.");
+        });
+
+        it("require fail - Creating a stream from a registered account NOT accruing UBI should fail.", async () => {
+            
+            // ARRANGE
+            // Register account (but dont start acccruing)
+            setSubmissionIsRegistered(addresses[8], true);
+            
+            // Stream from NOW until the next 1 hour
+            const currentBlockTime = await testUtils.getCurrentBlockTime();
+            const fromDate = moment(new Date(currentBlockTime * 1000)).add(10, "minutes").toDate();
+            const toDate = moment(fromDate).add(1, "hour").toDate();
+
+            // ACT & ASSERT
+            // try to create stream with a non registered account
+            await expect(testUtils.createStream(accounts[1], addresses[2], accruedPerSecond.toNumber(), fromDate, toDate, ubi))
+                .to.be.revertedWith("Only registered humans accruing UBI can stream UBI.");
         });
 
         it("happy path - After creating a stream that starts in the future, human should accrue UBI until stream starts.", async () => {
@@ -597,7 +614,7 @@ contract('UBI.sol', accounts => {
             const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
             const toDate = moment(fromDate).add(1, "hour").toDate();
 
-            await expect(testUtils.createStream(accounts[1], addresses[2], accruedPerSecond.toNumber(), fromDate, toDate, ubi)).to.be.revertedWith("Only registered humans can stream UBI.");
+            await expect(testUtils.createStream(accounts[1], addresses[2], accruedPerSecond.toNumber(), fromDate, toDate, ubi)).to.be.revertedWith("Only registered humans accruing UBI can stream UBI.");
         })
 
         it("happy path - Creating a new stream after one has finished and has been withdrawn should not increment the number of active streams", async () => {
@@ -881,11 +898,12 @@ contract('UBI.sol', accounts => {
         })
 
         it("require fail - Creating circular delegation should fail", async () => {
+            
             // Move to the end of the last stream
             await testUtils.goToEndOfStream(lastStreamId, ubi, network);
-
             setSubmissionIsRegistered(addresses[0], true);
-            setSubmissionIsRegistered(addresses[1], true);
+            await setSubmissionIsRegistered(addresses[1], true);
+            await ubi.startAccruing(addresses[1]);
 
             // initial variables
             const currentBlockTime = await testUtils.getCurrentBlockTime();
@@ -901,8 +919,8 @@ contract('UBI.sol', accounts => {
         })
 
         it("happy path - after delegating and withdrawing from recipient, getting balance of delegator should work correctly", async () => {
-            setSubmissionIsRegistered(addresses[0], true);
-            setSubmissionIsRegistered(addresses[2], false);
+            await setSubmissionIsRegistered(addresses[0], true);
+            await setSubmissionIsRegistered(addresses[2], false);
 
             // Delegate half of UBI per second
             const delegatedPerSecond = 10000000000001;
@@ -932,7 +950,14 @@ contract('UBI.sol', accounts => {
 
         //// WITHDRAWAL TEST
         describe("UBI stream withdrawals", () => {
+
             it("happy path - After stream is finished, and recipient withdraws the balance, stream balance should be 0 and recipient balance should be the stream total", async () => {
+
+                // ARRANGE
+
+                // Unsubscribe to make recipient stop receiving UBI
+                await setSubmissionIsRegistered(addresses[1], false);
+                await ubi.reportRemoval(addresses[1]);
 
                 // Move blocktime to the end of the last stream
                 await testUtils.goToEndOfStream(lastStreamId, ubi, network);
@@ -958,9 +983,11 @@ contract('UBI.sol', accounts => {
                 const prevRecipientBalance = BigNumber((await testUtils.ubiBalanceOfWallet(addresses[1], ubi)).toString());
                 const prevStreamBalance = BigNumber((await testUtils.ubiBalanceOfStream(lastStreamId, ubi)).toString());
 
+                // ACT
                 // Recipient withdraws balance 
                 await ubi.connect(accounts[1]).withdrawFromStream(lastStreamId);
 
+                // ASSERT
                 // Balance was withdrawn from completed stream so it shouldnt exist any more
                 await expect(testUtils.ubiBalanceOfStream(lastStreamId, ubi))
                     .to.be.revertedWith("stream does not exist");
