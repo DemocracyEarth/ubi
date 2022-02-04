@@ -10,7 +10,7 @@ const testUtils = {
     const fromSecs = testUtils.dateToSeconds(from);
     const toSecs = testUtils.dateToSeconds(to);
     const prevStreamId = new BigNumber((await ubi.prevStreamId()).toString());
-    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, ubi.address, fromSecs, toSecs)
+    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond,fromSecs, toSecs)
     const result = await tx.wait();
     const createStreamEvents = logReader.getCreateStreamEvents(result.events);
     expect(createStreamEvents && createStreamEvents.length > 0, "createStream should emit event CreateStream");
