@@ -997,8 +997,61 @@ contract('UBI.sol', accounts => {
 
             })
 
+            it("happy path - After withdrawing multiple streams, stream balance should be 0 and recipient balance should be the streams total", async () => {
+
+                // ARRANGE
+
+                // Unsubscribe to make recipient stop receiving UBI
+                await setSubmissionIsRegistered(addresses[0], true);
+                await setSubmissionIsRegistered(addresses[1], true);
+                await ubi.startAccruing(addresses[1]);
+                await setSubmissionIsRegistered(addresses[2], false);
+
+                // Create a new stream with half ubiPerSecond
+                const currentBlockTime = await testUtils.getCurrentBlockTime();
+                const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+                const toDate = moment(fromDate).add(1, "hour").toDate();
+
+                // Delegate half of UBI per second
+                const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
+
+                // Create 1 stream with accruedPerSecond.
+                const streamId1 = await testUtils.createStream(accounts[0], addresses[2], delegatedPerSecond, fromDate, toDate, ubi);
+                const streamId2 = await testUtils.createStream(accounts[1], addresses[2], delegatedPerSecond, fromDate, toDate, ubi);
+
+                // Get the stream
+                const stream1 = await ubi.getStream(streamId1);
+
+                // Move blocktime to end of stream
+                await testUtils.setNextBlockTime(stream1.stopTime.toNumber() + 1, network);
+
+                // Get balances
+                const prevRecipientBalance = BigNumber((await testUtils.ubiBalanceOfWallet(addresses[2], ubi)).toString());
+                const lastStream1Balance = BigNumber((await testUtils.ubiBalanceOfStream(streamId1, ubi)).toString());
+                const lastStream2Balance = BigNumber((await testUtils.ubiBalanceOfStream(streamId2, ubi)).toString());
+
+                // ACT
+                // Recipient withdraws balance 
+                await ubi.connect(accounts[1]).withdrawFromStreams([streamId1, streamId2]);
+
+                // ASSERT
+                // Balance was withdrawn from completed stream so it shouldnt exist any more
+                await expect(testUtils.ubiBalanceOfStream(streamId1, ubi))
+                    .to.be.revertedWith("stream does not exist");
+
+                await expect(testUtils.ubiBalanceOfStream(streamId2, ubi))
+                    .to.be.revertedWith("stream does not exist");
+
+                // New balance of recipient should be previous + balances from stream 1 and 2
+                const newRecipientBalance = BigNumber((await testUtils.ubiBalanceOfWallet(addresses[2], ubi)).toString());
+                expect(newRecipientBalance.toNumber()).to.eq(prevRecipientBalance.plus(lastStream1Balance).plus(lastStream2Balance).toNumber(), "Recipient balance should increase by the balance of the stream.");
+
+            })
+
             it("happy path - After withdrawing from an active stream, balance should be 0 right after, but keep accruing until the end.", async () => {
-                setSubmissionIsRegistered(addresses[0], true);
+                await setSubmissionIsRegistered(addresses[0], true);
+                await setSubmissionIsRegistered(addresses[1], false);
+                await ubi.reportRemoval(addresses[1])
 
                 // New stream will start in 1 minute and last for 1 hour
                 const currentBlockTime = await testUtils.getCurrentBlockTime();

@@ -176,14 +176,9 @@ contract('UBI.sol', accounts => {
                     lastStreamId = await testUtils.createStream(accounts[0], addresses[1], 100, fromDate, toDate, ubi);
                     await testUtils.goToStartOfStream(lastStreamId, ubi, network);
                     // move to mniddle of stream
-                    console.log("blockTime at start of stream", await testUtils.getCurrentBlockTime());
                     await testUtils.goToMiddleOfStream(lastStreamId, ubi, network);
-                    console.log("blockTime at start middle of stream", await testUtils.getCurrentBlockTime());
-                    console.log("balance of recipient before withdraw", (await testUtils.ubiBalanceOfWallet(addresses[1], ubi)).toNumber());
                     // widthdraw from stream
                     await ubi.withdrawFromStreams([lastStreamId]);
-
-                    console.log("balance of recipient after withdraw", (await testUtils.ubiBalanceOfWallet(addresses[1], ubi)).toNumber());
 
                     // ASSERT 
                     // Check that delta of return 0 (because stream didnt start). 
@@ -440,10 +435,6 @@ contract('UBI.sol', accounts => {
                         // ARRANGE & ACT                
                         // Go to end of stream,
                         await testUtils.goToMiddleOfStream(streamId2, ubi, network);
-                        console.log("blocktime", await testUtils.getCurrentBlockTime());
-                        console.log("BALANCE OF STREAM 1", streamId1.toNumber(), (await testUtils.ubiBalanceOfStream(streamId1, ubi)).toNumber());
-                        console.log("BALANCE OF STREAM 2", streamId2.toNumber(), (await testUtils.ubiBalanceOfStream(streamId2, ubi)).toNumber());
-                        console.log("blocktime", await testUtils.getCurrentBlockTime());
 
                         // ASSERT 
                         // Check that getDelegatedAccruedValue returns 179900 + 180000 (because withdraw from stream moves 1 second further).
@@ -454,8 +445,7 @@ contract('UBI.sol', accounts => {
                     it("happy path - after withdrawing from stream 2, which is at middle of stream, getDelegatedAccruedValue should return 179900 + 0 UBIwei.", async () => {
                         // ARRANGE & ACT                
                         await ubi.withdrawFromStreams([streamId2]);
-                        console.log("BALANCE OF STREAM 1", streamId1.toNumber(), (await testUtils.ubiBalanceOfStream(streamId1, ubi)).toNumber());
-                        console.log("BALANCE OF STREAM 2", streamId2.toNumber(), (await testUtils.ubiBalanceOfStream(streamId2, ubi)).toNumber());
+                        
                         // ASSERT 
                         // Check that getDelegatedAccruedValue returns 179900 + 0 (because withdraw from stream moves 1 secon further).
                         expect((await ubi.getDelegatedAccruedValue(addresses[0])).toNumber()).to.eq(179900 + 0);
