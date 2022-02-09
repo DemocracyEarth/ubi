@@ -4,11 +4,13 @@ const logReader = require("./logReader");
 
 const testUtils = {
   async createStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, verbose = false) {
-
+    if (verbose) {
+      console.log("Creating stream");
+    }
     const fromSecs = testUtils.dateToSeconds(from);
     const toSecs = testUtils.dateToSeconds(to);
     const prevStreamId = new BigNumber((await ubi.prevStreamId()).toString());
-    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, ubi.address, fromSecs, toSecs)
+    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond,fromSecs, toSecs)
     const result = await tx.wait();
     const createStreamEvents = logReader.getCreateStreamEvents(result.events);
     expect(createStreamEvents && createStreamEvents.length > 0, "createStream should emit event CreateStream");
@@ -16,7 +18,7 @@ const testUtils = {
     expect(streamId.toNumber()).to.eq(prevStreamId.plus(1).toNumber(), "CreateStream emited with incorrect streamId value")
 
     if (verbose) {
-      console.log("Created stream:")
+      console.log("Created stream:", streamId.toNumber())
       console.log("Start:", fromSecs)
       console.log("End:", toSecs);
       console.log("Time Diff:", toSecs - fromSecs);
@@ -160,9 +162,10 @@ const testUtils = {
     for (let i = 0; i < streamIds.length; i++) {
       // Move to the end of stream.  `goToEndOfStream` is safe to use if end has passed already
       await testUtils.goToEndOfStream(streamIds[i].toNumber(), ubi, network);
-      //const streamBalance = await testUtils.ubiBalanceOfStream(streamIds[i].toString(), stream.recipient, ubi);
-      await ubi.connect(account).withdrawFromStream(streamIds[i].toString());
     }
+
+    //const streamBalance = await testUtils.ubiBalanceOfStream(streamIds[i].toString(), stream.recipient, ubi);
+    await ubi.withdrawFromStreams(streamIds);
   },
 
   async cancelAllStreamsFrom(account, ubi) {

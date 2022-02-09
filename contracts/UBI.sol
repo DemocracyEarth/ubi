@@ -554,12 +554,11 @@ contract UBI is Initializable, IStreamable {
      *  Throws if there is a token transfer failure.
      * @param recipient The address towards which the money is streamed.
      * @param ubiPerSecond The amount of UBI to be streamed every second. MUST be <= accruedPerSecond
-     * @param tokenAddress The ERC20 token to use as streaming currency.
      * @param startTime The unix timestamp for when the stream starts.
      * @param stopTime The unix timestamp for when the stream stops.
      * @return The uint256 id of the newly created stream.
      */
-    function createStream(address recipient, uint256 ubiPerSecond, address tokenAddress, uint256 startTime, uint256 stopTime)
+    function createStream(address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime)
         public
         override
         nonReentrant
@@ -569,7 +568,6 @@ contract UBI is Initializable, IStreamable {
         require(recipient != address(0x00), "stream to the zero address");
         require(recipient != address(this), "stream to the contract itself");
         require(recipient != msg.sender, "stream to the caller");
-        require(tokenAddress == address(this),"token address can only be UBI");
         require(ubiPerSecond > 0, "UBI per second is zero");
         require(startTime > block.timestamp, "start time should be in the future");
         require(stopTime > startTime, "stop time before the start time");
@@ -637,20 +635,26 @@ contract UBI is Initializable, IStreamable {
     }
 
     /**
-     * @notice Withdraws from the contract to the recipient's account.
-     * @dev Throws if the id does not point to a valid stream.
+     * @notice Withdraws the UBI streamed from multiple streams to the recipient's account.
+     * @dev Throws if any of the ids does not point to a valid stream.
      *  Throws if the caller is not the sender or the recipient of the stream.
      *  Throws if there is a token transfer failure.
-     * @param streamId The id of the stream to withdraw tokens from.
+     * @param streamIds Array of stream IDs to withdraw tokens from.
      */
-    function withdrawFromStream(uint256 streamId)
+    function withdrawFromStreams(uint256[] calldata streamIds)
         external
         override
         nonReentrant
     {
-      _withdrawFromStream(streamId);
+      for(uint256 i = 0; i < streamIds.length; i++) {
+        _withdrawFromStream(streamIds[i]);
+      }
     }
 
+    /**
+     * @dev Withdraw funds from a specific stream to its recipient. Deletes the stream if its completed.
+     * @param streamId The ID of the stream to withdraw from.
+     */
     function _withdrawFromStream(uint256 streamId) private streamExists(streamId) {
       // Get stream
       Types.Stream memory stream = streams[streamId];

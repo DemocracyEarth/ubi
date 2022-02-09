@@ -71,13 +71,12 @@ interface IStreamable {
 
     function createStream(
         address recipient,
-        uint256 deposit,
-        address tokenAddress,
+        uint256 ubiPerSecond,
         uint256 startTime,
         uint256 stopTime
     ) external returns (uint256 streamId);
 
-    function withdrawFromStream(uint256 streamId)
+    function withdrawFromStreams(uint256[] calldata streamIds)
         external;
 
     function cancelStream(uint256 streamId) external;
