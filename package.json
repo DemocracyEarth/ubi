@@ -23,6 +23,7 @@
     "@openzeppelin/contracts": "^3.4.0",
     "@openzeppelin/contracts-upgradeable": "^3.4.0",
     "@openzeppelin/hardhat-upgrades": "^1.6.0",
+    "@types/mocha": "^9.1.0",
     "bignumber.js": "^9.0.1",
     "chai": "^4.2.0",
     "chai-as-promised": "7.1.1",
