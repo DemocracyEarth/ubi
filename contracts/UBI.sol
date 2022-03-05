@@ -241,7 +241,7 @@ contract UBI is Initializable {
   */
   function transfer(address _recipient, uint256 _amount) public returns (bool) {
     uint256 newSupplyFrom;
-    uint256 pendingDelegatedAccruedValue = subi.getDelegatedAccruedValue(msg.sender);
+    uint256 pendingDelegatedAccruedValue = address(subi) == address(0) ? 0 : subi.getDelegatedAccruedValue(msg.sender);
     if (accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
         totalSupply = totalSupply.add(newSupplyFrom);
@@ -260,7 +260,7 @@ contract UBI is Initializable {
   */
   function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
     uint256 newSupplyFrom;
-    uint256 pendingDelegatedAccruedValue = subi.getDelegatedAccruedValue(_sender);
+    uint256 pendingDelegatedAccruedValue = address(subi) == address(0) ? 0 : subi.getDelegatedAccruedValue(msg.sender);
     allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: transfer amount exceeds allowance");
     if (accruedSince[_sender] != 0 && proofOfHumanity.isRegistered(_sender)) {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_sender]));
@@ -310,7 +310,7 @@ contract UBI is Initializable {
   */
   function burn(uint256 _amount) public {
     uint256 newSupplyFrom;
-    uint256 pendingDelegatedAccruedValue = subi.getDelegatedAccruedValue(msg.sender);
+    uint256 pendingDelegatedAccruedValue = address(subi) == address(0) ? 0 : subi.getDelegatedAccruedValue(msg.sender);
     if(accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
       newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
       accruedSince[msg.sender] = block.timestamp;
@@ -443,6 +443,11 @@ contract UBI is Initializable {
         subi.onWithdrawnFromStream(streamId, streamBalance);
     }
 
+    /* Setter */
+    function setSUBI(address _subi) public onlyByGovernor {
+      subi = ISUBI(_subi);
+    }
+
   /* Getters */
 
   /** @dev Calculates how much UBI a submission has available for withdrawal.
@@ -481,9 +486,11 @@ contract UBI is Initializable {
   function balanceOf(address _human) public view returns (uint256) {
     uint256 pendingDelegatedAccruedValue = 0;
 
-    uint256[] memory streamIdsOf = subi.getStreamsOf(_human);
-    // Subtract pending value already consolidated
-     for(uint256 i = 0; i < streamIdsOf.length; i++) {
+    if(address(subi) != address(0)) {
+
+      uint256[] memory streamIdsOf = subi.getStreamsOf(_human);
+      // Subtract pending value already consolidated
+      for(uint256 i = 0; i < streamIdsOf.length; i++) {
         Types.Stream memory stream = getStream(streamIdsOf[i]);
         if(!stream .isEntity) continue; // Stream Exists
         if(!proofOfHumanity.isRegistered(stream.sender)) continue; // Sender is a registered human
@@ -505,6 +512,8 @@ contract UBI is Initializable {
         // Stream's total accrued value is the accumulated time * stream's ratePerSecond
         pendingDelegatedAccruedValue += streamAccumulatedTime.mul(stream.ratePerSecond);
       }  
+        
+    }
 
       // Total balance is: Last balance + (accrued balance - delegated accrued balance)
       return getAccruedValue(_human).add(ubiBalance[_human]).sub(pendingDelegatedAccruedValue);
