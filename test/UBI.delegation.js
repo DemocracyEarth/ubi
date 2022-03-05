@@ -54,8 +54,7 @@ contract('UBI.sol', skip ? () => {} : accounts => {
         await ubi.deployed();
 
         // Initialize values on upgraded contract.
-        await ubi.upgrade();}
-        
+        await ubi.upgrade();
         // For testing purposes only, we define a max of 10 streams allowed
         // await ubi.setMaxStreamsAllowed(10);
 
