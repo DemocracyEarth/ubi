@@ -16,4 +16,8 @@ module.exports.POSTER_KOVAN = '0x38081e808FB584797159E7878810f94315d4E6F8';
 
 module.exports.VOTE_NAME = "Democracy Earth";
 module.exports.VOTE_SYMBOL = "VOTE";
+
+module.exports.SUBI_NAME = "Streamed Universal Basic Income";
+module.exports.SUBI_SYMBOL = "SUBI";
+module.exports.SUBI_MAX_STREAMS_ALLOWED = 100;
 // @NOTE: decimal counter string: 012345678901234567
