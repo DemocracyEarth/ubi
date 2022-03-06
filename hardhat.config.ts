@@ -1,8 +1,8 @@
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-solhint");
-import "@nomiclabs/hardhat-waffle";
-require("@nomiclabs/hardhat-ethers");
+require("@nomiclabs/hardhat-waffle");
+import "@nomiclabs/hardhat-ethers";
 import '@openzeppelin/hardhat-upgrades';
 require("hardhat-gas-reporter");
 require("solidity-coverage");
