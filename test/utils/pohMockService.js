@@ -4,7 +4,6 @@ const pohMockService = {
      * @returns 
      */
     deployMock: async (signer) => {
-        console.log("Deploying mock POH...");
         // Deploy MOCK POH
         mockProofOfHumanity = await waffle.deployMockContract(
             signer,
@@ -20,8 +19,8 @@ const pohMockService = {
      * @param {*} isRegistered 
      * @returns 
      */
-    setSubmissionIsRegistered: (mockProofOfHumanity, address, isRegistered) => {
-        mockProofOfHumanity.mock.isRegistered
+    setSubmissionIsRegistered: async (mockProofOfHumanity, address, isRegistered) => {
+        await mockProofOfHumanity.mock.isRegistered
             .withArgs(address)
             .returns(isRegistered)
     },

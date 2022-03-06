@@ -99,7 +99,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
     * @param stopTime The unix timestamp for when the stream stops.
     * @return The uint256 id of the newly created stream.
     */
-  function createStream(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime)
+  function mintStream(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime)
       public
       override
       nonReentrant

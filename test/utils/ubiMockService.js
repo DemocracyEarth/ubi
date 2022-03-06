@@ -6,7 +6,6 @@ const ubiMockService = {
      * @returns 
      */
     deployMockUBI: async (signer, pohContract) => {
-        console.log("Deploying mock UBI...");
         // Deploy mock UBI
         const mockUBI = await waffle.deployMockContract(
             signer,
@@ -18,7 +17,11 @@ const ubiMockService = {
     },
 
     setPoh: (mockUBI, pohContract) => {
-        mockUBI.mock.proofOfHumanity.returns(pohContract);
+        mockUBI.mock.getProofOfHumanity.returns(pohContract.address);
+    },
+
+    setSUBI: (mockUBI, subiContract) => {
+        mockUBI.mock.subi.return(subiContract.address);
     }
 }
 

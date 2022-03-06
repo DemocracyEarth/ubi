@@ -392,7 +392,7 @@ contract UBI is Initializable {
 
   function createStream(address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime) public nonReentrant {
     require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "Only registered humans accruing UBI can stream UBI.");
-    subi.createStream(msg.sender, recipient, ubiPerSecond, startTime, stopTime);
+    subi.mintStream(msg.sender, recipient, ubiPerSecond, startTime, stopTime);
   }
 
     /**
