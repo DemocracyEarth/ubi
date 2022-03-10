@@ -3,16 +3,18 @@ const { ethers, expect } = require("hardhat");
 const logReader = require("./logReader");
 
 const testUtils = {
-  async createStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, verbose = false) {
+  async createStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, subi, verbose = false) {
 
     const fromSecs = testUtils.dateToSeconds(from);
     const toSecs = testUtils.dateToSeconds(to);
-    const prevStreamId = new BigNumber((await ubi.prevStreamId()).toString());
-    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, ubi.address, fromSecs, toSecs)
-    const result = await tx.wait();
-    const createStreamEvents = logReader.getCreateStreamEvents(result.events);
+    const prevStreamId = new BigNumber((await subi.lastTokenId()).toString());
+    
+    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, fromSecs, toSecs)
+    await tx.wait();
+    const events = await subi.queryFilter(subi.filters.CreateStream(fromAccount.address, toAddress));
+    const createStreamEvents = logReader.getCreateStreamEvents(events);
     expect(createStreamEvents && createStreamEvents.length > 0, "createStream should emit event CreateStream");
-    const streamId = createStreamEvents[0].args[0];
+    const streamId = createStreamEvents[0].args[2];
     expect(streamId.toNumber()).to.eq(prevStreamId.plus(1).toNumber(), "CreateStream emited with incorrect streamId value")
 
     if (verbose) {
@@ -134,8 +136,8 @@ const testUtils = {
     }
   },
 
-  async goToMiddleOfStream(streamId, ubi, network) {
-    const stream = await ubi.getStream(streamId);
+  async goToMiddleOfStream(streamId, subi, network) {
+    const stream = await subi.getStream(streamId);
     // Move to the middle of the stream
     const stopTime = BigNumber(stream.stopTime.toNumber());
     const startTime = BigNumber(stream.startTime.toNumber());

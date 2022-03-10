@@ -1,10 +1,19 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import { ethers, upgrades, network } from "hardhat";
+import moment from "moment";
 const testUtils = require("./testUtils");
 const pohMockService = require("./utils/pohMockService");
 const ubiMockService = require("./utils/ubiMockService");
 const deploymentParams = require('../deployment-params');
+
+async function deploySUBI(ubiInstance) {
+  const SUBIFactory = await ethers.getContractFactory("sUBI");
+  const sUBI = await SUBIFactory.deploy(ubiInstance.address, deploymentParams.SUBI_MAX_STREAMS_ALLOWED, deploymentParams.SUBI_NAME, deploymentParams.SUBI_SYMBOL);
+  await sUBI.deployed();
+  await ubiInstance.setSUBI(sUBI.address);
+  return sUBI;
+}
 
 async function deployUBI(pohAddress) {
 
@@ -26,7 +35,7 @@ describe("sUBI.sol", () => {
   let mockUBI;
   let mockPoh;
   let accounts: SignerWithAddress[];
-  before(async () => {
+  beforeEach(async () => {
 
     // Get signers
     accounts = await ethers.getSigners();
@@ -56,17 +65,14 @@ describe("sUBI.sol", () => {
 
   });
 
-  it("Should correctly mint stream when executing createSTream on UBI", async () => {
+  it("Should correctly mint stream when executing createStream on UBI", async () => {
 
     // ARRANGE
-    const SUBIFactory = await ethers.getContractFactory("sUBI");
-    const sUBI = await SUBIFactory.deploy(ubi.address, deploymentParams.SUBI_MAX_STREAMS_ALLOWED, deploymentParams.SUBI_NAME, deploymentParams.SUBI_SYMBOL);
-    await sUBI.deployed();
-    await ubi.setSUBI(sUBI.address);
+    const sUBI = await deploySUBI(ubi);
     const sender = accounts[1];
     await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
     await ubi.startAccruing(sender.address)
-    
+
     const currentBlockTime = await testUtils.getCurrentBlockTime();
     const dateFrom = currentBlockTime + 10;
     const dateTo = dateFrom + 20;
@@ -77,4 +83,66 @@ describe("sUBI.sol", () => {
     // // ASSERT
     expect((await sUBI.balanceOf(accounts[2].address)).toNumber()).to.equal(1);
   });
+
+  it("happy path - after creating a stream, accruedTime should return 0 if stream didnt start", async () => {
+    // ARRANGE
+    const sUBI = await deploySUBI(ubi);
+    const sender = accounts[0];
+    const recipient = accounts[1];
+    await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+    await pohMockService.setSubmissionIsRegistered(mockPoh, recipient.address, false);
+    await ubi.startAccruing(sender.address)
+
+    // Get current block time
+    const initialBlockTime = await testUtils.getCurrentBlockTime();
+    // Stream start 1 hour from now
+    const fromDate = moment(new Date(initialBlockTime * 1000)).add(1, "hours").toDate();
+    // Stream lasts 1 hour
+    const toDate = moment(fromDate).add(1, "hour").toDate();
+
+    // ACT
+    // Create stream
+    const lastStreamId = await testUtils.createStream(sender,
+      recipient.address,
+      100,
+      fromDate,
+      toDate,
+      ubi, sUBI);
+
+    // ASSERT 
+    // Check that delta of return 0 (because stream didnt start). 
+    expect((await sUBI.accruedTime(lastStreamId.toNumber())).toNumber()).to.eq(0);
+  })
+
+  it("happy path - after moving to middle of stream, accruedTime should return 1800", async () => {
+
+    const sUBI = await deploySUBI(ubi);
+    const sender = accounts[0];
+    const recipient = accounts[1];
+    await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+    await pohMockService.setSubmissionIsRegistered(mockPoh, recipient.address, false);
+    await ubi.startAccruing(sender.address)
+
+    // Get current block time
+    const initialBlockTime = await testUtils.getCurrentBlockTime();
+    // Stream start 1 hour from now
+    const fromDate = moment(new Date(initialBlockTime * 1000)).add(1, "hours").toDate();
+    // Stream lasts 1 hour
+    const toDate = moment(fromDate).add(1, "hour").toDate();
+
+    // ARRANGE / ACT
+    // Create stream
+    const lastStreamId = await testUtils.createStream(sender,
+      recipient.address,
+      100,
+      fromDate,
+      toDate,
+      ubi, sUBI);
+    // Set block time to middle of stream,
+    await testUtils.goToMiddleOfStream(lastStreamId, sUBI, network);
+
+    // ASSERT 
+    // Check that delta of returns 200.
+    expect((await sUBI.accruedTime(lastStreamId)).toNumber()).to.eq(1800);
+  })
 });

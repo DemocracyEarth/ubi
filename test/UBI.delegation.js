@@ -96,27 +96,27 @@ contract('UBI.sol', skip ? () => {} : accounts => {
 
                 let lastStreamId;
 
-                it("happy path - after creating a stream, deltaOf should return 0 if stream didnt start", async () => {
-                    // ARRANGE
-                    setSubmissionIsRegistered(accounts[0].address, true);
-                    setSubmissionIsRegistered(addresses[1], false);
+                // it("happy path - after creating a stream, deltaOf should return 0 if stream didnt start", async () => {
+                //     // ARRANGE
+                //     setSubmissionIsRegistered(accounts[0].address, true);
+                //     setSubmissionIsRegistered(addresses[1], false);
 
 
-                    // Get current block time
-                    const initialBlockTime = await testUtils.getCurrentBlockTime();
-                    // Stream start 1 hour from now
-                    const fromDate = moment(new Date(initialBlockTime * 1000)).add(1, "hours").toDate();
-                    // Stream lasts 1 hour
-                    const toDate = moment(fromDate).add(1, "hour").toDate();
+                //     // Get current block time
+                //     const initialBlockTime = await testUtils.getCurrentBlockTime();
+                //     // Stream start 1 hour from now
+                //     const fromDate = moment(new Date(initialBlockTime * 1000)).add(1, "hours").toDate();
+                //     // Stream lasts 1 hour
+                //     const toDate = moment(fromDate).add(1, "hour").toDate();
 
-                    // ACT
-                    // Create stream
-                    lastStreamId = await testUtils.createStream(accounts[0], addresses[1], 100, fromDate, toDate, ubi);
+                //     // ACT
+                //     // Create stream
+                //     lastStreamId = await testUtils.createStream(accounts[0], addresses[1], 100, fromDate, toDate, ubi);
 
-                    // ASSERT 
-                    // Check that delta of return 0 (because stream didnt start). 
-                    expect((await ubi.deltaOf(lastStreamId)).toNumber()).to.eq(0);
-                })
+                //     // ASSERT 
+                //     // Check that delta of return 0 (because stream didnt start). 
+                //     expect((await ubi.deltaOf(lastStreamId)).toNumber()).to.eq(0);
+                // })
 
                 it("happy path - after moving to middle of stream, deltaOf should return 1800", async () => {
 
