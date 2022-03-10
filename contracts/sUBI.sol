@@ -170,7 +170,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
 
       _safeMint(recipient, lastTokenId);
 
-      emit CreateStream(lastTokenId, sender, recipient, ubiPerSecond, startTime, stopTime);
+      emit CreateStream(sender, recipient, lastTokenId, ubiPerSecond, startTime, stopTime);
       return lastTokenId;
   } 
 
