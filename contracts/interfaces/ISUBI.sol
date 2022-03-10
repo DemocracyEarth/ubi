@@ -28,9 +28,9 @@ interface ISUBI is IERC721 {
      * @notice Emits when a stream is successfully created.
      */
     event CreateStream(
-        uint256 indexed streamId,
         address indexed sender,
         address indexed recipient,
+        uint256 streamId,
         uint256 ratePerSecond,
         uint256 startTime,
         uint256 stopTime
