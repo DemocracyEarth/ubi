@@ -73,7 +73,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
 
   /// @dev Caller can only be UBI contract
   modifier onlyUBI() {
-    require(msg.sender == ubi, "Caller is not UBI contract");
+    require(msg.sender == ubi, "caller is not UBI contract");
     _;
   }
 
@@ -224,16 +224,13 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
   }
 
   /// @dev Callback for when UBI contract has withdrawn from a Stream.
-  function onWithdrawnFromStream(uint256 streamId, uint256 withdrawnBalance) public override onlyUBI {
+  function onWithdrawnFromStream(uint256 streamId) public override onlyUBI {
     streams[streamId].accruedSince = Math.min(block.timestamp, streams[streamId].stopTime);
       // DELETE STREAM IF REQUIRED
       // If withdrawing all available balance and stream is completed, remove it from the list of streams
       if(block.timestamp >= streams[streamId].stopTime) {
         deleteStream(streamId);
       }
-
-      //transfer(stream.recipient, amount);
-      emit WithdrawFromStream(streamId, streams[streamId].recipient, withdrawnBalance);
   }
 
     // /**

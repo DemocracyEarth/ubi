@@ -36,14 +36,14 @@ interface ISUBI is IERC721 {
         uint256 stopTime
     );
 
-    /**
-     * @notice Emits when the recipient of a stream withdraws a portion or all their pro rata share of the stream.
-     */
-    event WithdrawFromStream(
-        uint256 indexed streamId,
-        address indexed recipient,
-        uint256 amount
-    );
+    // /**
+    //  * @notice Emits when the recipient of a stream withdraws a portion or all their pro rata share of the stream.
+    //  */
+    // event WithdrawFromStream(
+    //     uint256 indexed streamId,
+    //     address indexed recipient,
+    //     uint256 amount
+    // );
 
     /**
      * @notice Emits when a stream is successfully cancelled and tokens are transferred back on a pro rata basis.
@@ -96,5 +96,5 @@ interface ISUBI is IERC721 {
     function getDelegatedAccruedValue(address _human) external view returns (uint256);
 
     /// @dev Callback for when UBI contract has withdrawn from a Stream.
-    function onWithdrawnFromStream(uint256 streamId, uint256 withdrawnBalance) external;
+    function onWithdrawnFromStream(uint256 streamId) external;
 }

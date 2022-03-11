@@ -145,9 +145,9 @@ const testUtils = {
     await testUtils.setNextBlockTime(startTime.plus(duration.div(2)).toNumber(), network);
   },
 
-  async goToEndOfStream(streamId, ubi, network) {
+  async goToEndOfStream(streamId, subi, network) {
     // Get the last created stream
-    const stream = await ubi.getStream(streamId);
+    const stream = await subi.getStream(streamId);
 
     // Move to the end of the stream if needed
     if (await testUtils.getCurrentBlockTime() < stream.stopTime.toNumber()) {

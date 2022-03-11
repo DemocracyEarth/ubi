@@ -440,7 +440,7 @@ contract UBI is Initializable {
 
         // Consolidate stream balance.
         ubiBalance[recipient] = ubiBalance[recipient].add(streamBalance);
-        subi.onWithdrawnFromStream(streamId, streamBalance);
+        subi.onWithdrawnFromStream(streamId);
     }
 
     /* Setter */
