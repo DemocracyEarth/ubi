@@ -117,14 +117,6 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       // Check that we are not exceeding the max allowed.
       require(streamIdsOf[sender].length + 1 <= _maxStreamsAllowed, "max streams exceeded");
 
-      // Multiple streams to teh same recipient only allowed if none is active on the new stream's time period
-      for(uint256 i = 0; i < streamIdsOfSenderAndRecipient[sender][recipient].length; i ++) {
-        uint256 existingStreamId = streamIdsOfSenderAndRecipient[sender][recipient][i];
-        if(existingStreamId > 0) require(
-          !overlapsWith(startTime, stopTime, streams[existingStreamId].startTime, streams[existingStreamId].stopTime),
-          "Account is already a recipient on an active or overlaping stream.");
-      }
-
       // Avoid circular delegation validating that the recipient did not delegate to the sender
       for(uint256 i = 0 ; i < streamIdsOf[recipient].length; i++) {
         uint256 recipientStreamId = streamIdsOf[recipient][i];
@@ -231,6 +223,9 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       if(block.timestamp >= streams[streamId].stopTime) {
         deleteStream(streamId);
       }
+
+      //transfer(stream.recipient, amount);
+      //emit WithdrawFromStream(streamId, streams[streamId].recipient, withdrawnBalance);
   }
 
     // /**
