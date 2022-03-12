@@ -172,7 +172,6 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
 
   /// @dev Deletes the given stream from related variables
   function deleteStream(uint256 streamId) internal {
-
     Types.Stream memory stream = streams[streamId];
 
     // DELETE FROM streamIdsOf
@@ -410,10 +409,6 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       //   )
       // )
     } 
-
-    function streamExists(uint256 streamId) public override view returns (bool) {
-      return streams[streamId].isEntity;
-    }
 
 
     function maxStreamsAllowed() external override view returns (uint256) {

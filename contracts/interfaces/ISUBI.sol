@@ -84,7 +84,7 @@ interface ISUBI is IERC721 {
 
     function mintStream(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime) external returns (uint256 streamId);
 
-    function streamExists(uint256 streamId) external view returns (bool);
+    //function streamExists(uint256 streamId) external view returns (bool);
     //function withdrawFromStream(uint256 streamId) external;
 
     //function cancelStream(uint256 streamId) external;

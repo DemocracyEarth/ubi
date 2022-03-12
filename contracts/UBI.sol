@@ -146,14 +146,6 @@ contract UBI is Initializable {
       _;
   }
 
-  /**
-    * @dev Throws if the provided id does not point to a valid stream.
-    */
-  modifier streamExists(uint256 streamId) {
-      require(subi.streamExists(streamId), "stream does not exist");
-      _;
-  }
-
   /* Initializer */
 
   /** @dev Constructor.

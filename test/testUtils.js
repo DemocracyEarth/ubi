@@ -99,18 +99,6 @@ const testUtils = {
     return balance.minus(accrued);
   },
 
-  /**
-   * Get accumulated balance of a stream
-    * ethers.js dopesnt support overload methods (because of the js nature).
-    * UBI contract has 2 overloads of balanceOf. One for ERC-20 and one for EIP-1620 
-    * @param {*} streamId ID of the stream for which to get the balance.
-    * @param {*} address Address of the sender or recipient for which to get the balance on the stream.
-    * @param {*} ubi 
-    * @returns 
-    */
-  async ubiBalanceOfStream(streamId, ubi) {
-    return BigNumber((await ubi["balanceOf(uint256)"](streamId)).toString());
-  },
   hoursToSeconds(hours) {
     return hours * 3600;
   },
