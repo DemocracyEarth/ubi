@@ -404,58 +404,7 @@ contract('UBI.sol', skipAll ? function() {} : function(accounts) {
             expect(await mockProofOfHumanity.isRegistered(addresses[1])).to.eq(false);
 
             await ubi.startAccruing(addresses[0]);
-        });
-
-       
-
-        it("happy path - Creating a new stream after one has finished and has been withdrawn should not increment the number of active streams", async () => {
-            setSubmissionIsRegistered(addresses[0], true);
-
-            // Get the previous stream count
-            const prevStreamsCount = await ubi.getStreamsCount(addresses[0]);
-
-            // Move blocktime top the end of last stream
-            await testUtils.goToEndOfStream(lastStreamId, ubi, network);
-
-            // Withdraw the balance from the stream
-            await ubi.connect(accounts[1]).withdrawFromStream(lastStreamId);
-
-            // Create a new stream
-            const currentBlockTime = await testUtils.getCurrentBlockTime();
-            const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
-            const toDate = moment(fromDate).add(1, "hour").toDate();
-
-            // Delegate half of UBI per second
-            const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
-
-            // Create stream with half ubiPerSecond delegation
-            lastStreamId = await testUtils.createStream(accounts[0], addresses[1], delegatedPerSecond, fromDate, toDate, ubi);
-            const currStreamsCount = await ubi.getStreamsCount(addresses[0]);
-            expect(currStreamsCount.toNumber()).to.eq(prevStreamsCount.toNumber(), "Creating a stream after another has finished and been withdrawn should not increase stream count");
-        });
-
-        it("happy path - Creating a new stream after one has finished and has not been withdrawn should increment the number of active streams", async () => {
-            setSubmissionIsRegistered(addresses[0], true);
-
-            // Get the previous stream count
-            const prevStreamsCount = BigNumber((await ubi.getStreamsCount(addresses[0])).toString());
-
-            // Move blocktime top the end of last stream
-            await testUtils.goToEndOfStream(lastStreamId, ubi, network);
-
-            // Create a new stream
-            const currentBlockTime = await testUtils.getCurrentBlockTime();
-            const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
-            const toDate = moment(fromDate).add(1, "hour").toDate();
-
-            // Delegate half of UBI per second
-            const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
-
-            // Create stream with half ubiPerSecond delegation
-            lastStreamId = await testUtils.createStream(accounts[0], addresses[1], delegatedPerSecond, fromDate, toDate, ubi);
-            const currStreamsCount = await ubi.getStreamsCount(addresses[0]);
-            expect(currStreamsCount.toNumber()).to.eq(prevStreamsCount.plus(1).toNumber(), "Creating a stream after another has finished but not withdrawn should increase stream count");
-        });
+        });      
 
         it("happy path - Creating a new stream while others are running or pending should increment the number of active streams", async () => {
             setSubmissionIsRegistered(addresses[0], true);

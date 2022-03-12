@@ -8,13 +8,13 @@ const testUtils = {
     const fromSecs = testUtils.dateToSeconds(from);
     const toSecs = testUtils.dateToSeconds(to);
     const prevStreamId = new BigNumber((await subi.lastTokenId()).toString());
-    
+
     const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, fromSecs, toSecs)
     await tx.wait();
     const events = await subi.queryFilter(subi.filters.CreateStream(fromAccount.address, toAddress));
     const createStreamEvents = logReader.getCreateStreamEvents(events);
     expect(createStreamEvents && createStreamEvents.length > 0, "createStream should emit event CreateStream");
-    const streamId = createStreamEvents[0].args[2];
+    const streamId = createStreamEvents[createStreamEvents.length - 1].args[2];
     expect(streamId.toNumber()).to.eq(prevStreamId.plus(1).toNumber(), "CreateStream emited with incorrect streamId value")
 
     if (verbose) {

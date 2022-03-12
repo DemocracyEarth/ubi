@@ -354,6 +354,100 @@ describe("sUBI.sol", () => {
         fromDate, toDate,
         ubi, sUBI)).to.be.revertedWith("Only registered humans accruing UBI can stream UBI.");
     })
+
+    it("happy path - Creating a new stream after one has finished and has been withdrawn should not increment the number of active streams", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await pohMockService.setSubmissionIsRegistered(mockPoh, recipient.address, false);
+      await ubi.startAccruing(sender.address);
+
+      // Create stream 1 minute after current blockTime
+      let currentBlockTime = await testUtils.getCurrentBlockTime();
+      let fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      let toDate = moment(fromDate).add(1, "hour").toDate();
+
+      const stream1Id = await testUtils.createStream(
+        sender,
+        recipient.address,
+        accruedPerSecond.toNumber(),
+        fromDate, toDate,
+        ubi, sUBI);
+
+      // Get the previous stream count
+      const prevStreamsCount = await sUBI.getStreamsCount(sender.address);
+      // Move blocktime top the end of last stream
+      await testUtils.goToEndOfStream(stream1Id, sUBI, network);
+
+      // Withdraw the balance from the stream
+      await ubi.connect(recipient).withdrawFromStream(stream1Id);
+
+      // Create a 2nd stream
+      currentBlockTime = await testUtils.getCurrentBlockTime();
+      fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Delegate half of UBI per second
+      const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
+
+      // Create stream with half ubiPerSecond delegation
+      const stream2Id = await testUtils.createStream(
+        sender,
+        recipient.address,
+        delegatedPerSecond,
+        fromDate, toDate,
+        ubi, sUBI);
+      const currStreamsCount = await sUBI.getStreamsCount(sender.address);
+      expect(currStreamsCount.toNumber()).to.eq(prevStreamsCount.toNumber(), "Creating a stream after another has finished and been withdrawn should not increase stream count");
+    });
+
+    it("happy path - Creating a new stream after one has finished and has not been withdrawn should increment the number of active streams", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await pohMockService.setSubmissionIsRegistered(mockPoh, recipient.address, false);
+      await ubi.startAccruing(sender.address);
+
+      // Create stream 1 minute after current blockTime
+      let currentBlockTime = await testUtils.getCurrentBlockTime();
+      let fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      let toDate = moment(fromDate).add(1, "hour").toDate();
+
+      const stream1Id = await testUtils.createStream(
+        sender,
+        recipient.address,
+        accruedPerSecond.toNumber(),
+        fromDate, toDate,
+        ubi, sUBI);
+
+      // Move blocktime top the end of last stream
+      await testUtils.goToEndOfStream(stream1Id, sUBI, network);
+
+      // Get the previous stream count
+      const prevStreamsCount = await sUBI.getStreamsCount(sender.address);
+
+      // Create a new stream
+      currentBlockTime = await testUtils.getCurrentBlockTime();
+      fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Delegate half of UBI per second
+      const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
+
+      // Create stream with half ubiPerSecond delegation
+      const stream2Id = await testUtils.createStream(
+        sender,
+        recipient.address,
+        delegatedPerSecond,
+        fromDate, toDate,
+        ubi, sUBI);
+      const currStreamsCount = await sUBI.getStreamsCount(sender.address);
+      expect(currStreamsCount.toNumber()).to.eq(prevStreamsCount.add(1).toNumber(), "Creating a stream after another has finished but not withdrawn should increase stream count");
+    });
   })
 
   describe("accruedTime related tests", () => {
