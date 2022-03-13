@@ -137,7 +137,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
         // how many UBI to delegate per second.
         ratePerSecond: ubiPerSecond,
         // Starts with 0. Accumulates as time passes.
-        isEntity: true,
+        isActive: true,
         recipient: recipient,
         sender: sender,
         startTime: startTime,
@@ -198,8 +198,8 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       }
     }
 
-    // Delete the stream
-    delete streams[streamId];
+    // Disable the stream
+    streams[streamId].isActive = false;
   }
 
   /// @dev Callback for when UBI contract has withdrawn from a Stream.
@@ -256,7 +256,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
      */
     function accruedTime(uint256 streamId) public override view returns (uint256) {
       Types.Stream memory stream = streams[streamId];
-      if(!stream.isEntity) return 0;
+      if(!stream.isActive) return 0;
 
         // If stream has not started, or it has been accrued all.
         if (block.timestamp < stream.startTime) return 0; // Stream not started
@@ -280,7 +280,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
         uint256 streamId = streamIdsOf[_human][i];
 
         Types.Stream memory stream = streams[streamId];
-        if(!stream.isEntity) continue; // Stream Exists
+        if(!stream.isActive) continue; // Stream Exists
         if(!IProofOfHumanity(proofOfHumanity).isRegistered(stream.sender)) continue; // Sender is a registered human
 
         // Time delegated to the stream
@@ -301,7 +301,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
      */
     function balanceOfStream(uint256 streamId) public override view returns (uint256) {
         Types.Stream memory stream = streams[streamId];
-        if(!stream.isEntity) return 0;
+        if(!stream.isActive) return 0;
 
         if(!IProofOfHumanity(proofOfHumanity).isRegistered(stream.sender)) return 0;
         if(stream.startTime > block.timestamp) return 0;
@@ -328,7 +328,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
         uint256 stopTime,
         address recipient,
         address sender,
-        bool isEntity,
+        bool isActive,
         uint256 accruedSince)
     {
       Types.Stream memory stream = streams[streamId];
@@ -337,7 +337,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
         stream.stopTime,
         stream.recipient,
         stream.sender,
-        stream.isEntity,
+        stream.isActive,
         stream.accruedSince);
         // sender = streams[streamId].sender;
         // recipient = streams[streamId].recipient;

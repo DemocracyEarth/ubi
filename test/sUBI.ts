@@ -1,5 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
+import { BigNumber } from "ethers";
 import { ethers, upgrades, network } from "hardhat";
 import moment from "moment";
 const testUtils = require("./testUtils");
@@ -745,6 +746,346 @@ describe("sUBI.sol", () => {
       expect(lastSenderBalance).to.eq(prevSenderBalance.add(accruedPerSecond.sub(delegatedPerSecond)), "Invalid sender balance");
     });
   })
+
+  describe("Withdrawals", () => {
+    it("happy path - After stream is finished, and recipient withdraws the balance, stream balance should be 0 and recipient balance should be the stream total", async () => {
+
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient = accounts[2];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await ubi.startAccruing(sender.address);
+
+      // Create a new stream with half ubiPerSecond
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Delegate half of UBI per second
+      const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
+
+      // Create 1 stream with accruedPerSecond.
+      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+
+      // Move blocktime to end of stream
+      await testUtils.goToEndOfStream(streamId, sUBI, network);
+
+      // Get balances
+      const prevRecipientBalance = await ubi.balanceOf(recipient.address);
+      const prevStreamBalance = await sUBI.balanceOfStream(streamId);
+
+      // ACT
+      // Recipient withdraws balance 
+      await ubi.connect(recipient).withdrawFromStream(streamId);
+
+      // ASSERT
+      // Balance was withdrawn from completed stream so it shouldnt exist any more
+      expect(await sUBI.balanceOfStream(streamId)).to.eq(0, "Stream balance should be 0");
+
+      // New balance of recipient should be previous + streamBalance
+      const newRecipientBalance = await ubi.balanceOf(recipient.address);
+      expect(newRecipientBalance).to.eq(prevRecipientBalance.add(prevStreamBalance), "Recipient balance should increase by the balance of the stream.");
+    })
+
+    it("happy path - After withdrawing from an active stream, balance should be 0 right after, but keep accruing until the end.", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient = accounts[2];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await ubi.startAccruing(sender.address);
+
+      // New stream will start in 1 minute and last for 1 hour
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Create stream
+      const streamId = await testUtils.createStream(sender, recipient.address, accruedPerSecond.toNumber(), fromDate, toDate, ubi, sUBI);
+
+      // Go to start
+      await testUtils.goToStartOfStream(streamId, sUBI, network);
+
+      // Get balances
+      const prevRecipientBalance = await ubi.balanceOf(recipient.address);
+      const initialStreamBalance = await sUBI.balanceOfStream(streamId);
+      expect(initialStreamBalance.toNumber()).to.eq(0, "Initial stream balance should be 0");
+
+      // Move fwd 30 mins
+      await testUtils.goToMiddleOfStream(streamId, sUBI, network);
+
+      // The new stream balance should be half a UBI (ubiPerSecond * 30 * 60).
+      const currentStreamBalance = await sUBI.balanceOfStream(streamId);
+      expect(currentStreamBalance).to.eq(initialStreamBalance.add(accruedPerSecond.mul(30 * 60)), "Stream accrued balance should be half a UBI.");
+
+      // Withdraw the current stream balance *️⃣(this mines a block and moves blocktime by 1 second)
+      await ubi.connect(sender).withdrawFromStream(streamId);
+
+      // New recipient balance should be the same as previous + current stream balance + 1 second (because of *️⃣)
+      const newRecipientBalance = await ubi.balanceOf(recipient.address);
+      expect(newRecipientBalance).to.eq(prevRecipientBalance.add(currentStreamBalance).add(accruedPerSecond), "After withdrawal, recipient balance should increase by the amount of withdrawn balance");
+
+      const currTimestamp = await testUtils.getCurrentBlockTime();
+      // // Move to the end of the stream and check stream balance.
+      await testUtils.goToEndOfStream(streamId, sUBI, network);
+
+      // Get elapsed time
+      const elapsed = (await testUtils.getCurrentBlockTime()) - currTimestamp;
+
+      // Final balance sholud be elapsed time of accruance (because of *️⃣)
+      const finalStreamBalance = await sUBI.balanceOfStream(streamId);
+      expect(finalStreamBalance).to.eq(accruedPerSecond.mul(elapsed), "After stream finishes, the balance should account for the withdrawn balance.");
+    })
+
+    it("happy path - Withdraw in the middle of stream and after it finished should add the total delegated balance to stream recipient", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await ubi.startAccruing(sender.address);
+
+      // Create a new stream with half ubiPerSecond
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Delegate half of UBI per second
+      const delegatedPerSecond = accruedPerSecond.div(2);
+
+      // Create 1 stream with accruedPerSecond.
+      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+
+      // Move blocktime to the middle of the stream
+      await testUtils.goToMiddleOfStream(streamId, sUBI, network);
+
+      // Get balances
+      const prevRecipientBalance = await ubi.balanceOf(recipient.address);
+      const prevStreamBalance = await sUBI.balanceOfStream(streamId);
+
+      // Recipient withdraws balance 
+      await ubi.connect(recipient).withdrawFromStream(streamId);
+
+      // New balance of recipient should be previous + streamBalance (+1 sec)
+      const newRecipientBalance = await ubi.balanceOf(recipient.address);
+      expect(newRecipientBalance).to.eq(prevRecipientBalance.add(prevStreamBalance).add(delegatedPerSecond), "Recipient balance should increase by the withdrawn balance of the stream.");
+
+      // Move to the end of the stream
+      await testUtils.goToEndOfStream(streamId, sUBI, network);
+
+      // Stream lasted 1 hour and withdraw was at 30 minutes of stream. Remaining balance should account for the remaining 30 minutes (-1 sec)
+      const remainingStreamBalance = await sUBI.balanceOfStream(streamId);
+      expect(remainingStreamBalance).to.eq(delegatedPerSecond.mul((30 * 60) - 1), "Stream balance should be delegatedPerSecond * 30 minutes");
+
+      // Withdraw remaining balance.
+      await ubi.connect(accounts[1]).withdrawFromStream(streamId);
+
+      // Last balance of recipient should be the total of the stream (1 hour of delegatedPerSecond)
+      const finalRecipientBalance = await ubi.balanceOf(recipient.address);
+      expect(finalRecipientBalance).to.eq(prevRecipientBalance.add(delegatedPerSecond.mul(60 * 60)), "Recipient balance should increase by the balance of the stream.");
+    })
+
+    it("happy path - After withdrawing from an ended stream, number of streams should decrease by 1", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      const ubiRecipient = accounts[2];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await ubi.startAccruing(sender.address);
+
+      // Get number of streamsd
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Create a new stream with half accruedPerSecond
+      const delegatedPerSecond = accruedPerSecond.div(2);
+
+
+      //  Get number of stream for the creator of stream 
+      const initialStreamCount = await sUBI.getStreamsCount(sender.address);
+
+      // Create 1 stream with accruedPerSecond as the total.
+      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+
+      //  Get number of stream for the creator of stream 
+      const nextStreamCount = await sUBI.getStreamsCount(sender.address);
+      expect(nextStreamCount).to.eq(initialStreamCount.add(1), "Stream count should increase when user creates a new stream");
+
+      // Move to the end of the stream
+      await testUtils.goToEndOfStream(streamId, sUBI, network);
+
+      // Get stream balance and expect it to be 1 UBI
+      const streamBalance = await sUBI.balanceOfStream(streamId);
+      expect(streamBalance).to.eq(delegatedPerSecond.mul(60 * 60), "Stream balance should be 1 UBI");
+
+      // Recipient withdraws balance 
+      await ubi.connect(recipient).withdrawFromStream(streamId);
+
+      //  Get number of stream for the creator of stream 
+      const lastStreamCount = await sUBI.getStreamsCount(sender.address);
+      expect(lastStreamCount).to.eq(initialStreamCount, "Stream count should decrease after recipient withdraws from a completed stream");
+    })
+
+    it("happy path - While a stream is active, and sender transfers to another recipient, sender should have the right balance", async () => {
+
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      const ubiRecipient = accounts[2];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await ubi.startAccruing(sender.address);
+
+      // Create a new stream with half accruedPerSecond
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Hald accruedPerSecond
+      const delegatedPerSecond = accruedPerSecond.div(2);
+
+      //  Get number of stream for the creator of stream 
+      const initialStreamCount = await sUBI.getStreamsCount(sender.address);
+
+      // Create 1 stream with accruedPerSecond as the total.
+      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+
+      //  Get number of stream for the creator of stream 
+      const nextStreamCount = await sUBI.getStreamsCount(sender.address);
+      expect(nextStreamCount).to.eq(initialStreamCount.add(1), "Stream count should increase when user creates a new stream");
+
+      // Go to start of stream
+      await testUtils.goToStartOfStream(streamId, sUBI, network);
+
+      // Get initial balance of sender
+      const prevSenderBalance = await ubi.balanceOf(sender.address);
+
+      // Move to the end of the stream
+      await testUtils.goToMiddleOfStream(streamId, sUBI, network);
+
+      // Get new balance
+      const middleSenderBalance = await ubi.balanceOf(sender.address);
+      const middleBlockTime = await testUtils.getCurrentBlockTime();
+
+      // get the stream
+      const stream = await sUBI.getStream(streamId);
+
+      // Expect sender to have accrued the value of accruedPerSecond-delegatedPerSecond in half an hour
+      expect(middleSenderBalance).to.eq(prevSenderBalance.add(accruedPerSecond.sub(delegatedPerSecond).mul(middleBlockTime - stream.startTime.toNumber())))
+
+      // Transfer 1 UBI from account 0 to account 2
+      const amountToTransfer = ethers.utils.parseEther("1");
+      const account2PrevBalance = await ubi.balanceOf(ubiRecipient.address);
+      await ubi.connect(sender).transfer(ubiRecipient.address, amountToTransfer);
+      const account2NewBalance = await ubi.balanceOf(ubiRecipient.address);
+      expect(account2NewBalance).to.eq(account2PrevBalance.add(amountToTransfer), "After transfer account 2 should increase");
+
+      // New balance of sender should be prevBalance - 1 UBI
+      const afterTransferSenderBalance = await ubi.balanceOf(sender.address);
+      const expectedBalance = middleSenderBalance.add(accruedPerSecond.sub(delegatedPerSecond)).sub(amountToTransfer);;
+      expect(afterTransferSenderBalance).to.eq(expectedBalance, "After transfer sender's balance should have decreased by 1 UBI (+1 sec of accruance)");
+
+      // Move to end of stream
+      await testUtils.goToEndOfStream(streamId, sUBI, network);
+
+      // Get current blocktime
+      const endBlockTime = await testUtils.getCurrentBlockTime();
+
+      // Get the current stream balance
+      const streamBalance = await sUBI.balanceOfStream(streamId);
+      // Should be the delegatedPerSecond * stream duration
+      expect(streamBalance).to.eq(delegatedPerSecond.mul(endBlockTime - stream.startTime.toNumber()))
+      // Recipient withdraws balance 
+      await ubi.connect(recipient).withdrawFromStream(streamId);
+
+      //  Get number of stream for the creator of stream 
+      const lastStreamCount = await sUBI.getStreamsCount(sender.address);
+      expect(lastStreamCount).to.eq(initialStreamCount, "Stream count should decrease after recipient withdraws from a completed stream");
+    })
+
+    it("happy path - While a stream is active, and sender transferFrom UBI, sender should have the right balance", async () => {
+
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await ubi.startAccruing(sender.address);
+      
+      // Create a new stream with half accruedPerSecond
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // 1000 UBIwei
+      const delegatedPerSecond = BigNumber.from(1000);
+
+      //  Get number of stream for the creator of stream 
+      const initialStreamCount = await sUBI.getStreamsCount(sender.address)
+
+      // Create 1 stream with accruedPerSecond as the total.
+      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+
+      //  Get number of stream for the creator of stream 
+      const nextStreamCount = await sUBI.getStreamsCount(sender.address);
+      expect(nextStreamCount).to.eq(initialStreamCount.add(1), "Stream count should increase when user creates a new stream");
+
+      // Approve transfer of  1 UBI from account 0 to account 1
+      const amountToTransfer = ethers.utils.parseEther("1");
+      await ubi.connect(accounts[0]).approve(recipient.address, amountToTransfer.toString()); // +1 sec
+
+      // Go to start of stream
+      await testUtils.goToStartOfStream(streamId, sUBI, network);
+
+      // Get initial balance of sender
+      const prevSenderBalance = await ubi.balanceOf(sender.address);
+
+      // Move to the end of the stream
+      await testUtils.goToMiddleOfStream(streamId, sUBI, network);
+
+      // Get new balance
+      const middleSenderBalance = await ubi.balanceOf(sender.address);
+      const middleRecipientBalance = await ubi.balanceOf(recipient.address);
+      const middleBlockTime = await testUtils.getCurrentBlockTime();
+
+      // get the stream
+      const stream = await sUBI.getStream(streamId);
+
+      // Expect sender to have accrued the value of accruedPerSecond-delegatedPerSecond in half an hour
+      expect(middleSenderBalance).to.eq(prevSenderBalance.add(accruedPerSecond.sub(delegatedPerSecond).mul(middleBlockTime - stream.startTime.toNumber())))
+      // ACT
+      await ubi.connect(recipient).transferFrom(sender.address, recipient.address, amountToTransfer); // +1 sec
+
+      // Expect recipient to have recivied the value of amount to transfer.
+      const afterTransferRecipientBalance = await ubi.balanceOf(recipient.address);
+      expect(afterTransferRecipientBalance).to.eq(middleRecipientBalance.add(amountToTransfer), "Recipient balance should increase by 1 UBI");
+
+      // New balance of sender should be prevBalance - 1 UBI (+1 seconds (approve and transferFrom)
+      const afterTransferSenderBalance = await ubi.balanceOf(sender.address);
+      const expectedBalance = middleSenderBalance.add(accruedPerSecond.sub(delegatedPerSecond)).sub(amountToTransfer);
+      expect(afterTransferSenderBalance).to.eq(expectedBalance, "After transferFrom, sender's balance should have decreased by 1 UBI (+1 sec of accruance)");
+
+      // Move to end of stream
+      await testUtils.goToEndOfStream(streamId, sUBI, network);
+
+      // Get current blocktime
+      const endBlockTime = await testUtils.getCurrentBlockTime();
+
+      // Get the current stream balance
+      const streamBalance = await sUBI.balanceOfStream(streamId);
+      // Should be the delegatedPerSecond * stream duration
+      expect(streamBalance).to.eq(delegatedPerSecond.mul(endBlockTime - stream.startTime.toNumber()));
+      // Recipient withdraws balance 
+      await ubi.connect(recipient).withdrawFromStream(streamId);
+
+      //  Get number of stream for the creator of stream 
+      const lastStreamCount = await sUBI.getStreamsCount(sender.address);
+      expect(lastStreamCount).to.eq(initialStreamCount, "Stream count should decrease after recipient withdraws from a completed stream");
+    })
+  });
 
   describe("accruedTime related tests", () => {
 

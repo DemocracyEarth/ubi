@@ -14,7 +14,7 @@ library Types {
         uint256 stopTime;
         address recipient;
         address sender;
-        bool isEntity;
+        bool isActive;
         uint256 accruedSince;
     }
 }
@@ -67,7 +67,7 @@ interface ISUBI is IERC721 {
         uint256 stopTime,
         address recipient,
         address sender,
-        bool isEntity,
+        bool isActive,
         uint256 accruedSince);
 
     function getStreamsOf(address _human) external view returns (uint256[] memory);
