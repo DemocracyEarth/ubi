@@ -97,4 +97,7 @@ interface ISUBI is IERC721 {
 
     /// @dev Callback for when UBI contract has withdrawn from a Stream.
     function onWithdrawnFromStream(uint256 streamId) external;
+    
+    /// @dev Callback for when UBI contract has cancelled a stream.
+    function onCancelStream(uint256 streamId) external;
 }

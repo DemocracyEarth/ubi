@@ -435,6 +435,29 @@ contract UBI is Initializable {
         subi.onWithdrawnFromStream(streamId);
     }
 
+    /**
+     * @notice Stops the stream
+     * @dev Throws if the id does not point to a valid stream.
+     *  Throws if the caller is not the sender or the recipient of the stream.
+     *  Throws if there is a token transfer failure.
+     * @param streamId The id of the stream to cancel.
+     */
+    function cancelStream(uint256 streamId) public nonReentrant 
+    {
+      (uint256 ratePerSecond, uint256 startTime,
+      uint256 stopTime, address recipient,
+      address sender, bool isActive,
+      uint256 streamAccruedSince) = subi.getStream(streamId);
+      require(msg.sender == sender, "only sender can cancel stream");
+      
+      // Withdraw funds from the stream and delete it
+      _withdrawFromStream(streamId);
+      if(isActive) {
+        // Delete the stream
+        subi.onCancelStream(streamId);
+      }
+    }
+
     /* Setter */
     function setSUBI(address _subi) public onlyByGovernor {
       subi = ISUBI(_subi);

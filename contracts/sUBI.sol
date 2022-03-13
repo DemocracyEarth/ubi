@@ -49,6 +49,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
   using SafeMath for uint256;
 
   address public ubi;
+  address public governor;
 
   /// @dev The Proof Of Humanity registry to reference.
   address public proofOfHumanity;
@@ -77,10 +78,17 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
     _;
   }
 
-  constructor(address pUBI, uint256 pMaxStreamsAllowed, string memory pName, string memory pSymbol) ERC721(pName, pSymbol) ReentrancyGuard() {
+  /// @dev Verifies that the sender has ability to modify governed parameters.
+  modifier onlyByGovernor() {
+    require(governor == msg.sender, "The caller is not the governor.");
+    _;
+  }
+
+  constructor(address pUBI, address pGovernor, uint256 pMaxStreamsAllowed, string memory pName, string memory pSymbol) ERC721(pName, pSymbol) ReentrancyGuard() {
       _maxStreamsAllowed = pMaxStreamsAllowed;
       ubi = pUBI;
       proofOfHumanity = IUBI(ubi).getProofOfHumanity();
+      governor = pGovernor;
   }
 
   /**
@@ -215,35 +223,17 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       //emit WithdrawFromStream(streamId, streams[streamId].recipient, withdrawnBalance);
   }
 
-    // /**
-    //  * @notice Cancels the stream and transfers the tokens back on a pro rata basis.
-    //  * @dev Throws if the id does not point to a valid stream.
-    //  *  Throws if the caller is not the sender or the recipient of the stream.
-    //  *  Throws if there is a token transfer failure.
-    //  * @param streamId The id of the stream to cancel.
-    //  */
-    // function cancelStream(uint256 streamId)
-    //     external
-    //     override
-    //     nonReentrant
-    //     streamExists(streamId)
-    //     onlyUBI
-    // {
-    //   Types.Stream memory stream = streams[streamId];
-    //   // Withdraw funds from the stream and delete it
-    //   _withdrawFromStream(streamId);
-    //   if(streams[streamId].isEntity) {
-    //     // Delete the stream
-    //     deleteStream(streamId);
-    //   }
-
-    //   emit CancelStream(streamId, stream.sender, stream.recipient);
-    // }
+    /// @dev Callback for when UBI contract has cancelled a stream.
+    function onCancelStream(uint256 streamId) public override onlyUBI {
+      Types.Stream memory stream = streams[streamId];
+      deleteStream(streamId);
+      emit CancelStream(streamId, stream.sender, stream.recipient);
+    }
 
     /**
      * @dev Set the max number of stream allowed per human.
      */
-    function setMaxStreamsAllowed(uint256 newValue) external onlyUBI {
+    function setMaxStreamsAllowed(uint256 newValue) external onlyByGovernor {
       _maxStreamsAllowed = newValue;
     }
 
