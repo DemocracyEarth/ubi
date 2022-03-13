@@ -448,6 +448,302 @@ describe("sUBI.sol", () => {
       const currStreamsCount = await sUBI.getStreamsCount(sender.address);
       expect(currStreamsCount.toNumber()).to.eq(prevStreamsCount.add(1).toNumber(), "Creating a stream after another has finished but not withdrawn should increase stream count");
     });
+
+    it("happy path - Creating a new stream while others are running or pending should increment the number of active streams", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await pohMockService.setSubmissionIsRegistered(mockPoh, recipient.address, false);
+      await ubi.startAccruing(sender.address);
+
+      // Create stream 1 minute after current blockTime
+      let currentBlockTime = await testUtils.getCurrentBlockTime();
+      let fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      let toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Delegate half of UBI per second
+      const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
+      // Create first stream
+      const streamId1 = await testUtils.createStream(
+        sender,
+        recipient.address,
+        delegatedPerSecond,
+        fromDate, toDate,
+        ubi, sUBI);
+
+      const prevStreamsCount = await sUBI.getStreamsCount(sender.address);
+
+      // Move blocktime to the begining of the previous stream
+      await testUtils.goToStartOfStream(streamId1, sUBI, network);
+
+      // Create stream 2 times
+      currentBlockTime = await testUtils.getCurrentBlockTime();
+      fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // ACT
+      // Create another stream with half of ubiperSecond delegation (previous stream is half already)
+      const streamId2 = await testUtils.createStream(
+        sender,
+        recipient.address,
+        delegatedPerSecond,
+        fromDate,
+        toDate,
+        ubi, sUBI);
+
+      // ASSERT
+      const currStreamsCount = await sUBI.getStreamsCount(sender.address);
+      expect(currStreamsCount.toNumber()).to.eq(prevStreamsCount.toNumber() + 1, "Creating a stream after another has finished should not increase stream count");
+    });
+
+    it("happy path - Creating 2 streams with half accruedPerSecond per each should accrue the same value on both.", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient1 = accounts[1];
+      const recipient2 = accounts[2];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await pohMockService.setSubmissionIsRegistered(mockPoh, recipient1.address, false);
+      await pohMockService.setSubmissionIsRegistered(mockPoh, recipient2.address, false);
+      await ubi.startAccruing(sender.address);
+
+      // Create stream 1 minute after current blockTime
+      let currentBlockTime = await testUtils.getCurrentBlockTime();
+      let fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      let toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Delegate half of UBI per second
+      const delegatedPerSecond = accruedPerSecond.div(2);
+
+      // Get stream counts
+      const initialStreamCount = await sUBI.getStreamsCount(sender.address);
+
+      // ACT 
+      // Create 2 streams with accruedPerSecond / 2
+      const streamId1 = await testUtils.createStream(sender, recipient1.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId2 = await testUtils.createStream(sender, recipient2.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+
+      // ASSERT
+      expect(await sUBI.getStreamsCount(sender.address)).to.eq(initialStreamCount.add(2), "Stream count should have increased by 2");
+
+      // Move blocktime to end of first stream (2nd is the same)
+      const firstStream = await sUBI.getStream(streamId1);
+      await testUtils.setNextBlockTime(firstStream.stopTime.toNumber(), network);
+
+      // Accrued balance should be half UBI for both streamn
+      const firstStreamBalance = await sUBI.balanceOfStream(streamId1);
+      const secondStreamBalance = await sUBI.balanceOfStream(streamId2);
+      expect(firstStreamBalance).to.eq(delegatedPerSecond.mul(3600), "Invalid balance of first stream");
+      expect(secondStreamBalance).to.eq(delegatedPerSecond.mul(3600), "Invalid balance of second stream");
+    });
+
+    it("happy path - After a stream finishes, total pending delegated value should increase by the total balance of the stream", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient1 = accounts[1];
+
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await pohMockService.setSubmissionIsRegistered(mockPoh, recipient1.address, false);
+      await ubi.startAccruing(sender.address);
+
+      // Create stream 1 minute after current blockTime
+      let currentBlockTime = await testUtils.getCurrentBlockTime();
+      let fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      let toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // ACT 
+      // Create a streams with accruedPerSecond
+      const streamId = await testUtils.createStream(sender, recipient1.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
+
+      // Get the initial pending delegated value
+      const initialPendingDelegatedValue = await sUBI.getDelegatedAccruedValue(sender.address);
+
+      // Move blocktime to end of stream
+      await testUtils.goToEndOfStream(streamId, sUBI, network);
+
+      // ASSERT
+      const finalStreamBalance = await sUBI.balanceOfStream(streamId);
+      expect(finalStreamBalance).to.eq(accruedPerSecond.mul(60 * 60), "Stream should increase its balance by 1 hour of UBI accruance")
+
+      // Get the final pending delegated value
+      const finalPendingDelegatedValue = await sUBI.getDelegatedAccruedValue(sender.address);
+
+      // Should be equal to initial + 1 hour of UBI accruance
+      expect(finalPendingDelegatedValue).to.eq(initialPendingDelegatedValue.add(finalStreamBalance), "Pending delegated value should account for last finished stream.");
+
+    });
+
+    it("happy path - Creating 1 streams with half accruedPerSecond should accrue half for the stream and half for the human.", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient1 = accounts[1];
+
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await pohMockService.setSubmissionIsRegistered(mockPoh, recipient1.address, false);
+      await ubi.startAccruing(sender.address);
+
+      // Create stream 1 minute after current blockTime
+      let currentBlockTime = await testUtils.getCurrentBlockTime();
+      let fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      let toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // ACT 
+      // Create a streams with accruedPerSecond
+      const delegatedPerSecond = accruedPerSecond.div(2);
+      const streamId = await testUtils.createStream(sender, recipient1.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+
+      // Move blocktime to start of stream
+      const stream = await sUBI.getStream(streamId);
+      await testUtils.setNextBlockTime(stream.startTime.toNumber(), network);
+
+      // get initial balance of stream and human
+      const prevhumanBalance = await ubi.balanceOf(sender.address);
+      const prevStreamBalance = await sUBI.balanceOfStream(streamId);
+
+      // Move blocktime to end of stream
+      await testUtils.goToEndOfStream(streamId, sUBI, network);
+
+      // ASSERT
+
+      // get last balance of stream and human
+      const newHumanBalance = await ubi.balanceOf(sender.address);
+      const lastStreamBalance = await sUBI.balanceOfStream(streamId);
+
+      // Accrued balance should be half UBI for both streamn
+      expect(newHumanBalance).to.eq(prevhumanBalance.add(delegatedPerSecond.mul(3600)), "Human should accrue only half of UBI");
+      expect(lastStreamBalance).to.eq(prevStreamBalance.add(delegatedPerSecond.mul(3600)), "Stream should accrue only half of UBI");
+    })
+
+    it("require fail - Creating more than `maxStreamsAllowed` on the same time window should fail", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+
+      await ubi.startAccruing(sender.address);
+
+      // Calculate corresponding ubi per second to delegate to each stream 
+      const streamsToCreate = await sUBI.maxStreamsAllowed();
+      const ubiPerSecondPerDelegate = accruedPerSecond.div(streamsToCreate);
+
+      // Create a new stream with half ubiPerSecond
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(10, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Saturate max streams available to create
+      for (let i = 0; i < streamsToCreate; i++) {
+        // Get a new address index considering the length of the accounts array.
+        const addressIndex = Math.min(i + 1, accounts.length - 1);
+        await testUtils.createStream(sender, accounts[addressIndex].address, ubiPerSecondPerDelegate, fromDate, toDate, ubi, sUBI);
+      }
+
+      // ACT && ASSERT
+      // Create one more stream which shuould fail
+      await expect(testUtils.createStream(sender, accounts[1].address, ubiPerSecondPerDelegate, fromDate, toDate, ubi, sUBI))
+        .to.be.revertedWith("max streams exceeded");
+    });
+
+    it("happy path - Creating more than `maxStreamsAllowed` on different times should succeed", async () => {
+
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+
+      await ubi.startAccruing(sender.address);
+
+      // Calculate corresponding ubi per second to delegate to each stream 
+      const streamsToCreate = await sUBI.maxStreamsAllowed();
+      const ubiPerSecondPerDelegate = accruedPerSecond.div(streamsToCreate.toNumber());
+
+      let testPassed = false;
+      let streamId;
+      // Create multiple streams with same date period
+      for (let i = 0; i < streamsToCreate; i++) {
+        // If last Stream ID is set, move to the end of the stream
+        if (streamId) {
+          await testUtils.goToEndOfStream(streamId, sUBI, network);
+        }
+        // Get streams parameters
+        const currentBlockTime = await testUtils.getCurrentBlockTime();
+        const fromDate = moment(new Date(currentBlockTime * 1000)).add(10, "minutes").toDate();
+        const toDate = moment(fromDate).add(1, "hour").toDate();
+
+        // Get a new address index considering the length of the accounts array.
+        const addressIndex = Math.min(i + 1, accounts.length - 1);
+        streamId = await testUtils.createStream(sender, accounts[addressIndex].address, ubiPerSecondPerDelegate, fromDate, toDate, ubi, sUBI);
+      }
+      expect(await sUBI.getStreamsCount(sender.address)).to.eq(streamsToCreate);
+    });
+
+    it("require fail - Creating 2 overlaping streams that, when overlaped, sum more than the allowed ubiPerSecond should fail", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await ubi.startAccruing(sender.address);
+
+      // initial variables
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+
+      // Create a stream with total accrued per second
+      const fromDate1 = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate1 = moment(fromDate1).add(1, "hour").toDate();
+      await testUtils.createStream(sender, recipient.address, accruedPerSecond, fromDate1, toDate1, ubi, sUBI);
+
+      // Create a second stream with total accrued per second but that starts after previous stream starts and before it finishes
+      const fromDate2 = moment(fromDate1).add(30, "minutes").toDate();
+      const toDate2 = moment(fromDate2).add(1, "hour").toDate();
+      await expect(testUtils.createStream(sender, recipient.address, accruedPerSecond, fromDate2, toDate2, ubi, sUBI))
+        .to.be.revertedWith("Delegated value exceeds available balance for the given stream period");
+    })
+
+    it("happy path - after delegating and withdrawing from recipient, getting balance of delegator should work correctly", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi);
+      const sender = accounts[0];
+      const recipient = accounts[2];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await ubi.startAccruing(sender.address);
+
+      // Delegate per second
+      const delegatedPerSecond = 10000000000001;
+
+      // Create a stream with total accrued per second
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Create 1 streams with half of accrued per second.
+      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+
+      // Move blocktime to start of stream
+      await testUtils.goToStartOfStream(streamId, sUBI, network);
+      const prevStreamBalance = await sUBI.balanceOfStream(streamId);
+      const prevSenderBalance = await ubi.balanceOf(sender.address);
+      const prevRecipientBalance = await ubi.balanceOf(recipient.address);
+      // This steps 1 second on the chain
+      await ubi.connect(recipient).withdrawFromStream(streamId);
+
+      // ASSERT
+      // Get new balances
+      const lastStreamBalance = await sUBI.balanceOfStream(streamId);
+      const lastSenderBalance = await ubi.balanceOf(sender.address);
+      const lastRecipientBalance = await ubi.balanceOf(recipient.address);
+
+      // Stream balance should be 0 (because it was withdrawn)
+      expect(lastStreamBalance).to.eq(0, "Invalid last stream balance");
+      // Recipient balance should be the value withdrawn (1 second)
+      expect(lastRecipientBalance).to.eq(prevRecipientBalance.add(delegatedPerSecond), "Invalid last recipient balance");
+      // Sender balance should be the p´rev balance + (accrued - delegated).
+      expect(lastSenderBalance).to.eq(prevSenderBalance.add(accruedPerSecond.sub(delegatedPerSecond)), "Invalid sender balance");
+    });
   })
 
   describe("accruedTime related tests", () => {

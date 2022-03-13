@@ -117,18 +117,6 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       // Check that we are not exceeding the max allowed.
       require(streamIdsOf[sender].length + 1 <= _maxStreamsAllowed, "max streams exceeded");
 
-      // Avoid circular delegation validating that the recipient did not delegate to the sender
-      for(uint256 i = 0 ; i < streamIdsOf[recipient].length; i++) {
-        uint256 recipientStreamId = streamIdsOf[recipient][i];
-
-        // If the recipient of this stream is the same as the sender and overlaps, fail with circular delegation exception
-        if(recipientStreamId > 0 && streams[recipientStreamId].recipient == sender) {
-          // Get overlap flag
-          bool overlaps = overlapsWith(startTime, stopTime, streams[recipientStreamId].startTime, streams[recipientStreamId].stopTime);
-          require(!overlaps, "Circular delegation not allowed.");
-        }
-      }
-
       // Calculate available balance to delegate for the given period.
       uint256 delegatedBalance;
       for(uint256 i = 0; i < streamIdsOf[sender].length; i++) {
