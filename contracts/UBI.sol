@@ -137,7 +137,7 @@ contract UBI is Initializable {
   modifier onlyStreamSenderOrRecipient(uint256 streamId) {
       (uint256 ratePerSecond, uint256 startTime,
         uint256 stopTime, address recipient,
-        address sender, bool isEntity,
+        address sender, bool isActive,
         uint256 streamAccruedSince) = subi.getStream(streamId);
       require(
           msg.sender == sender || msg.sender == recipient,
@@ -252,7 +252,7 @@ contract UBI is Initializable {
   */
   function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
     uint256 newSupplyFrom;
-    uint256 pendingDelegatedAccruedValue = address(subi) == address(0) ? 0 : subi.getDelegatedAccruedValue(msg.sender);
+    uint256 pendingDelegatedAccruedValue = address(subi) == address(0) ? 0 : subi.getDelegatedAccruedValue(_sender);
     allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: transfer amount exceeds allowance");
     if (accruedSince[_sender] != 0 && proofOfHumanity.isRegistered(_sender)) {
         newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_sender]));
@@ -406,10 +406,10 @@ contract UBI is Initializable {
 
       (uint256 ratePerSecond, uint256 startTime,
         uint256 stopTime, address recipient,
-        address sender, bool isEntity,
+        address sender, bool isActive,
         uint256 streamAccruedSince) = subi.getStream(streamId);
 
-      require(isEntity, "Stream does not exist");
+      require(isActive, "stream not active");
       // Make sure stream is active and has accrued UBI
       require(startTime <= block.timestamp && streamAccruedSince < stopTime, "Stream has not accrued enough UBI yet.");
       
@@ -456,7 +456,7 @@ contract UBI is Initializable {
   function getStream(uint256 streamId) private view returns (Types.Stream memory) {
     (uint256 ratePerSecond, uint256 startTime,
       uint256 stopTime, address recipient,
-      address sender, bool isEntity,
+      address sender, bool isActive,
       uint256 streamAccruedSince) = subi.getStream(streamId);
 
       return Types.Stream({
@@ -465,7 +465,7 @@ contract UBI is Initializable {
         stopTime: stopTime,
         recipient: recipient,
         sender: sender,
-        isEntity: isEntity,
+        isActive: isActive,
         accruedSince: streamAccruedSince
       });
   }
@@ -484,7 +484,7 @@ contract UBI is Initializable {
       // Subtract pending value already consolidated
       for(uint256 i = 0; i < streamIdsOf.length; i++) {
         Types.Stream memory stream = getStream(streamIdsOf[i]);
-        if(!stream .isEntity) continue; // Stream Exists
+        if(!stream.isActive) continue; // Stream Exists
         if(!proofOfHumanity.isRegistered(stream.sender)) continue; // Sender is a registered human
 
         // If stream has not started, or it has been accrued all.
