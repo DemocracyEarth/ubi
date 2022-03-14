@@ -1229,6 +1229,62 @@ describe("sUBI.sol", () => {
       const lastStreamCount = await sUBI.getStreamsCount(sender.address);
       expect(lastStreamCount).to.eq(initialStreamCount, "Stream count should decrease after recipient withdraws from a completed stream");
     })
+
+    it("happy path - subsequently transfering a stream NFT, when holder withdraws, should increase the correct balance on each recipient.", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi, accounts[0].address);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      const recipient2 = accounts[2];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await ubi.startAccruing(sender.address);
+
+      // Create a new stream with half accruedPerSecond
+      const currentBlockTime = await testUtils.getCurrentBlockTime();
+      const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
+      const toDate = moment(fromDate).add(1, "hour").toDate();
+
+      // Hald accruedPerSecond
+      const delegatedPerSecond = accruedPerSecond.div(2);
+
+      // Create 1 stream with accruedPerSecond as the total.
+      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+
+      // Go to middle of stream and withdraw to current holder
+      await testUtils.goToMiddleOfStream(streamId, sUBI, network);
+      const prevBalance = await ubi.balanceOf(recipient.address);
+      await ubi.withdrawFromStream(streamId); //+ 1 sec
+      const newBalance = await ubi.balanceOf(recipient.address);
+
+      // calculate expected Accrued value (delegated per second * (elapsed time to middle of stream + 1 sec for withdraw))
+      const expectedRecipient1AccruedValue = delegatedPerSecond * (((testUtils.dateToSeconds(toDate) - testUtils.dateToSeconds(fromDate)) / 2) + 1);
+
+      // Assert correct balance
+      expect(newBalance).to.eq(prevBalance + expectedRecipient1AccruedValue, "Invalid UBI value on recipient after withdraw from stream");
+
+      // Current stream balance
+      const streamBalance = await sUBI.balanceOfStream(streamId);
+      expect(streamBalance).to.eq(0, "Stream balance should be 0 after withdraw");
+
+      // Transfer stream to recipient 2
+      await sUBI.connect(recipient).transferFrom(recipient.address, recipient2.address, streamId); //+ 1 sec
+
+      // Get current UBI balance of recipient 2
+      const recipient2PrevBalance = await ubi.balanceOf(recipient2.address);
+
+      // Move to the end of stream
+      await testUtils.goToEndOfStream(streamId, sUBI, network);
+
+      // Withdraw from stream
+      await ubi.withdrawFromStream(streamId); //+ 1 sec
+
+      // New recipient 2 balance
+      const recipient2NewBalance = await ubi.balanceOf(recipient2.address);
+
+      // Expected recipient accrued value should be stream total value - withdrawn value
+      const expectedRecipient2AccruedValue = delegatedPerSecond * ((testUtils.dateToSeconds(toDate) - testUtils.dateToSeconds(fromDate))) - expectedRecipient1AccruedValue;
+      expect(recipient2NewBalance).to.eq(recipient2PrevBalance + expectedRecipient2AccruedValue, "Invalid UBI value on recipient 2 after withdraw from stream");
+    })
   });
 
   //// STREAM CANCELLATION
