@@ -12,7 +12,6 @@ library Types {
         uint256 ratePerSecond; // The rate of UBI to drip to this stream from the current accrued value
         uint256 startTime;
         uint256 stopTime;
-        address recipient;
         address sender;
         bool isActive;
         uint256 accruedSince;
@@ -29,7 +28,6 @@ interface ISUBI is IERC721 {
      */
     event CreateStream(
         address indexed sender,
-        address indexed recipient,
         uint256 streamId,
         uint256 ratePerSecond,
         uint256 startTime,
@@ -46,7 +44,7 @@ interface ISUBI is IERC721 {
     // );
 
     /**
-     * @notice Emits when a stream is successfully cancelled and tokens are transferred back on a pro rata basis.
+     * @notice Emits when a stream is successfully cancelled.
      */
     event CancelStream(
         uint256 indexed streamId,
@@ -65,7 +63,6 @@ interface ISUBI is IERC721 {
         returns (uint256 ratePerSecond, // The rate of UBI to drip to this stream from the current accrued value
         uint256 startTime,
         uint256 stopTime,
-        address recipient,
         address sender,
         bool isActive,
         uint256 accruedSince);

@@ -131,21 +131,6 @@ contract UBI is Initializable {
     _;
   }
 
-  /**
-    * @dev Throws if the caller is not the sender or the recipient of the stream.
-    */
-  modifier onlyStreamSenderOrRecipient(uint256 streamId) {
-      (uint256 ratePerSecond, uint256 startTime,
-        uint256 stopTime, address recipient,
-        address sender, bool isActive,
-        uint256 streamAccruedSince) = subi.getStream(streamId);
-      require(
-          msg.sender == sender || msg.sender == recipient,
-          "caller is not the sender or the recipient of the stream"
-      );
-      _;
-  }
-
   /* Initializer */
 
   /** @dev Constructor.
@@ -405,9 +390,8 @@ contract UBI is Initializable {
       // Get stream
 
       (uint256 ratePerSecond, uint256 startTime,
-        uint256 stopTime, address recipient,
-        address sender, bool isActive,
-        uint256 streamAccruedSince) = subi.getStream(streamId);
+        uint256 stopTime, address sender, 
+        bool isActive, uint256 streamAccruedSince) = subi.getStream(streamId);
 
       require(isActive, "stream not active");
       // Make sure stream is active and has accrued UBI
@@ -431,6 +415,7 @@ contract UBI is Initializable {
         }        
 
         // Consolidate stream balance.
+        address recipient = subi.ownerOf(streamId);
         ubiBalance[recipient] = ubiBalance[recipient].add(streamBalance);
         subi.onWithdrawnFromStream(streamId);
     }
@@ -445,9 +430,8 @@ contract UBI is Initializable {
     function cancelStream(uint256 streamId) public nonReentrant 
     {
       (uint256 ratePerSecond, uint256 startTime,
-      uint256 stopTime, address recipient,
-      address sender, bool isActive,
-      uint256 streamAccruedSince) = subi.getStream(streamId);
+      uint256 stopTime, address sender, 
+      bool isActive, uint256 streamAccruedSince) = subi.getStream(streamId);
       require(msg.sender == sender, "only sender can cancel stream");
       
       // Withdraw funds from the stream and delete it
@@ -476,17 +460,16 @@ contract UBI is Initializable {
     else return accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
   }
 
+  /// @dev Utility function to avoid error "Stack too deep"
   function getStream(uint256 streamId) private view returns (Types.Stream memory) {
     (uint256 ratePerSecond, uint256 startTime,
-      uint256 stopTime, address recipient,
-      address sender, bool isActive,
-      uint256 streamAccruedSince) = subi.getStream(streamId);
+      uint256 stopTime, address sender, 
+      bool isActive, uint256 streamAccruedSince) = subi.getStream(streamId);
 
       return Types.Stream({
         ratePerSecond: ratePerSecond,
         startTime: startTime,
         stopTime: stopTime,
-        recipient: recipient,
         sender: sender,
         isActive: isActive,
         accruedSince: streamAccruedSince

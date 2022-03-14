@@ -64,11 +64,6 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
   /// @notice This does not guarantee to contain valid streams. Some may be ended (not withdrawn).
   mapping (address => uint256[]) public streamIdsOf;
 
-
-  /// @dev Get the streamIds from human and recipient addresses.
-  /// A recipient can have multiple streams with a sender.
-  mapping (address => mapping(address => uint256[])) public streamIdsOfSenderAndRecipient;
-
   /// @dev Maximum number of streams allowed.
   uint256 private _maxStreamsAllowed;
 
@@ -92,7 +87,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
   }
 
   /**
-    * @notice Creates a new stream funded by `msg.sender` and paid towards `recipient`.
+    * @notice Creates a new stream funded by `msg.sender` and sent to `recipient`.
     * @dev Throws if the recipient is the zero address, the contract itself or the caller.
     *  Throws if the start time is before `block.timestamp`.
     *  Throws if the stop time is before the start time.
@@ -101,7 +96,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
     *  Throws if the next stream id calculation has a math error.
     *  Throws if the contract is not allowed to transfer enough tokens.
     *  Throws if there is a token transfer failure.
-    * @param recipient The address towards which the money is streamed.
+    * @param recipient The address towards which the stream is minted to
     * @param ubiPerSecond The amount of UBI to be streamed every second. MUST be <= accruedPerSecond
     * @param startTime The unix timestamp for when the stream starts.
     * @param stopTime The unix timestamp for when the stream stops.
@@ -146,19 +141,17 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
         ratePerSecond: ubiPerSecond,
         // Starts with 0. Accumulates as time passes.
         isActive: true,
-        recipient: recipient,
         sender: sender,
         startTime: startTime,
         stopTime: stopTime,
         accruedSince: 0
       });
 
-      streamIdsOfSenderAndRecipient[sender][recipient].push(lastTokenId);
       streamIdsOf[sender].push(lastTokenId);
 
       _safeMint(recipient, lastTokenId);
 
-      emit CreateStream(sender, recipient, lastTokenId, ubiPerSecond, startTime, stopTime);
+      emit CreateStream(sender, lastTokenId, ubiPerSecond, startTime, stopTime);
       return lastTokenId;
   } 
 
@@ -187,25 +180,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
         break;
       }
     }
-
-    // DELETE FROM streamIds
-    indexOfLastItem = streamIdsOfSenderAndRecipient[stream.sender][stream.recipient].length - 1;
-
-    // For each stream with the recipient
-    for(uint256 i = 0;i < streamIdsOfSenderAndRecipient[stream.sender][stream.recipient].length; i++) {
-        // If stream is found
-      if(streamIdsOfSenderAndRecipient[stream.sender][stream.recipient][i] == streamId) {
-        // If it's not the last element on the array
-        if(i < indexOfLastItem) {
-          // Replace the found stream with the last element on the array
-          streamIdsOfSenderAndRecipient[stream.sender][stream.recipient][i] = streamIdsOfSenderAndRecipient[stream.sender][stream.recipient][indexOfLastItem];
-        }
-        // Delete the last element on the list
-        streamIdsOfSenderAndRecipient[stream.sender][stream.recipient].pop();
-        break;
-      }
-    }
-
+    
     // Disable the stream
     streams[streamId].isActive = false;
   }
@@ -218,16 +193,13 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       if(block.timestamp >= streams[streamId].stopTime) {
         deleteStream(streamId);
       }
-
-      //transfer(stream.recipient, amount);
-      //emit WithdrawFromStream(streamId, streams[streamId].recipient, withdrawnBalance);
   }
 
     /// @dev Callback for when UBI contract has cancelled a stream.
     function onCancelStream(uint256 streamId) public override onlyUBI {
       Types.Stream memory stream = streams[streamId];
       deleteStream(streamId);
-      emit CancelStream(streamId, stream.sender, stream.recipient);
+      emit CancelStream(streamId, stream.sender, ownerOf(streamId));
     }
 
     /**
@@ -316,7 +288,6 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
         returns (uint256 ratePerSecond, // The rate of UBI to drip to this stream from the current accrued value
         uint256 startTime,
         uint256 stopTime,
-        address recipient,
         address sender,
         bool isActive,
         uint256 accruedSince)
@@ -325,16 +296,9 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       return (stream.ratePerSecond,
         stream.startTime,
         stream.stopTime,
-        stream.recipient,
         stream.sender,
         stream.isActive,
         stream.accruedSince);
-        // sender = streams[streamId].sender;
-        // recipient = streams[streamId].recipient;
-        // startTime = streams[streamId].startTime;
-        // stopTime = streams[streamId].stopTime;
-        // streamAccruedSince = streams[streamId].accruedSince;
-        // ratePerSecond = streams[streamId].ratePerSecond;
     }
 
     function getStreamsCount(address _human) public view returns (uint256) {
