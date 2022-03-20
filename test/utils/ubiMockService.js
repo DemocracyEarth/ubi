@@ -22,6 +22,10 @@ const ubiMockService = {
 
     setSUBI: (mockUBI, subiContract) => {
         mockUBI.mock.subi.return(subiContract.address);
+    },
+
+    setFUBI: (mockUBI, fubiContract) => {
+        mockUBI.mock.fubi.return(fubiContract.address);
     }
 }
 

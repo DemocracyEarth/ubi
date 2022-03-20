@@ -13,6 +13,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./interfaces/ISUBI.sol";
+import "./interfaces/IFUBI.sol";
 import "./ReentrancyGuard.sol";
 import "hardhat/console.sol";
 
@@ -34,6 +35,7 @@ interface IUBI {
   function getProofOfHumanity() external view returns (address);
   function getAccruedPerSecond() external view returns (uint256);
   function balanceOfStream(uint256 streamId) external view returns (uint256);
+  function getUbiOutflow(address _human) external view returns(uint256);
 }
 
 /**
@@ -121,16 +123,8 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       require(streamIdsOf[sender].length + 1 <= _maxStreamsAllowed, "max streams exceeded");
 
       // Calculate available balance to delegate for the given period.
-      uint256 delegatedBalance;
-      for(uint256 i = 0; i < streamIdsOf[sender].length; i++) {
-        uint256 streamId = streamIdsOf[sender][i];
-        Types.Stream memory otherStream = streams[streamId];
-        // If streams overlap subtract the delegated balance from the available ubi per second
-        if(overlapsWith(otherStream.startTime, otherStream.stopTime, startTime, stopTime)) {
-            delegatedBalance = delegatedBalance.add(otherStream.ratePerSecond);
-        }
-      }
-
+      uint256 delegatedBalance = getDelegatedValue(sender, startTime, stopTime);
+      delegatedBalance = delegatedBalance.add(IUBI(ubi).getUbiOutflow(sender));
       require(ubiPerSecond <= IUBI(ubi).getAccruedPerSecond().sub(delegatedBalance), "Delegated value exceeds available balance for the given stream period");
 
       lastTokenId += 1;
@@ -355,5 +349,28 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
 
     function maxStreamsAllowed() external override view returns (uint256) {
       return _maxStreamsAllowed;
+    }
+
+    function getDelegatedValue(address _sender) public override view returns (uint256){
+      uint256 delegatedBalance;
+      for(uint256 i = 0; i < streamIdsOf[_sender].length; i++) {
+        uint256 streamId = streamIdsOf[_sender][i];
+        Types.Stream memory otherStream = streams[streamId];
+        delegatedBalance = delegatedBalance.add(otherStream.ratePerSecond);
+      }
+      return delegatedBalance;
+    }
+
+    function getDelegatedValue(address _sender, uint256 startTime, uint256 stopTime) public override view returns (uint256){
+      uint256 delegatedBalance;
+      for(uint256 i = 0; i < streamIdsOf[_sender].length; i++) {
+        uint256 streamId = streamIdsOf[_sender][i];
+        Types.Stream memory otherStream = streams[streamId];
+        // If streams overlap subtract the delegated balance from the available ubi per second
+        if(overlapsWith(otherStream.startTime, otherStream.stopTime, startTime, stopTime)) {
+          delegatedBalance = delegatedBalance.add(otherStream.ratePerSecond);
+        }
+      }
+      return delegatedBalance;
     }
 }

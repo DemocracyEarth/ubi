@@ -167,8 +167,28 @@ const testUtils = {
         }
       }
     }
-  }
+  },
 
+  async createFlow(fromAccount, toAddress, flowPerSecond, ubi, fubi, verbose = false) {
+
+    const prevFlowId = new BigNumber((await fubi.lastTokenId()).toString());
+
+    const tx = await ubi.connect(fromAccount).createFlow(toAddress, flowPerSecond)
+    await tx.wait();
+    const events = await fubi.queryFilter(fubi.filters.CreateFlow(fromAccount.address));
+    const createFlowEvents = logReader.getCreateFlowEvents(events);
+    expect(createFlowEvents && createFlowEvents.length > 0, "createFlow should emit event CreateFlow");
+    const flowId = createFlowEvents[createFlowEvents.length - 1].args[1];
+    expect(flowId.toNumber()).to.eq(prevFlowId.plus(1).toNumber(), "CreateFlow emited with incorrect flowId value")
+
+    if (verbose) {
+      console.log("Created flow:");
+      console.log("Flow per second:", flowPerSecond);
+    }
+    return flowId;
+  },
+
+  
 }
 
 module.exports = testUtils;
