@@ -15,6 +15,7 @@ library Types {
         address sender;
         bool isActive;
         uint256 accruedSince;
+        bool isCancellable;
     }
 }
 
@@ -65,7 +66,8 @@ interface ISUBI is IERC721 {
         uint256 stopTime,
         address sender,
         bool isActive,
-        uint256 accruedSince);
+        uint256 accruedSince,
+        bool isCancellable);
 
     function getStreamsOf(address _human) external view returns (uint256[] memory);
 
@@ -79,7 +81,7 @@ interface ISUBI is IERC721 {
      */
     function accruedTime(uint256 streamId) external view returns (uint256);
 
-    function mintStream(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime) external returns (uint256 streamId);
+    function mintStream(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool isCancellable) external returns (uint256 streamId);
 
     //function streamExists(uint256 streamId) external view returns (bool);
     //function withdrawFromStream(uint256 streamId) external;

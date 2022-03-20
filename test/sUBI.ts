@@ -82,7 +82,7 @@ describe("sUBI.sol", () => {
       const dateTo = dateFrom + 20;
 
       // ACT
-      await ubi.connect(accounts[1]).createStream(accounts[2].address, 10000, dateFrom, dateTo);
+      await ubi.connect(accounts[1]).createStream(accounts[2].address, 10000, dateFrom, dateTo, false);
 
       // // ASSERT
       expect((await sUBI.balanceOf(accounts[2].address)).toNumber()).to.equal(1);
@@ -104,7 +104,7 @@ describe("sUBI.sol", () => {
       // Stream lasts 1 hour
       const toDate = moment(fromDate).add(1, "hour").toDate();
       // Create stream
-      const lastStreamId = await testUtils.createStream(sender,
+      const lastStreamId = await testUtils.createCancellableStream(sender,
         recipient.address,
         100,
         fromDate,
@@ -142,7 +142,7 @@ describe("sUBI.sol", () => {
 
       // ACT && ASSERT
       // try to create stream with a value greater than accruedPerSecond, should revert
-      await expect(testUtils.createStream(sender,
+      await expect(testUtils.createCancellableStream(sender,
         recipient.address,
         newStreamPaymentPerSecond,
         fromDate,
@@ -167,7 +167,7 @@ describe("sUBI.sol", () => {
 
       // ACT && ASSERT
       // try to create stream with a value greater than accruedPerSecond, should revert
-      await expect(testUtils.createStream(sender,
+      await expect(testUtils.createCancellableStream(sender,
         recipient.address,
         100,
         fromDate,
@@ -192,7 +192,7 @@ describe("sUBI.sol", () => {
 
       // ACT && ASSERT
       // try to create stream with a value greater than accruedPerSecond, should revert
-      await expect(testUtils.createStream(sender,
+      await expect(testUtils.createCancellableStream(sender,
         recipient.address,
         100,
         fromDate,
@@ -216,7 +216,7 @@ describe("sUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // CReate stream
-      const lastStreamId = await testUtils.createStream(
+      const lastStreamId = await testUtils.createCancellableStream(
         sender,
         recipient.address,
         accruedPerSecond.toNumber(),
@@ -261,7 +261,7 @@ describe("sUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // CReate stream
-      const lastStreamId = await testUtils.createStream(
+      const lastStreamId = await testUtils.createCancellableStream(
         sender,
         recipient.address,
         accruedPerSecond.toNumber(),
@@ -317,7 +317,7 @@ describe("sUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // CReate stream
-      const lastStreamId = await testUtils.createStream(
+      const lastStreamId = await testUtils.createCancellableStream(
         sender,
         recipient.address,
         accruedPerSecond.toNumber(),
@@ -348,7 +348,7 @@ describe("sUBI.sol", () => {
       const fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
-      await expect(testUtils.createStream(
+      await expect(testUtils.createCancellableStream(
         sender,
         recipient.address,
         accruedPerSecond.toNumber(),
@@ -370,7 +370,7 @@ describe("sUBI.sol", () => {
       let fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       let toDate = moment(fromDate).add(1, "hour").toDate();
 
-      const stream1Id = await testUtils.createStream(
+      const stream1Id = await testUtils.createCancellableStream(
         sender,
         recipient.address,
         accruedPerSecond.toNumber(),
@@ -394,7 +394,7 @@ describe("sUBI.sol", () => {
       const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
 
       // Create stream with half ubiPerSecond delegation
-      const stream2Id = await testUtils.createStream(
+      const stream2Id = await testUtils.createCancellableStream(
         sender,
         recipient.address,
         delegatedPerSecond,
@@ -418,7 +418,7 @@ describe("sUBI.sol", () => {
       let fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       let toDate = moment(fromDate).add(1, "hour").toDate();
 
-      const stream1Id = await testUtils.createStream(
+      const stream1Id = await testUtils.createCancellableStream(
         sender,
         recipient.address,
         accruedPerSecond.toNumber(),
@@ -440,7 +440,7 @@ describe("sUBI.sol", () => {
       const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
 
       // Create stream with half ubiPerSecond delegation
-      const stream2Id = await testUtils.createStream(
+      const stream2Id = await testUtils.createCancellableStream(
         sender,
         recipient.address,
         delegatedPerSecond,
@@ -467,7 +467,7 @@ describe("sUBI.sol", () => {
       // Delegate half of UBI per second
       const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
       // Create first stream
-      const streamId1 = await testUtils.createStream(
+      const streamId1 = await testUtils.createCancellableStream(
         sender,
         recipient.address,
         delegatedPerSecond,
@@ -486,7 +486,7 @@ describe("sUBI.sol", () => {
 
       // ACT
       // Create another stream with half of ubiperSecond delegation (previous stream is half already)
-      const streamId2 = await testUtils.createStream(
+      const streamId2 = await testUtils.createCancellableStream(
         sender,
         recipient.address,
         delegatedPerSecond,
@@ -523,8 +523,8 @@ describe("sUBI.sol", () => {
 
       // ACT 
       // Create 2 streams with accruedPerSecond / 2
-      const streamId1 = await testUtils.createStream(sender, recipient1.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
-      const streamId2 = await testUtils.createStream(sender, recipient2.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId1 = await testUtils.createCancellableStream(sender, recipient1.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId2 = await testUtils.createCancellableStream(sender, recipient2.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // ASSERT
       expect(await sUBI.getStreamsCount(sender.address)).to.eq(initialStreamCount.add(2), "Stream count should have increased by 2");
@@ -557,7 +557,7 @@ describe("sUBI.sol", () => {
 
       // ACT 
       // Create a streams with accruedPerSecond
-      const streamId = await testUtils.createStream(sender, recipient1.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient1.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Get the initial pending delegated value
       const initialPendingDelegatedValue = await sUBI.getDelegatedAccruedValue(sender.address);
@@ -595,7 +595,7 @@ describe("sUBI.sol", () => {
       // ACT 
       // Create a streams with accruedPerSecond
       const delegatedPerSecond = accruedPerSecond.div(2);
-      const streamId = await testUtils.createStream(sender, recipient1.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient1.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Move blocktime to start of stream
       const stream = await sUBI.getStream(streamId);
@@ -640,12 +640,12 @@ describe("sUBI.sol", () => {
       for (let i = 0; i < streamsToCreate; i++) {
         // Get a new address index considering the length of the accounts array.
         const addressIndex = Math.min(i + 1, accounts.length - 1);
-        await testUtils.createStream(sender, accounts[addressIndex].address, ubiPerSecondPerDelegate, fromDate, toDate, ubi, sUBI);
+        await testUtils.createCancellableStream(sender, accounts[addressIndex].address, ubiPerSecondPerDelegate, fromDate, toDate, ubi, sUBI);
       }
 
       // ACT && ASSERT
       // Create one more stream which shuould fail
-      await expect(testUtils.createStream(sender, accounts[1].address, ubiPerSecondPerDelegate, fromDate, toDate, ubi, sUBI))
+      await expect(testUtils.createCancellableStream(sender, accounts[1].address, ubiPerSecondPerDelegate, fromDate, toDate, ubi, sUBI))
         .to.be.revertedWith("max streams exceeded");
     });
 
@@ -677,7 +677,7 @@ describe("sUBI.sol", () => {
 
         // Get a new address index considering the length of the accounts array.
         const addressIndex = Math.min(i + 1, accounts.length - 1);
-        streamId = await testUtils.createStream(sender, accounts[addressIndex].address, ubiPerSecondPerDelegate, fromDate, toDate, ubi, sUBI);
+        streamId = await testUtils.createCancellableStream(sender, accounts[addressIndex].address, ubiPerSecondPerDelegate, fromDate, toDate, ubi, sUBI);
       }
       expect(await sUBI.getStreamsCount(sender.address)).to.eq(streamsToCreate);
     });
@@ -696,12 +696,12 @@ describe("sUBI.sol", () => {
       // Create a stream with total accrued per second
       const fromDate1 = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       const toDate1 = moment(fromDate1).add(1, "hour").toDate();
-      await testUtils.createStream(sender, recipient.address, accruedPerSecond, fromDate1, toDate1, ubi, sUBI);
+      await testUtils.createCancellableStream(sender, recipient.address, accruedPerSecond, fromDate1, toDate1, ubi, sUBI);
 
       // Create a second stream with total accrued per second but that starts after previous stream starts and before it finishes
       const fromDate2 = moment(fromDate1).add(30, "minutes").toDate();
       const toDate2 = moment(fromDate2).add(1, "hour").toDate();
-      await expect(testUtils.createStream(sender, recipient.address, accruedPerSecond, fromDate2, toDate2, ubi, sUBI))
+      await expect(testUtils.createCancellableStream(sender, recipient.address, accruedPerSecond, fromDate2, toDate2, ubi, sUBI))
         .to.be.revertedWith("Delegated value exceeds available balance for the given stream period");
     })
 
@@ -722,7 +722,7 @@ describe("sUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Create 1 streams with half of accrued per second.
-      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Move blocktime to start of stream
       await testUtils.goToStartOfStream(streamId, sUBI, network);
@@ -766,9 +766,9 @@ describe("sUBI.sol", () => {
       const toDate3 = moment(fromDate3).add(1, "hour").toDate();
 
       // Create a stream from address 0 to address 1
-      const streamId1 = await testUtils.createStream(sender, recipient.address, 1000, fromDate1, toDate1, ubi, sUBI);
-      const streamId2 = await testUtils.createStream(sender, recipient.address, 1000, fromDate2, toDate2, ubi, sUBI);
-      const streamId3 = await testUtils.createStream(sender, recipient.address, 1000, fromDate3, toDate3, ubi, sUBI);
+      const streamId1 = await testUtils.createCancellableStream(sender, recipient.address, 1000, fromDate1, toDate1, ubi, sUBI);
+      const streamId2 = await testUtils.createCancellableStream(sender, recipient.address, 1000, fromDate2, toDate2, ubi, sUBI);
+      const streamId3 = await testUtils.createCancellableStream(sender, recipient.address, 1000, fromDate3, toDate3, ubi, sUBI);
 
       // Move to the middle of first stream
       await testUtils.goToMiddleOfStream(streamId1, sUBI, network);
@@ -798,7 +798,7 @@ describe("sUBI.sol", () => {
       const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
 
       // Create 1 stream with accruedPerSecond.
-      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Move blocktime to end of stream
       await testUtils.goToEndOfStream(streamId, sUBI, network);
@@ -834,7 +834,7 @@ describe("sUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Create stream
-      const streamId = await testUtils.createStream(sender, recipient.address, accruedPerSecond.toNumber(), fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, accruedPerSecond.toNumber(), fromDate, toDate, ubi, sUBI);
 
       // Go to start
       await testUtils.goToStartOfStream(streamId, sUBI, network);
@@ -887,7 +887,7 @@ describe("sUBI.sol", () => {
       const delegatedPerSecond = accruedPerSecond.div(2);
 
       // Create 1 stream with accruedPerSecond.
-      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Move blocktime to the middle of the stream
       await testUtils.goToMiddleOfStream(streamId, sUBI, network);
@@ -940,7 +940,7 @@ describe("sUBI.sol", () => {
       const initialStreamCount = await sUBI.getStreamsCount(sender.address);
 
       // Create 1 stream with accruedPerSecond as the total.
-      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
 
       //  Get number of stream for the creator of stream 
       const nextStreamCount = await sUBI.getStreamsCount(sender.address);
@@ -983,7 +983,7 @@ describe("sUBI.sol", () => {
       const initialStreamCount = await sUBI.getStreamsCount(sender.address);
 
       // Create 1 stream with accruedPerSecond as the total.
-      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
 
       //  Get number of stream for the creator of stream 
       const nextStreamCount = await sUBI.getStreamsCount(sender.address);
@@ -1059,7 +1059,7 @@ describe("sUBI.sol", () => {
       const initialStreamCount = await sUBI.getStreamsCount(sender.address)
 
       // Create 1 stream with accruedPerSecond as the total.
-      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
 
       //  Get number of stream for the creator of stream 
       const nextStreamCount = await sUBI.getStreamsCount(sender.address);
@@ -1138,7 +1138,7 @@ describe("sUBI.sol", () => {
       const initialStreamCount = await sUBI.getStreamsCount(sender.address);
 
       // Create 1 stream with accruedPerSecond as the total.
-      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
 
       //  Get number of stream for the creator of stream 
       const nextStreamCount = await sUBI.getStreamsCount(sender.address);
@@ -1210,7 +1210,7 @@ describe("sUBI.sol", () => {
       const initialStreamCount = await sUBI.getStreamsCount(sender.address);
 
       // Create 1 stream with accruedPerSecond as the total.
-      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
 
       //  Get number of stream for the creator of stream 
       const nextStreamCount = await sUBI.getStreamsCount(sender.address);
@@ -1280,7 +1280,7 @@ describe("sUBI.sol", () => {
       const delegatedPerSecond = accruedPerSecond.div(2);
 
       // Create 1 stream with accruedPerSecond as the total.
-      const streamId = await testUtils.createStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, delegatedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Go to middle of stream and withdraw to current holder
       await testUtils.goToMiddleOfStream(streamId, sUBI, network);
@@ -1344,7 +1344,7 @@ describe("sUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Create a stream from address 0 to address 1
-      const streamId = await testUtils.createStream(sender, recipient.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Move to start of the stream
       await testUtils.goToStartOfStream(streamId, sUBI, network);
@@ -1380,7 +1380,7 @@ describe("sUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Create a stream from address 0 to address 1
-      const streamId = await testUtils.createStream(sender, recipient.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Move blocktime to the middle of the stream
       await testUtils.goToMiddleOfStream(streamId, sUBI, network);
@@ -1413,7 +1413,7 @@ describe("sUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Create a stream from address 0 to address 1
-      const streamId = await testUtils.createStream(sender, recipient.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Get stream ids of sender
       const streamIds = await sUBI.getStreamsOf(sender.address);
@@ -1446,7 +1446,7 @@ describe("sUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Create a stream from address 0 to address 1
-      const streamId = await testUtils.createStream(sender, recipient.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Get previous Stream balance
       const prevStreamBalance = await sUBI.balanceOfStream(streamId);
@@ -1504,7 +1504,7 @@ describe("sUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Create a stream from address 0 to address 1
-      const streamId = await testUtils.createStream(sender, recipient.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
+      const streamId = await testUtils.createCancellableStream(sender, recipient.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Get previous Stream balance
       const prevStreamBalance = await sUBI.balanceOfStream(streamId);
@@ -1560,9 +1560,9 @@ describe("sUBI.sol", () => {
       const toDate3 = moment(fromDate3).add(1, "hour").toDate();
 
       // Create a stream from address 0 to address 1
-      const streamId1 = await testUtils.createStream(sender, recipient.address, 1000, fromDate1, toDate1, ubi, sUBI);
-      const streamId2 = await testUtils.createStream(sender, recipient.address, 1000, fromDate2, toDate2, ubi, sUBI);
-      const streamId3 = await testUtils.createStream(sender, recipient.address, 1000, fromDate3, toDate3, ubi, sUBI);
+      const streamId1 = await testUtils.createCancellableStream(sender, recipient.address, 1000, fromDate1, toDate1, ubi, sUBI);
+      const streamId2 = await testUtils.createCancellableStream(sender, recipient.address, 1000, fromDate2, toDate2, ubi, sUBI);
+      const streamId3 = await testUtils.createCancellableStream(sender, recipient.address, 1000, fromDate3, toDate3, ubi, sUBI);
 
       // Move to the middle of first stream
       await testUtils.goToMiddleOfStream(streamId1, sUBI, network);
@@ -1582,6 +1582,28 @@ describe("sUBI.sol", () => {
       const newCancellerBalance = await ubi.balanceOf(canceller.address);
       expect(newCancellerBalance).to.be.gt(prevCancellerBalance);
     });
+
+    it("fail path - canceling a non-cancelable stream should revert", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi, accounts[0].address);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await ubi.startAccruing(sender.address);
+
+      // Create 3 streams, with one hour difference each
+      const initialBlockTime = await testUtils.getCurrentBlockTime();
+      // Stream starts at current blocktime + 1 hour
+      const fromDate1 = moment(new Date(initialBlockTime * 1000)).add(1, "hours").toDate();
+      // Stream lasts 1 hours
+      const toDate1 = moment(fromDate1).add(1, "hour").toDate();
+
+      // Create a stream from address 0 to address 1
+      const streamId1 = await testUtils.createNonCancellableStream(sender, recipient.address, 1000, fromDate1, toDate1, ubi, sUBI);
+
+      // ACT && ASSERT
+      await expect(ubi.cancelStream(streamId1)).to.be.revertedWith("stream not cancellable");
+     });
   });
 
   describe("accruedTime related tests", () => {
@@ -1608,7 +1630,7 @@ describe("sUBI.sol", () => {
 
       // ACT
       // Create stream
-      const lastStreamId = await testUtils.createStream(sender,
+      const lastStreamId = await testUtils.createCancellableStream(sender,
         recipient.address,
         100,
         fromDate,
@@ -1636,7 +1658,7 @@ describe("sUBI.sol", () => {
       // Stream lasts 1 hour
       const toDate = moment(fromDate).add(1, "hour").toDate();
       // Create stream
-      const lastStreamId = await testUtils.createStream(sender,
+      const lastStreamId = await testUtils.createCancellableStream(sender,
         recipient.address,
         100,
         fromDate,
@@ -1668,7 +1690,7 @@ describe("sUBI.sol", () => {
       // Stream lasts 1 hour
       const toDate = moment(fromDate).add(1, "hour").toDate();
       // Create stream
-      const lastStreamId = await testUtils.createStream(sender,
+      const lastStreamId = await testUtils.createCancellableStream(sender,
         recipient.address,
         100,
         fromDate,
@@ -1699,7 +1721,7 @@ describe("sUBI.sol", () => {
       // Stream lasts 1 hour
       const toDate = moment(fromDate).add(1, "hour").toDate();
       // Create stream
-      const lastStreamId = await testUtils.createStream(sender,
+      const lastStreamId = await testUtils.createCancellableStream(sender,
         recipient.address,
         100,
         fromDate,
@@ -1732,7 +1754,7 @@ describe("sUBI.sol", () => {
       // Stream lasts 1 hour
       const toDate = moment(fromDate).add(1, "hour").toDate();
       // Create stream
-      const lastStreamId = await testUtils.createStream(sender,
+      const lastStreamId = await testUtils.createCancellableStream(sender,
         recipient.address,
         100,
         fromDate,
@@ -1768,7 +1790,7 @@ describe("sUBI.sol", () => {
       // Stream lasts 1 hour
       const toDate = moment(fromDate).add(1, "hour").toDate();
       // Create stream
-      const lastStreamId = await testUtils.createStream(sender,
+      const lastStreamId = await testUtils.createCancellableStream(sender,
         recipient.address,
         100,
         fromDate,
@@ -1801,7 +1823,7 @@ describe("sUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
 
       // Create a new stream delegating all ubiPerSecond
-      const lastStreamId = await testUtils.createStream(sender, recipient.address, accruedPerSecond.toNumber(), fromDate, toDate, ubi, sUBI);
+      const lastStreamId = await testUtils.createCancellableStream(sender, recipient.address, accruedPerSecond.toNumber(), fromDate, toDate, ubi, sUBI);
       const stream = await sUBI.getStream(lastStreamId);
 
       // Move blocktime to the start of the stream
@@ -1859,7 +1881,7 @@ describe("sUBI.sol", () => {
 
           // ACT
           // Create stream
-          await testUtils.createStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
+          await testUtils.createCancellableStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
 
           // ASSERT 
           // Check that delegated accrued value returns 0 (because stream didnt start). 
@@ -1882,7 +1904,7 @@ describe("sUBI.sol", () => {
           // Stream lasts 1 hour
           const toDate = moment(fromDate).add(1, "hour").toDate();
           // Create stream
-          const lastStreamId = await testUtils.createStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
+          const lastStreamId = await testUtils.createCancellableStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
 
           // ACT
           // Set block time to middle of stream
@@ -1910,7 +1932,7 @@ describe("sUBI.sol", () => {
           const toDate = moment(fromDate).add(1, "hour").toDate();
 
           // Create stream
-          const lastStreamId = await testUtils.createStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
+          const lastStreamId = await testUtils.createCancellableStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
 
           // ACT
           // Set block time to startTime + 200
@@ -1939,7 +1961,7 @@ describe("sUBI.sol", () => {
           // Stream lasts 1 hour
           const toDate = moment(fromDate).add(1, "hour").toDate();
           // Create stream
-          const lastStreamId = await testUtils.createStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
+          const lastStreamId = await testUtils.createCancellableStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
           // move to middle of stream
           await testUtils.goToMiddleOfStream(lastStreamId, sUBI, network);
 
@@ -1967,7 +1989,7 @@ describe("sUBI.sol", () => {
           // Stream lasts 1 hour
           const toDate = moment(fromDate).add(1, "hour").toDate();
           // Create stream
-          const lastStreamId = await testUtils.createStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
+          const lastStreamId = await testUtils.createCancellableStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
           // move to middle of stream
           await testUtils.goToMiddleOfStream(lastStreamId, sUBI, network);
           // widthdraw from stream
@@ -1997,7 +2019,7 @@ describe("sUBI.sol", () => {
           // Stream lasts 1 hour
           const toDate = moment(fromDate).add(1, "hour").toDate();
           // Create stream
-          const lastStreamId = await testUtils.createStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
+          const lastStreamId = await testUtils.createCancellableStream(sender, recipient.address, 100, fromDate, toDate, ubi, sUBI);
           // move to middle of stream
           await testUtils.goToMiddleOfStream(lastStreamId, sUBI, network);
 
@@ -2037,8 +2059,8 @@ describe("sUBI.sol", () => {
 
           // ACT
           // Create streams
-          await testUtils.createStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
-          await testUtils.createStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
+          await testUtils.createCancellableStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
+          await testUtils.createCancellableStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
 
           // ASSERT 
           // Check that delta of return 0 (because streams didnt start). 
@@ -2062,8 +2084,8 @@ describe("sUBI.sol", () => {
           const toDate1 = moment(fromDate1).add(1, "hour").toDate();
           const toDate2 = moment(fromDate2).add(1, "hour").toDate();
           // Create streams
-          const streamId1 = await testUtils.createStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
-          await testUtils.createStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
+          const streamId1 = await testUtils.createCancellableStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
+          await testUtils.createCancellableStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
 
           // ACT
           // ARRANGE / ACT
@@ -2093,8 +2115,8 @@ describe("sUBI.sol", () => {
           const toDate1 = moment(fromDate1).add(1, "hour").toDate();
           const toDate2 = moment(fromDate2).add(1, "hour").toDate();
           // Create streams
-          await testUtils.createStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
-          const streamId2 = await testUtils.createStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
+          await testUtils.createCancellableStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
+          const streamId2 = await testUtils.createCancellableStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
 
           // ACT
           // Set block time to end of second stream
@@ -2122,8 +2144,8 @@ describe("sUBI.sol", () => {
           const toDate1 = moment(fromDate1).add(1, "hour").toDate();
           const toDate2 = moment(fromDate2).add(1, "hour").toDate();
           // Create streams
-          await testUtils.createStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
-          const streamId2 = await testUtils.createStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
+          await testUtils.createCancellableStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
+          const streamId2 = await testUtils.createCancellableStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
 
           // ARRANGE & ACT                
           // Set block time to end of second stream
@@ -2155,8 +2177,8 @@ describe("sUBI.sol", () => {
           const toDate1 = moment(fromDate1).add(1, "hour").toDate();
           const toDate2 = moment(fromDate2).add(1, "hour").toDate();
           // Create streams
-          const streamId1 = await testUtils.createStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
-          await testUtils.createStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
+          const streamId1 = await testUtils.createCancellableStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
+          await testUtils.createCancellableStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
 
           // ACT
           // Move to middle of 1st stream
@@ -2187,8 +2209,8 @@ describe("sUBI.sol", () => {
           const toDate1 = moment(fromDate1).add(1, "hour").toDate();
           const toDate2 = moment(fromDate2).add(1, "hour").toDate();
           // Create streams
-          const streamId1 = await testUtils.createStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
-          const streamId2 = await testUtils.createStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
+          const streamId1 = await testUtils.createCancellableStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
+          const streamId2 = await testUtils.createCancellableStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
 
           // Move to middle of 1st stream
           await testUtils.goToMiddleOfStream(streamId1, sUBI, network);
@@ -2224,8 +2246,8 @@ describe("sUBI.sol", () => {
           const toDate1 = moment(fromDate1).add(1, "hour").toDate();
           const toDate2 = moment(fromDate2).add(1, "hour").toDate();
           // Create streams
-          const streamId1 = await testUtils.createStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
-          const streamId2 = await testUtils.createStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
+          const streamId1 = await testUtils.createCancellableStream(sender, recipient1.address, 100, fromDate1, toDate1, ubi, sUBI);
+          const streamId2 = await testUtils.createCancellableStream(sender, recipient2.address, 100, fromDate2, toDate2, ubi, sUBI);
 
           // ACT                
           // Go to end of stream 2,

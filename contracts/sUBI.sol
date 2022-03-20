@@ -102,7 +102,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
     * @param stopTime The unix timestamp for when the stream stops.
     * @return The uint256 id of the newly created stream.
     */
-  function mintStream(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime)
+  function mintStream(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool isCancellable)
       public
       override
       nonReentrant
@@ -144,7 +144,8 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
         sender: sender,
         startTime: startTime,
         stopTime: stopTime,
-        accruedSince: 0
+        accruedSince: 0,
+        isCancellable: isCancellable
       });
 
       streamIdsOf[sender].push(lastTokenId);
@@ -205,7 +206,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       deleteStream(streamId);
       emit CancelStream(streamId, stream.sender, ownerOf(streamId));
     }
-    
+
     /**
      * @dev Set the max number of stream allowed per human.
      */
@@ -294,7 +295,8 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
         uint256 stopTime,
         address sender,
         bool isActive,
-        uint256 accruedSince)
+        uint256 accruedSince,
+        bool isCancellable)
     {
       Types.Stream memory stream = streams[streamId];
       return (stream.ratePerSecond,
@@ -302,7 +304,8 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
         stream.stopTime,
         stream.sender,
         stream.isActive,
-        stream.accruedSince);
+        stream.accruedSince,
+        stream.isCancellable);
     }
 
     function getStreamsCount(address _human) public view returns (uint256) {

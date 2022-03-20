@@ -381,9 +381,9 @@ contract UBI is Initializable {
     }
   }
 
-  function createStream(address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime) public nonReentrant {
+  function createStream(address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool cancellable) public nonReentrant {
     require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "Only registered humans accruing UBI can stream UBI.");
-    subi.mintStream(msg.sender, recipient, ubiPerSecond, startTime, stopTime);
+    subi.mintStream(msg.sender, recipient, ubiPerSecond, startTime, stopTime, cancellable);
   }
 
     /**
@@ -406,7 +406,7 @@ contract UBI is Initializable {
 
       (uint256 ratePerSecond, uint256 startTime,
         uint256 stopTime, address sender, 
-        bool isActive, uint256 streamAccruedSince) = subi.getStream(streamId);
+        bool isActive, uint256 streamAccruedSince, bool isCancellable) = subi.getStream(streamId);
 
       require(isActive, "stream not active");
       // Make sure stream is active and has accrued UBI
@@ -450,8 +450,9 @@ contract UBI is Initializable {
     {
       (uint256 ratePerSecond, uint256 startTime,
       uint256 stopTime, address sender, 
-      bool isActive, uint256 streamAccruedSince) = subi.getStream(streamId);
+      bool isActive, uint256 streamAccruedSince, bool isCancellable) = subi.getStream(streamId);
       require(msg.sender == sender, "only sender can cancel stream");
+      require(isCancellable, "stream not cancellable");
       
       // Withdraw funds from the stream and delete it
       _withdrawFromStream(streamId, address(0));
@@ -483,7 +484,7 @@ contract UBI is Initializable {
   function getStream(uint256 streamId) private view returns (Types.Stream memory) {
     (uint256 ratePerSecond, uint256 startTime,
       uint256 stopTime, address sender, 
-      bool isActive, uint256 streamAccruedSince) = subi.getStream(streamId);
+      bool isActive, uint256 streamAccruedSince, bool isCancellable) = subi.getStream(streamId);
 
       return Types.Stream({
         ratePerSecond: ratePerSecond,
@@ -491,7 +492,8 @@ contract UBI is Initializable {
         stopTime: stopTime,
         sender: sender,
         isActive: isActive,
-        accruedSince: streamAccruedSince
+        accruedSince: streamAccruedSince,
+        isCancellable: isCancellable
       });
   }
 
