@@ -242,7 +242,6 @@ contract UBI is Initializable {
   */
   function transfer(address _recipient, uint256 _amount) public returns (bool) {
     _updateBalance(msg.sender);
-    console.log("ddd");
     ubiBalance[msg.sender] = ubiBalance[msg.sender].sub(_amount, "ERC20: transfer amount exceeds balance");
     ubiBalance[_recipient] = ubiBalance[_recipient].add(_amount);
     emit Transfer(msg.sender, _recipient, _amount);
@@ -460,9 +459,9 @@ contract UBI is Initializable {
     }
 
     /**
-     * @notice Stops the stream
-     * @dev Throws if the id does not point to a valid stream.
-     *  Throws if the caller is not the sender or the recipient of the stream.
+     * @notice Stops the flow
+     * @dev Throws if the id does not point to a valid flow.
+     *  Throws if the caller is not the sender or the recipient of the flow.
      *  Throws if there is a token transfer failure.
      * @param flowId The id of the flow to cancel.
      */
