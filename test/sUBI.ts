@@ -1323,6 +1323,47 @@ describe("sUBI.sol", () => {
       await sUBI.connect(accounts[0]).setMaxStreamsAllowed(20);
       expect(await sUBI.maxStreamsAllowed()).to.eq(20);
     })
+
+    it("happy path - withdraw from multiple strea should succesfully withdraw UBIs", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi, accounts[0].address);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      const canceller = accounts[2];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      // Make sure canceller is not registered.
+      await pohMockService.setSubmissionIsRegistered(mockPoh, canceller.address, false);
+      await ubi.startAccruing(sender.address);
+
+      // Create 3 streams, with one hour difference each
+      const initialBlockTime = await testUtils.getCurrentBlockTime();
+      // Stream starts at current blocktime + 1 hour
+      const fromDate1 = moment(new Date(initialBlockTime * 1000)).add(1, "hours").toDate();
+      const fromDate2 = moment(new Date(initialBlockTime * 1000)).add(2, "hours").toDate();
+      const fromDate3 = moment(new Date(initialBlockTime * 1000)).add(3, "hours").toDate();
+      // Stream lasts 1 hours
+      const toDate1 = moment(fromDate1).add(1, "hour").toDate();
+      const toDate2 = moment(fromDate2).add(1, "hour").toDate();
+      const toDate3 = moment(fromDate3).add(1, "hour").toDate();
+
+      // Create a stream from address 0 to address 1
+      const streamId1 = await testUtils.createCancellableStream(sender, recipient.address, 1000, fromDate1, toDate1, ubi, sUBI);
+      const streamId2 = await testUtils.createCancellableStream(sender, recipient.address, 1000, fromDate2, toDate2, ubi, sUBI);
+      const streamId3 = await testUtils.createCancellableStream(sender, recipient.address, 1000, fromDate3, toDate3, ubi, sUBI);
+
+      // Get initial recipient balance
+      const prevRecipientBalance = await ubi.balanceOf(recipient.address);
+      
+      // Go to end of last stream
+      await testUtils.goToEndOfStream(streamId3, sUBI, network);
+      
+      // ACT
+      await ubi.withdrawFromStreams([streamId1, streamId2, streamId3]);
+
+      // ASSERT
+      const newRecipientBalance = await ubi.balanceOf(recipient.address);
+      expect(newRecipientBalance).to.eq(prevRecipientBalance.add(1000 * 3600 * 3));
+    });
   });
 
   //// STREAM CANCELLATION
@@ -1572,7 +1613,7 @@ describe("sUBI.sol", () => {
       // Unregister human and report removal of UBI
       await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, false);
       await ubi.connect(canceller).reportRemoval(sender.address);
-      
+
 
       // ASSERT
       // Assert no active streams
@@ -1603,7 +1644,7 @@ describe("sUBI.sol", () => {
 
       // ACT && ASSERT
       await expect(ubi.cancelStream(streamId1)).to.be.revertedWith("stream not cancellable");
-     });
+    });
   });
 
   describe("accruedTime related tests", () => {

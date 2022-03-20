@@ -395,10 +395,19 @@ contract UBI is Initializable {
      */
     function withdrawFromStream(uint256 streamId)
         public
-        nonReentrant
-    {
+        nonReentrant {
       _withdrawFromStream(streamId,address(0));
     }
+
+    function withdrawFromStreams(uint256[] calldata streamIds)
+        public
+        nonReentrant {
+      for (uint256 i = 0; i < streamIds.length; i++)
+      {
+        _withdrawFromStream(streamIds[i], address(0));
+      }
+    }
+
 
     /// @dev Withdraws from the contract to the recipient's account. If the recipient is address 0, it withdraws to the holder of the stream NFT token. 
     function _withdrawFromStream(uint256 streamId, address recipient) private {
