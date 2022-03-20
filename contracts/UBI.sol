@@ -189,6 +189,20 @@ contract UBI is Initializable {
 
     ubiBalance[msg.sender] = ubiBalance[msg.sender].add(newSupply);
     totalSupply = totalSupply.add(newSupply);
+
+    // If sUBI is set
+    if(address(subi) != address(0)) {
+      // Get active streams of human
+      uint256[] memory activeStreamIds = subi.getActiveStreamsOf(_human);
+      // On each stream, withdraw and cancel the stream
+      for(uint256 i = 0; i < activeStreamIds.length; i++) {
+        uint256 streamId = activeStreamIds[i];
+          // Withdraw funds from the stream and delete it
+          _withdrawFromStream(streamId, msg.sender);
+          // Delete the stream
+          subi.onCancelStream(streamId);
+      }
+    }
   }
 
   /** @dev Changes `governor` to `_governor`.
@@ -383,10 +397,11 @@ contract UBI is Initializable {
         public
         nonReentrant
     {
-      _withdrawFromStream(streamId);
+      _withdrawFromStream(streamId,address(0));
     }
 
-    function _withdrawFromStream(uint256 streamId) private {
+    /// @dev Withdraws from the contract to the recipient's account. If the recipient is address 0, it withdraws to the holder of the stream NFT token. 
+    function _withdrawFromStream(uint256 streamId, address recipient) private {
       // Get stream
 
       (uint256 ratePerSecond, uint256 startTime,
@@ -395,7 +410,7 @@ contract UBI is Initializable {
 
       require(isActive, "stream not active");
       // Make sure stream is active and has accrued UBI
-      require(startTime <= block.timestamp && streamAccruedSince < stopTime, "Stream has not accrued enough UBI yet.");
+      if(block.timestamp < startTime || stopTime < streamAccruedSince) return;
       
         uint256 streamBalance = subi.balanceOfStream(streamId);
 
@@ -415,8 +430,12 @@ contract UBI is Initializable {
         }        
 
         // Consolidate stream balance.
-        address recipient = subi.ownerOf(streamId);
-        ubiBalance[recipient] = ubiBalance[recipient].add(streamBalance);
+        address realRecipient = recipient;
+        if(recipient == address(0)) {
+          realRecipient = subi.ownerOf(streamId);
+        }
+
+        ubiBalance[realRecipient] = ubiBalance[realRecipient].add(streamBalance);
         subi.onWithdrawnFromStream(streamId);
     }
 
@@ -435,7 +454,7 @@ contract UBI is Initializable {
       require(msg.sender == sender, "only sender can cancel stream");
       
       // Withdraw funds from the stream and delete it
-      _withdrawFromStream(streamId);
+      _withdrawFromStream(streamId, address(0));
       if(isActive) {
         // Delete the stream
         subi.onCancelStream(streamId);

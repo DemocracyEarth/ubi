@@ -745,6 +745,38 @@ describe("sUBI.sol", () => {
       // Sender balance should be the p´rev balance + (accrued - delegated).
       expect(lastSenderBalance).to.eq(prevSenderBalance.add(accruedPerSecond.sub(delegatedPerSecond)), "Invalid sender balance");
     });
+
+    it("happy path - after creating 3 streams (current and in the future), human should have 3 active streams.", async () => {
+      // ARRANGE
+      const sUBI = await deploySUBI(ubi, accounts[0].address);
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      await ubi.startAccruing(sender.address);
+
+      // Create 3 streams, with one hour difference each
+      const initialBlockTime = await testUtils.getCurrentBlockTime();
+      // Stream starts at current blocktime + 1 hour
+      const fromDate1 = moment(new Date(initialBlockTime * 1000)).add(1, "hours").toDate();
+      const fromDate2 = moment(new Date(initialBlockTime * 1000)).add(2, "hours").toDate();
+      const fromDate3 = moment(new Date(initialBlockTime * 1000)).add(3, "hours").toDate();
+      // Stream lasts 1 hours
+      const toDate1 = moment(fromDate1).add(1, "hour").toDate();
+      const toDate2 = moment(fromDate2).add(1, "hour").toDate();
+      const toDate3 = moment(fromDate3).add(1, "hour").toDate();
+
+      // Create a stream from address 0 to address 1
+      const streamId1 = await testUtils.createStream(sender, recipient.address, 1000, fromDate1, toDate1, ubi, sUBI);
+      const streamId2 = await testUtils.createStream(sender, recipient.address, 1000, fromDate2, toDate2, ubi, sUBI);
+      const streamId3 = await testUtils.createStream(sender, recipient.address, 1000, fromDate3, toDate3, ubi, sUBI);
+
+      // Move to the middle of first stream
+      await testUtils.goToMiddleOfStream(streamId1, sUBI, network);
+
+      // ASSERT
+      const activeStreams = await sUBI.getActiveStreamsOf(sender.address);
+      expect(activeStreams.length).to.eq(3, "Human should have 3 active streams");
+    });
   })
 
   describe("Withdrawals", () => {
@@ -1285,6 +1317,12 @@ describe("sUBI.sol", () => {
       const expectedRecipient2AccruedValue = delegatedPerSecond * ((testUtils.dateToSeconds(toDate) - testUtils.dateToSeconds(fromDate))) - expectedRecipient1AccruedValue;
       expect(recipient2NewBalance).to.eq(recipient2PrevBalance + expectedRecipient2AccruedValue, "Invalid UBI value on recipient 2 after withdraw from stream");
     })
+
+    it("happy path - Updating max streams allowed should update the value on the contract", async () => {
+      const sUBI = await deploySUBI(ubi, accounts[0].address);
+      await sUBI.connect(accounts[0]).setMaxStreamsAllowed(20);
+      expect(await sUBI.maxStreamsAllowed()).to.eq(20);
+    })
   });
 
   //// STREAM CANCELLATION
@@ -1322,7 +1360,6 @@ describe("sUBI.sol", () => {
       const lastStreamCount = await sUBI.getStreamsCount(sender.address);
       expect(lastStreamCount).to.eq(initialStreamCount, "Stream count should decrease after a stream is cancelled");
     });
-
 
     it("happy path - Cancelling a stream that has already started should lower the stream count from sender", async () => {
 
@@ -1500,11 +1537,51 @@ describe("sUBI.sol", () => {
 
     });
 
-    it("happy path - Updating max streams allowed should update the value on the contract", async () => {
+    it("happy path - when reportRemoval is executed, all existing and future streams should cancel and canceller balance should increase ", async () => {
+      // ARRANGE
       const sUBI = await deploySUBI(ubi, accounts[0].address);
-      await sUBI.connect(accounts[0]).setMaxStreamsAllowed(20);
-      expect(await sUBI.maxStreamsAllowed()).to.eq(20);
-    })
+      const sender = accounts[0];
+      const recipient = accounts[1];
+      const canceller = accounts[2];
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
+      // Make sure canceller is not registered.
+      await pohMockService.setSubmissionIsRegistered(mockPoh, canceller.address, false);
+      await ubi.startAccruing(sender.address);
+
+      // Create 3 streams, with one hour difference each
+      const initialBlockTime = await testUtils.getCurrentBlockTime();
+      // Stream starts at current blocktime + 1 hour
+      const fromDate1 = moment(new Date(initialBlockTime * 1000)).add(1, "hours").toDate();
+      const fromDate2 = moment(new Date(initialBlockTime * 1000)).add(2, "hours").toDate();
+      const fromDate3 = moment(new Date(initialBlockTime * 1000)).add(3, "hours").toDate();
+      // Stream lasts 1 hours
+      const toDate1 = moment(fromDate1).add(1, "hour").toDate();
+      const toDate2 = moment(fromDate2).add(1, "hour").toDate();
+      const toDate3 = moment(fromDate3).add(1, "hour").toDate();
+
+      // Create a stream from address 0 to address 1
+      const streamId1 = await testUtils.createStream(sender, recipient.address, 1000, fromDate1, toDate1, ubi, sUBI);
+      const streamId2 = await testUtils.createStream(sender, recipient.address, 1000, fromDate2, toDate2, ubi, sUBI);
+      const streamId3 = await testUtils.createStream(sender, recipient.address, 1000, fromDate3, toDate3, ubi, sUBI);
+
+      // Move to the middle of first stream
+      await testUtils.goToMiddleOfStream(streamId1, sUBI, network);
+      const prevCancellerBalance = await ubi.balanceOf(canceller.address);
+
+      // ACT
+      // Unregister human and report removal of UBI
+      await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, false);
+      await ubi.connect(canceller).reportRemoval(sender.address);
+      
+
+      // ASSERT
+      // Assert no active streams
+      const activeStreams = await sUBI.getActiveStreamsOf(sender.address);
+      expect(activeStreams.length).to.eq(0, "There should be no active streams after reportRemoval");
+      // assert canceller balance increased
+      const newCancellerBalance = await ubi.balanceOf(canceller.address);
+      expect(newCancellerBalance).to.be.gt(prevCancellerBalance);
+    });
   });
 
   describe("accruedTime related tests", () => {
