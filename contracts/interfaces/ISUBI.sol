@@ -17,6 +17,12 @@ library Types {
         uint256 accruedSince;
         bool isCancellable;
     }
+    struct Flow {
+        uint256 ratePerSecond; // The rate of UBI to drip to this Flow from the current accrued value
+        uint256 startTime;
+        address sender;
+        bool isActive;
+    }
 }
 
 /**
@@ -103,6 +109,8 @@ interface ISUBI is IERC721 {
     /// @dev Callback for when UBI contract has cancelled a stream.
     function onCancelStream(uint256 streamId) external;
 
+
     /// @dev Callback for when reportRemoval is executed on UBI.
     //function onReportRemoval(address human) external;
+
 }

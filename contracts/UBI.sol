@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./interfaces/ISUBI.sol";
+import "./interfaces/IFUBI.sol";
 import "hardhat/console.sol";
 
 /**
@@ -101,12 +102,29 @@ contract UBI is Initializable {
   /// @dev The Streaming UBI ERC721 contract.
   ISUBI public subi;
 
+  /// @dev The Flowing UBI ERC721 contract.
+  IFUBI public fubi;
+
   /// @dev Not Entered status for reentrancyGuard
   uint256 private constant _NOT_ENTERED = 1;
   /// @dev Entered status for reentrancyGuard
   uint256 private constant _ENTERED = 2;
   /// @dev Stores the reentrancy status for reentrancyGuard
   uint256 private _reentrancyStatus;
+
+
+
+  ///MODIFICACIONES DE DELYVER TEAM
+  ///
+  ///
+  ///
+
+  /// Streams sin final creados por el address. 
+  ///Debe ser menor a 1 UBI y sujeto a restricciones de otros tipos de streams creados
+  mapping (address => uint256) public ubiOutflow;
+
+  /// Streams sin final recibido por el address. No tiene restriccion de valor.
+  mapping (address => uint256) public ubiInflow;
   
   /* Modifiers */
 
@@ -128,6 +146,12 @@ contract UBI is Initializable {
   /// @dev Verifies that the sender has ability to modify governed parameters.
   modifier onlyByGovernor() {
     require(governor == msg.sender, "The caller is not the governor.");
+    _;
+  }
+
+  /// @dev Verifies that the sender is fubi.
+  modifier onlyFubi() {
+    require(address(fubi) == msg.sender, "The caller is not fubi.");
     _;
   }
 
@@ -231,14 +255,8 @@ contract UBI is Initializable {
   *  @param _amount The amount to tranfer in base units.
   */
   function transfer(address _recipient, uint256 _amount) public returns (bool) {
-    uint256 newSupplyFrom;
-    uint256 pendingDelegatedAccruedValue = address(subi) == address(0) ? 0 : subi.getDelegatedAccruedValue(msg.sender);
-    if (accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
-        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
-        totalSupply = totalSupply.add(newSupplyFrom);
-        accruedSince[msg.sender] = block.timestamp;
-    }
-    ubiBalance[msg.sender] = ubiBalance[msg.sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: transfer amount exceeds balance");
+    _updateBalance(msg.sender);
+    ubiBalance[msg.sender] = ubiBalance[msg.sender].sub(_amount, "ERC20: transfer amount exceeds balance");
     ubiBalance[_recipient] = ubiBalance[_recipient].add(_amount);
     emit Transfer(msg.sender, _recipient, _amount);
     return true;
@@ -250,15 +268,10 @@ contract UBI is Initializable {
   *  @param _amount The amount to tranfer in base units.
   */
   function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
-    uint256 newSupplyFrom;
-    uint256 pendingDelegatedAccruedValue = address(subi) == address(0) ? 0 : subi.getDelegatedAccruedValue(_sender);
+    
     allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: transfer amount exceeds allowance");
-    if (accruedSince[_sender] != 0 && proofOfHumanity.isRegistered(_sender)) {
-        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_sender]));
-        totalSupply = totalSupply.add(newSupplyFrom);
-        accruedSince[_sender] = block.timestamp;
-    }
-    ubiBalance[_sender] = ubiBalance[_sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: transfer amount exceeds balance");
+    _updateBalance(_sender);
+    ubiBalance[_sender] = ubiBalance[_sender].sub(_amount, "ERC20: transfer amount exceeds balance");
     ubiBalance[_recipient] = ubiBalance[_recipient].add(_amount);
     emit Transfer(_sender, _recipient, _amount);
     return true;
@@ -300,14 +313,9 @@ contract UBI is Initializable {
   *  @param _amount The quantity of tokens to burn in base units.
   */
   function burn(uint256 _amount) public {
-    uint256 newSupplyFrom;
-    uint256 pendingDelegatedAccruedValue = address(subi) == address(0) ? 0 : subi.getDelegatedAccruedValue(msg.sender);
-    if(accruedSince[msg.sender] != 0 && proofOfHumanity.isRegistered(msg.sender)) {
-      newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[msg.sender]));
-      accruedSince[msg.sender] = block.timestamp;
-    }
-    ubiBalance[msg.sender] = ubiBalance[msg.sender].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: burn amount exceeds balance");
-    totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
+    _updateBalance(msg.sender);
+    ubiBalance[msg.sender] = ubiBalance[msg.sender].sub(_amount, "ERC20: burn amount exceeds balance");
+    totalSupply = totalSupply.sub(_amount);
     emit Transfer(msg.sender, address(0), _amount);
   }
 
@@ -316,15 +324,10 @@ contract UBI is Initializable {
   *  @param _amount The quantity of tokens to burn in base units.
   */
   function burnFrom(address _account, uint256 _amount) public {
-    uint256 newSupplyFrom;
     allowance[_account][msg.sender] = allowance[_account][msg.sender].sub(_amount, "ERC20: burn amount exceeds allowance");
-    uint256 pendingDelegatedAccruedValue = subi.getDelegatedAccruedValue(_account);
-    if (accruedSince[_account] != 0 && proofOfHumanity.isRegistered(_account)) {
-        newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_account]));
-        accruedSince[_account] = block.timestamp;
-    }
-    ubiBalance[_account] = ubiBalance[_account].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).sub(_amount, "ERC20: burn amount exceeds balance");
-    totalSupply = totalSupply.add(newSupplyFrom).sub(_amount);
+    _updateBalance(_account);
+    ubiBalance[_account] = ubiBalance[_account].sub(_amount, "ERC20: burn amount exceeds balance");
+    totalSupply = totalSupply.sub(_amount);
     emit Transfer(_account, address(0), _amount);
   }
 
@@ -386,6 +389,17 @@ contract UBI is Initializable {
     subi.mintStream(msg.sender, recipient, ubiPerSecond, startTime, stopTime, cancellable);
   }
 
+  function createFlow(address recipient, uint256 ubiPerSecond) public nonReentrant {
+    require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "Only registered humans accruing UBI can flow UBI.");
+    _updateBalance(msg.sender);
+    _updateBalance(recipient);
+    fubi.mintFlow(msg.sender, recipient, ubiPerSecond);
+    ubiOutflow[msg.sender] = ubiOutflow[msg.sender].add(ubiPerSecond);
+    ubiInflow[recipient] = ubiInflow[recipient].add(ubiPerSecond); 
+    
+
+  }
+
     /**
      * @notice Withdraws from the contract to the recipient's account.
      * @dev Throws if the id does not point to a valid stream.
@@ -426,18 +440,20 @@ contract UBI is Initializable {
         // Consolidate sender balance
         uint256 newSupplyFrom;
         uint256 humanAccruedSince = accruedSince[sender];
+        
         if (humanAccruedSince > 0 && proofOfHumanity.isRegistered(sender)) {
             
-            newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(humanAccruedSince));
+            newSupplyFrom =  (accruedPerSecond.sub(ubiOutflow[sender])).mul(block.timestamp.sub(humanAccruedSince));
 
-            totalSupply = totalSupply.add(newSupplyFrom);
+            uint256 receivedAccruedValue = ubiInflow[sender].mul(block.timestamp.sub(humanAccruedSince));
+
+            totalSupply = totalSupply.add(newSupplyFrom).add(receivedAccruedValue);
 
             ubiBalance[sender] = balanceOf(sender);
 
             // Update accruedSince
             accruedSince[sender] = block.timestamp;
         }        
-
         // Consolidate stream balance.
         address realRecipient = recipient;
         if(recipient == address(0)) {
@@ -471,9 +487,44 @@ contract UBI is Initializable {
       }
     }
 
-    /* Setter */
+    /**
+     * @notice Stops the flow
+     * @dev Throws if the id does not point to a valid flow.
+     *  Throws if the caller is not the sender or the recipient of the flow.
+     *  Throws if there is a token transfer failure.
+     * @param flowId The id of the flow to cancel.
+     */
+    function cancelFlow(uint256 flowId) public nonReentrant 
+    {
+      (uint256 ratePerSecond, uint256 startTime,
+       address sender, bool isActive) = fubi.getFlow(flowId);
+      require(msg.sender == sender, "only sender can cancel flow");
+
+      address recipient = fubi.ownerOf(flowId);
+      _updateBalance(sender);
+      _updateBalance(recipient);
+      ubiOutflow[sender] = ubiOutflow[sender].sub(ratePerSecond);
+      ubiInflow[recipient] = ubiInflow[recipient].sub(ratePerSecond); 
+      if(isActive) {
+        // Delete the stream
+        fubi.onCancelFlow(flowId);
+      }
+    }
+
+    function onFlowTransfer(address _oldOwner, address _newOwner, uint256 ratePerSecond) public onlyFubi{
+      _updateBalance(_oldOwner);
+      _updateBalance(_newOwner);
+      ubiInflow[_oldOwner] = ubiInflow[_oldOwner].sub(ratePerSecond);
+      ubiInflow[_newOwner] = ubiInflow[_newOwner].add(ratePerSecond); 
+    }
+
+    /* Setters */
     function setSUBI(address _subi) public onlyByGovernor {
       subi = ISUBI(_subi);
+    }
+
+    function setFUBI(address _fubi) public onlyByGovernor {
+      fubi = IFUBI(_fubi);
     }
 
   /* Getters */
@@ -486,7 +537,7 @@ contract UBI is Initializable {
     // If this human have not started to accrue, or is not registered, return 0.
     if (accruedSince[_human] == 0 || !proofOfHumanity.isRegistered(_human)) return 0;
 
-    else return accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
+    else return (accruedPerSecond.sub(ubiOutflow[msg.sender])).mul(block.timestamp.sub(accruedSince[_human]));
   }
 
   /// @dev Utility function to avoid error "Stack too deep"
@@ -542,9 +593,11 @@ contract UBI is Initializable {
       }  
         
     }
+    uint256 receivedAccruedValue = ubiInflow[_human].mul(block.timestamp.sub(accruedSince[_human]));
 
-      // Total balance is: Last balance + (accrued balance - delegated accrued balance)
-      return getAccruedValue(_human).add(ubiBalance[_human]).sub(pendingDelegatedAccruedValue);
+
+      // Total balance is: Last balance + (accrued balance - delegated accrued balance) + received accrued balance
+    return getAccruedValue(_human).add(ubiBalance[_human]).sub(pendingDelegatedAccruedValue).add(receivedAccruedValue);
   }
     
   function getAccruedSince(address _human) public view returns (uint256) {
@@ -557,5 +610,34 @@ contract UBI is Initializable {
 
   function getAccruedPerSecond() public view returns (uint256) {
     return accruedPerSecond;
+  }
+
+  function getUbiOutflow(address _human) public view returns(uint256){
+    return ubiOutflow[_human];
+  }
+
+  function getUbiInflow(address _human) public view returns(uint256){
+    return ubiInflow[_human];
+  }
+
+  function getTotalDelegatedValue(address _human) public view returns(uint256){
+    return (subi.getDelegatedValue(_human)).add(ubiOutflow[_human]);
+  }
+
+  function getTotalDelegatedValue(address _human, uint256 startTime, uint256 endTime) public view returns(uint256){
+    return (subi.getDelegatedValue(_human, startTime, endTime)).add(ubiOutflow[_human]);
+  }
+
+  function _updateBalance(address _human) internal {
+    uint256 newSupplyFrom;
+    uint256 pendingDelegatedAccruedValue = address(subi) == address(0) ? 0 : subi.getDelegatedAccruedValue(_human);
+    uint256 lastTimeAccrued = accruedSince[_human];
+    accruedSince[_human] = block.timestamp;
+    if (lastTimeAccrued != 0 && proofOfHumanity.isRegistered(_human)) {
+        newSupplyFrom = (accruedPerSecond.sub(ubiOutflow[_human])).mul(block.timestamp.sub(lastTimeAccrued));
+    }
+    uint256 receivedAccruedValue = ubiInflow[_human].mul(block.timestamp.sub(lastTimeAccrued));
+    totalSupply = totalSupply.add(newSupplyFrom).add(receivedAccruedValue);
+    ubiBalance[_human] = ubiBalance[_human].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).add(receivedAccruedValue);
   }
 }

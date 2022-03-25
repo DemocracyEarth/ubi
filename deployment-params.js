@@ -21,3 +21,6 @@ module.exports.SUBI_NAME = "Streamed Universal Basic Income";
 module.exports.SUBI_SYMBOL = "SUBI";
 module.exports.SUBI_MAX_STREAMS_ALLOWED = 100;
 // @NOTE: decimal counter string: 012345678901234567
+
+module.exports.FUBI_NAME = "Flowed Universal Basic Income";
+module.exports.FUBI_SYMBOL = "SUBI";
