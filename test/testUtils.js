@@ -3,13 +3,13 @@ const { ethers, expect } = require("hardhat");
 const logReader = require("./logReader");
 
 const testUtils = {
-  async createStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, subi, verbose = false) {
+  async createCancellableStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, subi, verbose = false) {
 
     const fromSecs = testUtils.dateToSeconds(from);
     const toSecs = testUtils.dateToSeconds(to);
     const prevStreamId = new BigNumber((await subi.lastTokenId()).toString());
 
-    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, fromSecs, toSecs)
+    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, fromSecs, toSecs, true)
     await tx.wait();
     const events = await subi.queryFilter(subi.filters.CreateStream(fromAccount.address));
     const createStreamEvents = logReader.getCreateStreamEvents(events);
@@ -25,37 +25,30 @@ const testUtils = {
       console.log("Stream per second:", streamPerSecond);
     }
     return streamId;
+  },
 
+  async createNonCancellableStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, subi, verbose = false) {
 
-    // const previousDelegate = await ubi.getDelegateOf(fromAccount.address);
-    // const prevDelegateAccruingFactor = new BigNumber((await ubi.getAccruingFactor(previousDelegate)).toString());
-    // const newDelegatePrevAccruingFactor = new BigNumber((await ubi.getAccruingFactor(toAddress)).toString());
+    const fromSecs = testUtils.dateToSeconds(from);
+    const toSecs = testUtils.dateToSeconds(to);
+    const prevStreamId = new BigNumber((await subi.lastTokenId()).toString());
 
+    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, fromSecs, toSecs, false)
+    await tx.wait();
+    const events = await subi.queryFilter(subi.filters.CreateStream(fromAccount.address));
+    const createStreamEvents = logReader.getCreateStreamEvents(events);
+    expect(createStreamEvents && createStreamEvents.length > 0, "createStream should emit event CreateStream");
+    const streamId = createStreamEvents[createStreamEvents.length - 1].args[1];
+    expect(streamId.toNumber()).to.eq(prevStreamId.plus(1).toNumber(), "CreateStream emited with incorrect streamId value")
 
-    // // Delegate fromAccount to toAddress
-    // await expect(ubi.connect(fromAccount).delegate(toAddress)).to.emit(ubi, "DelegateChange").withArgs(fromAccount.address, toAddress);
-    // const delegate = await ubi.getDelegateOf(fromAccount.address);
-    // expect(delegate).to.eq(toAddress, "Invalid delegate of");
-
-    // if (delegate === ethers.constants.AddressZero)
-    //   expect(await ubi.getInverseDelegateOf(delegate)).to.eq(ethers.constants.AddressZero, "Invalid inverse delegate of. Should be addres(0)");
-    // else
-    //   expect(await ubi.getInverseDelegateOf(delegate)).to.eq(fromAccount.address, "Invalid inverse delegate of.");
-
-
-    // const newDelegateAccruingFactor = new BigNumber((await ubi.getAccruingFactor(toAddress)).toString());
-
-    // if (toAddress !== ethers.constants.AddressZero) {
-    //   // Human should have an accruing factor of 0
-    //   expect(new BigNumber((await ubi.getAccruingFactor(fromAccount.address)).toString()).toNumber()).to.eq(0, "Human should have an accruing factor of 0 after delegating.");
-    //   // Delegate should have an accruing factor of 1
-    //   expect(newDelegateAccruingFactor.toNumber()).to.eq(newDelegatePrevAccruingFactor.plus(1).toNumber(), `Delegate ${toAddress} should have its accruing factor increased by 1 after being delegated`);
-    // } else {
-    //   // Human should have an accruing factor of 1 restored
-    //   expect(new BigNumber((await ubi.getAccruingFactor(fromAccount.address)).toString()).toNumber()).to.eq(1, "Human should have an accruing factor of 1 after setting delegate as address 0.");
-    //   // Previous delegate should have accruing factor reduced by 1
-    //   expect(new BigNumber((await ubi.getAccruingFactor(previousDelegate)).toString()).toNumber()).to.eq(prevDelegateAccruingFactor.minus(1).toNumber(), "Previous delegate should have its accruing factor reduced by 1 after being removed as delegate.");
-    // }
+    if (verbose) {
+      console.log("Created stream:")
+      console.log("Start:", fromSecs)
+      console.log("End:", toSecs);
+      console.log("Time Diff:", toSecs - fromSecs);
+      console.log("Stream per second:", streamPerSecond);
+    }
+    return streamId;
   },
 
   async timeForward(seconds, network) {

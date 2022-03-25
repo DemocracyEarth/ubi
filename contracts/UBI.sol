@@ -213,6 +213,20 @@ contract UBI is Initializable {
 
     ubiBalance[msg.sender] = ubiBalance[msg.sender].add(newSupply);
     totalSupply = totalSupply.add(newSupply);
+
+    // If sUBI is set
+    if(address(subi) != address(0)) {
+      // Get active streams of human
+      uint256[] memory activeStreamIds = subi.getActiveStreamsOf(_human);
+      // On each stream, withdraw and cancel the stream
+      for(uint256 i = 0; i < activeStreamIds.length; i++) {
+        uint256 streamId = activeStreamIds[i];
+          // Withdraw funds from the stream and delete it
+          _withdrawFromStream(streamId, msg.sender);
+          // Delete the stream
+          subi.onCancelStream(streamId);
+      }
+    }
   }
 
   /** @dev Changes `governor` to `_governor`.
@@ -370,9 +384,9 @@ contract UBI is Initializable {
     }
   }
 
-  function createStream(address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime) public nonReentrant {
+  function createStream(address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool cancellable) public nonReentrant {
     require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "Only registered humans accruing UBI can stream UBI.");
-    subi.mintStream(msg.sender, recipient, ubiPerSecond, startTime, stopTime);
+    subi.mintStream(msg.sender, recipient, ubiPerSecond, startTime, stopTime, cancellable);
   }
 
   function createFlow(address recipient, uint256 ubiPerSecond) public nonReentrant {
@@ -395,21 +409,31 @@ contract UBI is Initializable {
      */
     function withdrawFromStream(uint256 streamId)
         public
-        nonReentrant
-    {
-      _withdrawFromStream(streamId);
+        nonReentrant {
+      _withdrawFromStream(streamId,address(0));
     }
 
-    function _withdrawFromStream(uint256 streamId) private {
+    function withdrawFromStreams(uint256[] calldata streamIds)
+        public
+        nonReentrant {
+      for (uint256 i = 0; i < streamIds.length; i++)
+      {
+        _withdrawFromStream(streamIds[i], address(0));
+      }
+    }
+
+
+    /// @dev Withdraws from the contract to the recipient's account. If the recipient is address 0, it withdraws to the holder of the stream NFT token. 
+    function _withdrawFromStream(uint256 streamId, address recipient) private {
       // Get stream
 
       (uint256 ratePerSecond, uint256 startTime,
         uint256 stopTime, address sender, 
-        bool isActive, uint256 streamAccruedSince) = subi.getStream(streamId);
+        bool isActive, uint256 streamAccruedSince, bool isCancellable) = subi.getStream(streamId);
 
       require(isActive, "stream not active");
       // Make sure stream is active and has accrued UBI
-      require(startTime <= block.timestamp && streamAccruedSince < stopTime, "Stream has not accrued enough UBI yet.");
+      if(block.timestamp < startTime || stopTime < streamAccruedSince) return;
       
         uint256 streamBalance = subi.balanceOfStream(streamId);
 
@@ -431,8 +455,12 @@ contract UBI is Initializable {
             accruedSince[sender] = block.timestamp;
         }        
         // Consolidate stream balance.
-        address recipient = subi.ownerOf(streamId);
-        ubiBalance[recipient] = ubiBalance[recipient].add(streamBalance);
+        address realRecipient = recipient;
+        if(recipient == address(0)) {
+          realRecipient = subi.ownerOf(streamId);
+        }
+
+        ubiBalance[realRecipient] = ubiBalance[realRecipient].add(streamBalance);
         subi.onWithdrawnFromStream(streamId);
     }
 
@@ -447,11 +475,12 @@ contract UBI is Initializable {
     {
       (uint256 ratePerSecond, uint256 startTime,
       uint256 stopTime, address sender, 
-      bool isActive, uint256 streamAccruedSince) = subi.getStream(streamId);
+      bool isActive, uint256 streamAccruedSince, bool isCancellable) = subi.getStream(streamId);
       require(msg.sender == sender, "only sender can cancel stream");
+      require(isCancellable, "stream not cancellable");
       
       // Withdraw funds from the stream and delete it
-      _withdrawFromStream(streamId);
+      _withdrawFromStream(streamId, address(0));
       if(isActive) {
         // Delete the stream
         subi.onCancelStream(streamId);
@@ -515,7 +544,7 @@ contract UBI is Initializable {
   function getStream(uint256 streamId) private view returns (Types.Stream memory) {
     (uint256 ratePerSecond, uint256 startTime,
       uint256 stopTime, address sender, 
-      bool isActive, uint256 streamAccruedSince) = subi.getStream(streamId);
+      bool isActive, uint256 streamAccruedSince, bool isCancellable) = subi.getStream(streamId);
 
       return Types.Stream({
         ratePerSecond: ratePerSecond,
@@ -523,7 +552,8 @@ contract UBI is Initializable {
         stopTime: stopTime,
         sender: sender,
         isActive: isActive,
-        accruedSince: streamAccruedSince
+        accruedSince: streamAccruedSince,
+        isCancellable: isCancellable
       });
   }
 
