@@ -113,4 +113,7 @@ interface ISUBI is IERC721 {
     /// @dev Callback for when reportRemoval is executed on UBI.
     //function onReportRemoval(address human) external;
 
+    function getDelegatedValue(address _sender, uint256 startTime, uint256 stopTime) external view returns (uint256);
+
+    function getDelegatedValue(address _sender) external view returns (uint256);
 }
