@@ -227,6 +227,18 @@ contract UBI is Initializable {
           subi.onCancelStream(streamId);
       }
     }
+    // If fUBI is set
+    if(address(fubi) != address(0)) {
+      // Get active flows of human
+      uint256[] memory activeFlowIds = fubi.getFlowsOf(_human);
+      // On each flow, withdraw and cancel the flow
+      for(uint256 i = 0; i < activeFlowIds.length; i++) {
+        uint256 flowId = activeFlowIds[i];
+        
+        cancelFlow(flowId);
+          
+      }
+    }
   }
 
   /** @dev Changes `governor` to `_governor`.

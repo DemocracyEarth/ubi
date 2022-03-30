@@ -377,7 +377,9 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       for(uint256 i = 0; i < streamIdsOf[_sender].length; i++) {
         uint256 streamId = streamIdsOf[_sender][i];
         Types.Stream memory otherStream = streams[streamId];
-        delegatedBalance = delegatedBalance.add(otherStream.ratePerSecond);
+        if (otherStream.stopTime > block.timestamp){
+          delegatedBalance = delegatedBalance.add(otherStream.ratePerSecond);
+        }
       }
       return delegatedBalance;
     }

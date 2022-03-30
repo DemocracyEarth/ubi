@@ -10,7 +10,7 @@ const deploymentParams = require('../deployment-params');
 
 async function deployFUBI(ubiInstance, governorAddress) {
     const FUBIFactory = await ethers.getContractFactory("fUBI");
-    const fUBI = await FUBIFactory.deploy(ubiInstance.address, governorAddress, deploymentParams.FUBI_NAME, deploymentParams.FUBI_SYMBOL);
+    const fUBI = await FUBIFactory.deploy(ubiInstance.address, governorAddress,deploymentParams.FUBI_MAX_STREAMS_ALLOWED ,deploymentParams.FUBI_NAME, deploymentParams.FUBI_SYMBOL);
     await fUBI.deployed();
     await ubiInstance.setFUBI(fUBI.address);
     return fUBI;
@@ -291,7 +291,7 @@ describe("fUBI.sol", () => {
       const toDate = moment(fromDate).add(1, "hour").toDate();
       // ACT && ASSERT
       // try to create flow with a value greater than available, should revert
-      await testUtils.createStream(
+      await testUtils.createCancellableStream(
         sender,
         recipient.address,
         newFlowPaymentPerSecond.add(1),
@@ -330,14 +330,14 @@ describe("fUBI.sol", () => {
 
       // ACT && ASSERT
       // try to create flow with a value greater than available, should revert
-      await testUtils.createStream(
+      await testUtils.createCancellableStream(
         sender,
         recipient.address,
         newFlowPaymentPerSecond,
         fromDate, toDate,
         ubi, sUBI);
 
-      await testUtils.createStream(
+      await testUtils.createCancellableStream(
         sender,
         recipient.address,
         newFlowPaymentPerSecond,
@@ -384,14 +384,14 @@ describe("fUBI.sol", () => {
 
       // ACT && ASSERT
       // try to create flow with a value greater than available, should revert
-      await testUtils.createStream(
+      await testUtils.createCancellableStream(
         sender,
         recipient.address,
         newFlowPaymentPerSecond,
         fromDate, toDate,
         ubi, sUBI);
 
-      await testUtils.createStream(
+      await testUtils.createCancellableStream(
         sender,
         recipient.address,
         newFlowPaymentPerSecond,
