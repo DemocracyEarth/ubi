@@ -49,6 +49,8 @@ interface IFUBI is IERC721 {
 
     function getFlowsOf(address _human) external view returns (uint256[] memory);
 
+    function maxFlowsAllowed() external view returns (uint256); 
+
     function mintFlow(address sender, address recipient, uint256 ubiPerSecond) external returns (uint256 FlowId);
 
     //function FlowExists(uint256 FlowId) external view returns (bool);
