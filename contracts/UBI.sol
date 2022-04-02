@@ -209,6 +209,18 @@ contract UBI is Initializable {
     for(uint256 i = 0; i < delegatorImplementations.length; i++) {
       IUBIDelegator(delegatorImplementations[i]).onReportRemoval(msg.sender);
     }
+    // If fUBI is set
+    if(address(fubi) != address(0)) {
+      // Get active flows of human
+      uint256[] memory activeFlowIds = fubi.getFlowsOf(_human);
+      // On each flow, withdraw and cancel the flow
+      for(uint256 i = 0; i < activeFlowIds.length; i++) {
+        uint256 flowId = activeFlowIds[i];
+        
+        cancelFlow(flowId);
+          
+      }
+    }
   }
 
   /** @dev Changes `governor` to `_governor`.

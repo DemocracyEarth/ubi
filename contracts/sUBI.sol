@@ -373,19 +373,6 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       return _maxStreamsAllowed;
     }
 
-    function getTotalDelegatedRate(address _human, uint256 startTime, uint256 stopTime) external override view returns (uint256) {
-      uint256 delegatedRate;
-      for(uint256 i = 0; i < streamIdsOf[_human].length; i++) {
-        uint256 streamId = streamIdsOf[_human][i];
-        Types.Stream memory otherStream = streams[streamId];
-        // If streams overlap subtract the delegated balance from the available ubi per second
-        if(overlapsWith(Math.max(otherStream.accruedSince, otherStream.startTime), otherStream.stopTime, startTime, stopTime)) {
-          delegatedRate = delegatedRate.add(otherStream.ratePerSecond);
-        }
-      }
-      return delegatedRate;
-    }
-
     // function getDelegatedValue(address _sender) public override view returns (uint256){
     //   uint256 delegatedBalance;
     //   for(uint256 i = 0; i < streamIdsOf[_sender].length; i++) {

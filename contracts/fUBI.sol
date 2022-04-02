@@ -67,6 +67,9 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
   /// @dev The last token ID issued.
   uint256 public lastTokenId = 0;
 
+  /// @dev Maximum number of flows allowed.
+  uint256 private _maxFlowsAllowed;
+
   /// @dev The Flow objects identifiable by their unsigned integer ids.
   mapping(uint256 => Types.Flow) private Flows;
 
@@ -93,7 +96,8 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
     _;
   }
 
-  constructor(address pUBI, address pGovernor, string memory pName, string memory pSymbol) ERC721(pName, pSymbol) ReentrancyGuard() {
+  constructor(address pUBI, address pGovernor, uint256 pMaxFlowsAllowed,string memory pName, string memory pSymbol) ERC721(pName, pSymbol) ReentrancyGuard() {
+      _maxFlowsAllowed = pMaxFlowsAllowed;
       ubi = pUBI;
       proofOfHumanity = IUBI(ubi).getProofOfHumanity();
       governor = pGovernor;
@@ -127,6 +131,9 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
       require(ubiPerSecond <= IUBI(ubi).getAccruedPerSecond(), "Cannot delegate a value higher than accruedPerSecond");
 
       lastTokenId += 1;
+
+      // Check that we are not exceeding the max allowed.
+      require(FlowIdsOf[sender].length + 1 <= _maxFlowsAllowed, "max flows exceeded");
 
       // Create the Flow
       Flows[lastTokenId] = Types.Flow({
@@ -259,6 +266,15 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
     }
 
 
+
+    /**
+     * @dev Set the max number of flows allowed per human.
+     */
+    function setMaxFlowsAllowed(uint256 newValue) external onlyByGovernor {
+      _maxFlowsAllowed = newValue;
+    }
+
+
     /**
      * @dev gets the outgoing delegated value.
      * This sums the value of all active Flows from the human.
@@ -316,6 +332,10 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
 
     function getFlowsOf(address _human) public override view returns (uint256[] memory) {
       return FlowIdsOf[_human];
+    }
+
+    function maxFlowsAllowed() external override view returns (uint256) {
+      return _maxFlowsAllowed;
     }
 
 

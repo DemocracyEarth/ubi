@@ -24,3 +24,4 @@ module.exports.SUBI_MAX_STREAMS_ALLOWED = 100;
 
 module.exports.FUBI_NAME = "Flowed Universal Basic Income";
 module.exports.FUBI_SYMBOL = "SUBI";
+module.exports.FUBI_MAX_STREAMS_ALLOWED = 50;
