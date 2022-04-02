@@ -60,12 +60,8 @@ describe("fUBI.sol", () => {
     ubi = await deployUBI(mockPoh.address);
     // Get the value of accruedPerSecond
     accruedPerSecond = await ubi.accruedPerSecond();
-
-    sUBI = await deploySUBI(ubi, accounts[0].address);
-
+    
     fUBI = await deployFUBI(ubi, accounts[0].address);
-
-    await fUBI.setSUBI(sUBI.address);
   })
 
   describe("Basic tests", () => {
@@ -190,7 +186,7 @@ describe("fUBI.sol", () => {
       // Delegate half of UBI per second
       const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
       
-      await ubi.cancelFlow(flow1Id);
+      await ubi.cancelDelegation(fUBI.address, flow1Id);
       
       
       // Create flow with half ubiPerSecond delegation

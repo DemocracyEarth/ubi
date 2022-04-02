@@ -87,9 +87,12 @@ const testUtils = {
    * @returns 
    */
   async ubiConsolidatedBalanceOfWallet(address, ubi) {
-    const balance = BigNumber((await ubi["balanceOf(address)"](address)).toString());
-    const accrued = BigNumber((await ubi.getAccruedValue(address)).toString());
-    return balance.minus(accrued);
+    console.log("****** UBI CONSOLIDATED BALANCE OF WALLET ******")
+    const balance = await ubi.balanceOf(address);
+    const accrued = await ubi.getAccruedValue(address);
+    // console.log("Balance:", balance.toString());
+    // console.log("Accrued:", balance.toString());
+    return balance.sub(accrued);
   },
 
   hoursToSeconds(hours) {

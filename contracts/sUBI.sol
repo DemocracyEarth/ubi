@@ -104,7 +104,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
     * @param stopTime The unix timestamp for when the stream stops.
     * @return The uint256 id of the newly created stream.
     */
-  function mintStream(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool isCancellable)
+  function createDelegation(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool isCancellable)
       public
       override
       nonReentrant
@@ -117,7 +117,6 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       require(ubiPerSecond > 0, "UBI per second is zero");
       require(startTime > block.timestamp, "start time should be in the future");
       require(stopTime > startTime, "stop time before the start time");
-      require(ubiPerSecond <= IUBI(ubi).getAccruedPerSecond(), "Cannot delegate a value higher than accruedPerSecond");
 
       // Check that we are not exceeding the max allowed.
       require(streamIdsOf[sender].length + 1 <= _maxStreamsAllowed, "max streams exceeded");
@@ -195,11 +194,13 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
   }
 
     /// @dev Callback for when UBI contract has cancelled a stream.
-    function onCancelStream(uint256 streamId) public override onlyUBI {
+    function cancelDelegation(uint256 streamId) public override onlyUBI {
       Types.Stream memory stream = streams[streamId];
       deleteStream(streamId);
       emit CancelStream(streamId, stream.sender, ownerOf(streamId));
     }
+
+    
 
     /**
      * @dev Set the max number of stream allowed per human.
@@ -372,17 +373,30 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       return _maxStreamsAllowed;
     }
 
-    function getDelegatedValue(address _sender) public override view returns (uint256){
-      uint256 delegatedBalance;
-      for(uint256 i = 0; i < streamIdsOf[_sender].length; i++) {
-        uint256 streamId = streamIdsOf[_sender][i];
+    function getTotalDelegatedRate(address _human, uint256 startTime, uint256 stopTime) external override view returns (uint256) {
+      uint256 delegatedRate;
+      for(uint256 i = 0; i < streamIdsOf[_human].length; i++) {
+        uint256 streamId = streamIdsOf[_human][i];
         Types.Stream memory otherStream = streams[streamId];
-        delegatedBalance = delegatedBalance.add(otherStream.ratePerSecond);
+        // If streams overlap subtract the delegated balance from the available ubi per second
+        if(overlapsWith(Math.max(otherStream.accruedSince, otherStream.startTime), otherStream.stopTime, startTime, stopTime)) {
+          delegatedRate = delegatedRate.add(otherStream.ratePerSecond);
+        }
       }
-      return delegatedBalance;
+      return delegatedRate;
     }
 
-    function getDelegatedValue(address _sender, uint256 startTime, uint256 stopTime) public override view returns (uint256){
+    // function getDelegatedValue(address _sender) public override view returns (uint256){
+    //   uint256 delegatedBalance;
+    //   for(uint256 i = 0; i < streamIdsOf[_sender].length; i++) {
+    //     uint256 streamId = streamIdsOf[_sender][i];
+    //     Types.Stream memory otherStream = streams[streamId];
+    //     delegatedBalance = delegatedBalance.add(otherStream.ratePerSecond);
+    //   }
+    //   return delegatedBalance;
+    // }
+
+    function getDelegatedValue(address _sender, uint256 startTime, uint256 stopTime) public view returns (uint256){
       uint256 delegatedBalance;
       for(uint256 i = 0; i < streamIdsOf[_sender].length; i++) {
         uint256 streamId = streamIdsOf[_sender][i];
@@ -394,4 +408,100 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       }
       return delegatedBalance;
     }
+
+    function getDelegationNodes(uint256 delegationId) external override view returns (address sender, address recipient) {
+      Types.Stream memory delegation = streams[delegationId];
+      return (delegation.sender, ownerOf(delegationId));
+    }
+
+    /// @dev Streams accrue their value on the ERC721 token, not the recipient so this returns 0 always.
+    function incomingTotalAccruedValue(address _human) external override view returns (uint256) {
+      return 0;
+    }
+
+    function outgoingTotalAccruedValue(address _human) external override view returns (uint256) {
+      uint256 accruedSince = IUBI(ubi).getAccruedSince(_human);
+      uint256 delegatedBalance;
+      for(uint256 i = 0; i < streamIdsOf[_human].length; i++) {
+        uint256 streamId = streamIdsOf[_human][i];
+        Types.Stream memory otherStream = streams[streamId];
+        // If streams overlap subtract the delegated balance from the available ubi per second
+        if(overlapsWith(otherStream.startTime, otherStream.stopTime, accruedSince, block.timestamp)) {
+          delegatedBalance = delegatedBalance.add(otherStream.ratePerSecond);
+        }
+      }
+      return delegatedBalance;
+    }
+
+    function onReportRemoval(address _human) external override {
+      // TODO: Define reportRemoval behavior
+    }
+
+    // function newSupplyFrom(address _human) external override view returns (uint256) {
+    //   uint256 delegatedBalance;
+    //   for(uint256 i = 0; i < streamIdsOf[_sender].length; i++) {
+    //     uint256 streamId = streamIdsOf[_sender][i];
+    //     Types.Stream memory otherStream = streams[streamId];
+    //     // If streams overlap subtract the delegated balance from the available ubi per second
+    //     if(overlapsWith(otherStream.startTime, otherStream.stopTime, startTime, stopTime)) {
+    //       delegatedBalance = delegatedBalance.add(otherStream.ratePerSecond);
+    //     }
+    //   }
+    //   return delegatedBalance;
+    // }
+
+    // function onReportRemoval(address _human) public override {
+
+    //   // Get active streams of human
+    //     uint256[] memory activeStreamIds = this.getActiveStreamsOf(_human);
+    //     // On each stream, withdraw and cancel the stream
+    //     for(uint256 i = 0; i < activeStreamIds.length; i++) {
+    //       uint256 streamId = activeStreamIds[i];
+    //         // Withdraw funds from the stream and delete it
+    //         _withdrawFromStream(streamId, msg.sender);
+    //         // Delete the stream
+    //         onCancelDelegation(streamId);
+
+    //     }
+    // }
+
+    // /// @dev Withdraws from the contract to the recipient's account. If the recipient is address 0, it withdraws to the holder of the stream NFT token. 
+    // function _withdrawFromStream(uint256 streamId, address recipient) private {
+    //   // Get stream
+
+    //   (uint256 ratePerSecond, uint256 startTime,
+    //     uint256 stopTime, address sender, 
+    //     bool isActive, uint256 streamAccruedSince, bool isCancellable) = subi.getStream(streamId);
+
+    //   require(isActive, "stream not active");
+    //   // Make sure stream is active and has accrued UBI
+    //   if(block.timestamp < startTime || stopTime < streamAccruedSince) return;
+      
+    //   uint256 streamBalance = subi.balanceOfStream(streamId);
+
+    //   // Consolidate sender balance
+    //   uint256 newSupplyFrom;
+    //   uint256 humanAccruedSince = accruedSince[sender];
+      
+    //   if (humanAccruedSince > 0 && proofOfHumanity.isRegistered(sender)) {
+          
+    //       newSupplyFrom = getTotalDelegatedValue(sender);
+    //       uint256 receivingDelegatedValue = ubiInflow[sender].mul(block.timestamp.sub(humanAccruedSince));
+
+    //       totalSupply = totalSupply.add(newSupplyFrom).add(receivedAccruedValue);
+
+    //       ubiBalance[sender] = balanceOf(sender);
+
+    //       // Update accruedSince
+    //       accruedSince[sender] = block.timestamp;
+    //   }        
+    //   // Consolidate stream balance.
+    //   address realRecipient = recipient;
+    //   if(recipient == address(0)) {
+    //     realRecipient = subi.ownerOf(streamId);
+    //   }
+
+    //   ubiBalance[realRecipient] = ubiBalance[realRecipient].add(streamBalance);
+    //   subi.onWithdrawnFromStream(streamId);
+    // }
 }

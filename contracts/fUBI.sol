@@ -13,7 +13,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./interfaces/IFUBI.sol";
-import "./interfaces/ISUBI.sol";
 import "./ReentrancyGuard.sol";
 import "hardhat/console.sol";
 
@@ -30,13 +29,22 @@ interface IProofOfHumanity {
     );
 }
 
+library Types {
+struct Flow {
+        uint256 ratePerSecond; // The rate of UBI to drip to this Flow from the current accrued value
+        uint256 startTime;
+        address sender;
+        bool isActive;
+    }
+}
+
 interface IUBI {
   function getAccruedSince(address _human) external view returns (uint256);
   function getProofOfHumanity() external view returns (address);
   function getAccruedPerSecond() external view returns (uint256);
   function balanceOfStream(uint256 streamId) external view returns (uint256);
   function getUbiOutflow(address _human) external view returns(uint256);
-  function onFlowTransfer(address _oldOwner, address _newOwner, uint256 ratePerSecond) external;
+  function onDelegationTransfer(address _oldOwner, address _newOwner, uint256 ratePerSecond) external;
 }
 /**
  * @title Universal Basic Income
@@ -51,7 +59,6 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
   using SafeMath for uint256;
 
   address public ubi;
-  address public sUBI;
   address public governor;
 
   /// @dev The Proof Of Humanity registry to reference.
@@ -66,6 +73,13 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
   /// @dev A mapping containing UNORDERED lists of the Flow ids of each sender.
   /// @notice This does not guarantee to contain valid Flows. Some may be ended (not withdrawn).
   mapping (address => uint256[]) public FlowIdsOf;
+
+  /// Streams sin final creados por el address. 
+  ///Debe ser menor a 1 UBI y sujeto a restricciones de otros tipos de streams creados
+  mapping (address => uint256) public ubiOutflow;
+
+  /// Streams sin final recibido por el address. No tiene restriccion de valor.
+  mapping (address => uint256) public ubiInflow;
 
   /// @dev Caller can only be UBI contract
   modifier onlyUBI() {
@@ -99,7 +113,7 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
     * @param ubiPerSecond The amount of UBI to be Flowed every second. MUST be <= accruedPerSecond
     * @return The uint256 id of the newly created Flow.
     */
-  function mintFlow(address sender, address recipient, uint256 ubiPerSecond)
+  function createDelegation(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool isCancellable)
       public
       override
       nonReentrant
@@ -111,8 +125,7 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
       require(recipient != sender, "Flow to the caller");
       require(ubiPerSecond > 0, "UBI per second is zero");
       require(ubiPerSecond <= IUBI(ubi).getAccruedPerSecond(), "Cannot delegate a value higher than accruedPerSecond");
-      require(ubiPerSecond <= (IUBI(ubi).getAccruedPerSecond()).sub(ISUBI(sUBI).getDelegatedValue(sender))
-      .sub(IUBI(ubi).getUbiOutflow(sender)), "Delegated value exceeds available balance for the given Flow");
+
       lastTokenId += 1;
 
       // Create the Flow
@@ -129,9 +142,49 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
 
       _safeMint(recipient, lastTokenId);
 
+      ubiOutflow[sender] = ubiOutflow[sender].add(ubiPerSecond);
+      ubiInflow[recipient] = ubiInflow[recipient].add(ubiPerSecond); 
+
       emit CreateFlow(sender, lastTokenId, ubiPerSecond, block.timestamp);
       return lastTokenId;
   } 
+
+  // function _updateBalance(address _human) internal {
+  //   uint256 newSupplyFrom;
+  //   uint256 pendingDelegatedAccruedValue = address(subi) == address(0) ? 0 : subi.getDelegatedAccruedValue(_human);
+  //   uint256 lastTimeAccrued = accruedSince[_human];
+  //   accruedSince[_human] = block.timestamp;
+  //   if (lastTimeAccrued != 0 && proofOfHumanity.isRegistered(_human)) {
+  //       newSupplyFrom = (accruedPerSecond.sub(ubiOutflow[_human])).mul(block.timestamp.sub(lastTimeAccrued));
+  //   }
+  //   uint256 receivedAccruedValue = ubiInflow[_human].mul(block.timestamp.sub(lastTimeAccrued));
+  //   totalSupply = totalSupply.add(newSupplyFrom).add(receivedAccruedValue);
+  //   ubiBalance[_human] = ubiBalance[_human].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).add(receivedAccruedValue);
+  // }
+
+  // function newSupplyFrom(address _human) public override view returns (uint256)  {
+  //   uint256 lastTimeAccrued = IUBI(ubi).getAccruedSince(_human);
+  //   uint256 accruedPerSecond = IUBI(ubi).getAccruedPerSecond(); 
+  //   uint256 newSupplyFrom;
+  //   //accruedSince[_human] = block.timestamp;
+  //   if (lastTimeAccrued != 0 && IProofOfHumanity(proofOfHumanity).isRegistered(_human)) {
+  //     newSupplyFrom = (accruedPerSecond.sub(ubiOutflow[_human])).mul(block.timestamp.sub(lastTimeAccrued));
+  //   }
+
+  //   return newSupplyFrom;
+
+  //   // uint256 receivedAccruedValue = ubiInflow[_human].mul(block.timestamp.sub(lastTimeAccrued));
+  //   // totalSupply = totalSupply.add(newSupplyFrom).add(receivedAccruedValue);
+  //   // ubiBalance[_human] = ubiBalance[_human].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).add(receivedAccruedValue);
+  // }
+
+  function incomingTotalAccruedValue(address _human) public override view returns (uint256) {
+    return ubiInflow[_human].mul(block.timestamp.sub(IUBI(ubi).getAccruedSince(_human)));
+  }
+
+  function outgoingTotalAccruedValue(address _human) public override view returns (uint256) {
+    return ubiOutflow[_human].mul(block.timestamp.sub(IUBI(ubi).getAccruedSince(_human)));
+  }
 
   function setUBI(address pUBI) public onlyUBI {
     ubi = pUBI;
@@ -166,6 +219,29 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
     // Disable the Flow
     Flows[FlowId].isActive = false;
   }
+
+  /**
+     * @notice Stops the flow
+     * @dev Throws if the id does not point to a valid flow.
+     *  Throws if the caller is not the sender or the recipient of the flow.
+     *  Throws if there is a token transfer failure.
+     * @param flowId The id of the flow to cancel.
+     */
+    function cancelDelegation(uint256 flowId) public override nonReentrant
+    {
+      (uint256 ratePerSecond, uint256 startTime,
+       address sender, bool isActive) = this.getFlow(flowId);
+      require(msg.sender == sender, "only sender can cancel flow");
+
+      address recipient = this.ownerOf(flowId);
+      // _updateBalance(sender);
+      // _updateBalance(recipient);
+      ubiOutflow[sender] = ubiOutflow[sender].sub(ratePerSecond);
+      ubiInflow[recipient] = ubiInflow[recipient].sub(ratePerSecond); 
+      
+      deleteFlow(flowId);
+      emit CancelFlow(flowId, sender, ownerOf(flowId));
+    }
   
   function _beforeTokenTransfer(
         address from,
@@ -174,27 +250,41 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
     ) internal override {
         Types.Flow memory flow = Flows[tokenId];
         if(flow.isActive && from != address(0)){
-        IUBI(ubi).onFlowTransfer(from, to, flow.ratePerSecond);
+        
+        IUBI(ubi).onDelegationTransfer(from, to, flow.ratePerSecond);
+        
+        ubiInflow[from] = ubiInflow[from].sub(flow.ratePerSecond);
+        ubiInflow[to] = ubiInflow[to].add(flow.ratePerSecond);
         }
     }
 
 
-    /// @dev Callback for when UBI contract has cancelled a Flow.
-    function onCancelFlow(uint256 FlowId) public override onlyUBI {
-      Types.Flow memory Flow = Flows[FlowId];
-      deleteFlow(FlowId);
-      emit CancelFlow(FlowId, Flow.sender, ownerOf(FlowId));
-    }
-
-
     /**
-     * @dev gets the delegated value.
-     * This sums the  value of all active Flows from the human.
+     * @dev gets the outgoing delegated value.
+     * This sums the value of all active Flows from the human.
      */
-    function getDelegatedValue(address _human) public override view returns (uint256) {
-      IUBI(ubi).getUbiOutflow(_human);
+    // function getOutDelegatedValue(address _human, uint256 startTime, uint256 endTime) public override view returns (uint256) {
+    //   return (IUBI(ubi).getAccruedPerSecond(_human).sub(ubiOutflow[_human])).mul(block.timestamp.sub(IUBI(ubi).getAccruedSince(_human)));
+    // }
+
+    function getTotalDelegatedRate(address _human, uint256 startTime, uint256 stopTime) external override view returns (uint256) {
+      return ubiOutflow[_human];
     }
 
+
+    function getInDelegatedValue(address _recipient) public view returns (uint256) {
+      return ubiInflow[_recipient].mul(block.timestamp.sub(IUBI(ubi).getAccruedSince(_recipient)));
+    }
+
+    function onReportRemoval(address _human) public override {
+      // TODO: Implement on report removal
+    }
+
+
+    function getDelegationNodes(uint256 delegationId) external override view returns(address sender, address recipient) {
+      Types.Flow memory Flow = Flows[delegationId];
+      return (Flow.sender, ownerOf(delegationId));
+    }
 
 
     /**
@@ -264,7 +354,13 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
       // )
     }
 
-    function setSUBI(address _subi) public onlyByGovernor {
-      sUBI = _subi;
-    } 
+     function getUbiOutflow(address _human) public view returns(uint256){
+    return ubiOutflow[_human];
+  }
+
+  function getUbiInflow(address _human) public view returns(uint256){
+    return ubiInflow[_human];
+  }
+
+
 }

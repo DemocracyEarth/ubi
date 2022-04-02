@@ -118,7 +118,7 @@ contract('UBI.sol', skipAll ? function () { } : function (accounts) {
             await setSubmissionIsRegistered(addresses[1], false);
             await network.provider.send("evm_increaseTime", [3600]);
             await network.provider.send("evm_mine");
-            expect((await testUtils.ubiBalanceOfWallet(addresses[1], ubi)).toNumber()).to.equal(prevConsolidatedBalance.toNumber());
+            expect(await ubi.balanceOf(addresses[1])).to.equal(prevConsolidatedBalance);
         });
 
         it("happy path - a submission with interrupted accruing still keeps consolidated balance.", async () => {
@@ -139,18 +139,18 @@ contract('UBI.sol', skipAll ? function () { } : function (accounts) {
             // No longer valid since the account could have received UBI before registering.
             if ((await ubi.accruedSince(accounts[3].address)).toNumber() === 0) {
                 await setSubmissionIsRegistered(accounts[3].address, true);
-                expect((await testUtils.ubiBalanceOfWallet(addresses[3], ubi)).toString()).to.equal('0');
+                expect(await ubi.balanceOf(addresses[3])).to.equal(0);
                 await ubi.startAccruing(accounts[3].address);
             }
 
             // get the consolidated balance of the wallet
-            const initialBalance = await testUtils.ubiBalanceOfWallet(addresses[1], ubi);
+            const initialBalance = await ubi.balanceOf(addresses[1]);
 
             await network.provider.send("evm_increaseTime", [7200]);
             await network.provider.send("evm_mine");
             await ubi.connect(accounts[3]).transfer(addresses[1], 55);
 
-            expect((await testUtils.ubiBalanceOfWallet(addresses[1], ubi)).toNumber()).to.equal(initialBalance.plus(55).toNumber());
+            expect(await ubi.balanceOf(addresses[1])).to.equal(initialBalance.add(55));
         });
 
         it("happy path - check that Mint and Transfer events get called when it corresponds.", async () => {
@@ -197,11 +197,12 @@ contract('UBI.sol', skipAll ? function () { } : function (accounts) {
             // Also verify that the accrued UBI was sent correctly.
             await ubi.accruedSince(addresses[1]);
             await ubi.reportRemoval(addresses[1]);
-            expect((await ubi.accruedSince(addresses[1])).toString()).to.equal('0');
+            expect(await ubi.accruedSince(addresses[1])).to.equal(0);
         });
 
         it("happy path - returns 0 for submissions that are not accruing UBI.", async () => {
-            expect((await ubi.getAccruedValue(addresses[5])).toString()).to.equal('0');
+            await setSubmissionIsRegistered(addresses[5], false);
+            expect(await ubi.getAccruedValue(addresses[5])).to.equal(0);
         });
 
         it("happy path - allow governor to change `proofOfHumanity`.", async () => {

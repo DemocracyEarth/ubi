@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./interfaces/ISUBI.sol";
 import "./interfaces/IFUBI.sol";
+import "./interfaces/IUBIDelegator.sol";
 import "hardhat/console.sol";
 
 /**
@@ -111,20 +112,6 @@ contract UBI is Initializable {
   uint256 private constant _ENTERED = 2;
   /// @dev Stores the reentrancy status for reentrancyGuard
   uint256 private _reentrancyStatus;
-
-
-
-  ///MODIFICACIONES DE DELYVER TEAM
-  ///
-  ///
-  ///
-
-  /// Streams sin final creados por el address. 
-  ///Debe ser menor a 1 UBI y sujeto a restricciones de otros tipos de streams creados
-  mapping (address => uint256) public ubiOutflow;
-
-  /// Streams sin final recibido por el address. No tiene restriccion de valor.
-  mapping (address => uint256) public ubiInflow;
   
   /* Modifiers */
 
@@ -152,6 +139,11 @@ contract UBI is Initializable {
   /// @dev Verifies that the sender is fubi.
   modifier onlyFubi() {
     require(address(fubi) == msg.sender, "The caller is not fubi.");
+    _;
+  }
+
+  modifier onlyDelegator(address delegator) {
+    require(isAllowedImplementation[delegator], "caller is not an allowed delegator");
     _;
   }
 
@@ -214,18 +206,8 @@ contract UBI is Initializable {
     ubiBalance[msg.sender] = ubiBalance[msg.sender].add(newSupply);
     totalSupply = totalSupply.add(newSupply);
 
-    // If sUBI is set
-    if(address(subi) != address(0)) {
-      // Get active streams of human
-      uint256[] memory activeStreamIds = subi.getActiveStreamsOf(_human);
-      // On each stream, withdraw and cancel the stream
-      for(uint256 i = 0; i < activeStreamIds.length; i++) {
-        uint256 streamId = activeStreamIds[i];
-          // Withdraw funds from the stream and delete it
-          _withdrawFromStream(streamId, msg.sender);
-          // Delete the stream
-          subi.onCancelStream(streamId);
-      }
+    for(uint256 i = 0; i < delegatorImplementations.length; i++) {
+      IUBIDelegator(delegatorImplementations[i]).onReportRemoval(msg.sender);
     }
   }
 
@@ -255,7 +237,7 @@ contract UBI is Initializable {
   *  @param _amount The amount to tranfer in base units.
   */
   function transfer(address _recipient, uint256 _amount) public returns (bool) {
-    _updateBalance(msg.sender);
+    updateBalance(msg.sender);
     ubiBalance[msg.sender] = ubiBalance[msg.sender].sub(_amount, "ERC20: transfer amount exceeds balance");
     ubiBalance[_recipient] = ubiBalance[_recipient].add(_amount);
     emit Transfer(msg.sender, _recipient, _amount);
@@ -270,7 +252,7 @@ contract UBI is Initializable {
   function transferFrom(address _sender, address _recipient, uint256 _amount) public returns (bool) {
     
     allowance[_sender][msg.sender] = allowance[_sender][msg.sender].sub(_amount, "ERC20: transfer amount exceeds allowance");
-    _updateBalance(_sender);
+    updateBalance(_sender);
     ubiBalance[_sender] = ubiBalance[_sender].sub(_amount, "ERC20: transfer amount exceeds balance");
     ubiBalance[_recipient] = ubiBalance[_recipient].add(_amount);
     emit Transfer(_sender, _recipient, _amount);
@@ -313,7 +295,7 @@ contract UBI is Initializable {
   *  @param _amount The quantity of tokens to burn in base units.
   */
   function burn(uint256 _amount) public {
-    _updateBalance(msg.sender);
+    updateBalance(msg.sender);
     ubiBalance[msg.sender] = ubiBalance[msg.sender].sub(_amount, "ERC20: burn amount exceeds balance");
     totalSupply = totalSupply.sub(_amount);
     emit Transfer(msg.sender, address(0), _amount);
@@ -325,7 +307,7 @@ contract UBI is Initializable {
   */
   function burnFrom(address _account, uint256 _amount) public {
     allowance[_account][msg.sender] = allowance[_account][msg.sender].sub(_amount, "ERC20: burn amount exceeds allowance");
-    _updateBalance(_account);
+    updateBalance(_account);
     ubiBalance[_account] = ubiBalance[_account].sub(_amount, "ERC20: burn amount exceeds balance");
     totalSupply = totalSupply.sub(_amount);
     emit Transfer(_account, address(0), _amount);
@@ -384,160 +366,199 @@ contract UBI is Initializable {
     }
   }
 
+  struct Delegator {
+        bool isAllowed;
+        bool implementsDelegator;
+    }
+
+  mapping(address => Delegator) public delegators;
+  address[] delegatorImplementations;
+
+  function setDelegator(address _implementation, bool allowed, bool implementsDelegator) public onlyGovernor {
+    Delegator d = delegators[_implementation];
+    d.isAllowed = allowed;
+    
+    // If the new implementation implements delegator, add it to the `delegatorImplementations` array.
+    if(!d.implementsDelegator && implementsDelegator) {
+      d.implementsDelegator = true;
+      delegatorImplementations.push(_implementation);
+    }
+    // Else, if the old value implemented delegator but this is not, we remove the implementation from the `delegatorImplementations` array.
+    else if(d.implementsDelegator && !implementsDelegator) {
+      d.implementsDelegator = false;
+      delegatorImplementations = delegatorImplementations.filter(x => x != _implementation);
+    }  
+    else if (d.implementsDelegator && !implementsDelegator) {
+      d.implementsDelegator = false;
+      delegatorImplementations = delegatorImplementations.filter(x => x != _implementation);
+    }
+
+    delegators[_implementation] = d;
+  }
+
+  function createDelegation(address implementation, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool cancellable) public nonReentrant {
+    require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "Only registered humans accruing UBI can stream UBI.");
+    require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
+    require(isAllowedImplementation[implementation], "implementation not allowed");
+
+    // Update sender and recipient balances.
+    updateBalance(msg.sender);
+    updateBalance(recipient);
+
+    IUBIDelegator(implementation).createDelegation(msg.sender, recipient, ubiPerSecond, startTime, stopTime, cancellable);
+  }
+
   function createStream(address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool cancellable) public nonReentrant {
     require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "Only registered humans accruing UBI can stream UBI.");
-    subi.mintStream(msg.sender, recipient, ubiPerSecond, startTime, stopTime, cancellable);
+    require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
+    subi.createDelegation(msg.sender, recipient, ubiPerSecond, startTime, stopTime, cancellable);
   }
 
   function createFlow(address recipient, uint256 ubiPerSecond) public nonReentrant {
     require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "Only registered humans accruing UBI can flow UBI.");
-    _updateBalance(msg.sender);
-    _updateBalance(recipient);
-    fubi.mintFlow(msg.sender, recipient, ubiPerSecond);
-    ubiOutflow[msg.sender] = ubiOutflow[msg.sender].add(ubiPerSecond);
-    ubiInflow[recipient] = ubiInflow[recipient].add(ubiPerSecond); 
-    
-
+    updateBalance(msg.sender);
+    updateBalance(recipient);
+    fubi.createDelegation(msg.sender, recipient, ubiPerSecond, 0, 0, false);
   }
 
-    /**
-     * @notice Withdraws from the contract to the recipient's account.
-     * @dev Throws if the id does not point to a valid stream.
-     *  Throws if the caller is not the sender or the recipient of the stream.
-     *  Throws if there is a token transfer failure.
-     * @param streamId The id of the stream to withdraw tokens from.
-     */
-    function withdrawFromStream(uint256 streamId)
-        public
-        nonReentrant {
-      _withdrawFromStream(streamId,address(0));
-    }
+    // /**
+    //  * @notice Withdraws from the contract to the recipient's account.
+    //  * @dev Throws if the id does not point to a valid stream.
+    //  *  Throws if the caller is not the sender or the recipient of the stream.
+    //  *  Throws if there is a token transfer failure.
+    //  * @param streamId The id of the stream to withdraw tokens from.
+    //  */
+    // function withdrawFromStream(uint256 streamId)
+    //     public
+    //     nonReentrant {
+    //   _withdrawFromStream(streamId,address(0));
+    // }
 
-    function withdrawFromStreams(uint256[] calldata streamIds)
-        public
-        nonReentrant {
-      for (uint256 i = 0; i < streamIds.length; i++)
-      {
-        _withdrawFromStream(streamIds[i], address(0));
-      }
-    }
+    // function withdrawFromStreams(uint256[] calldata streamIds)
+    //     public
+    //     nonReentrant {
+    //   for (uint256 i = 0; i < streamIds.length; i++)
+    //   {
+    //     _withdrawFromStream(streamIds[i], address(0));
+    //   }
+    // }
 
 
     /// @dev Withdraws from the contract to the recipient's account. If the recipient is address 0, it withdraws to the holder of the stream NFT token. 
-    function _withdrawFromStream(uint256 streamId, address recipient) private {
-      // Get stream
+    // function withdrawFromDelegation(address implementation, uint256 delegationId, address recipient) private {
+    //   // Get stream
 
-      (uint256 ratePerSecond, uint256 startTime,
-        uint256 stopTime, address sender, 
-        bool isActive, uint256 streamAccruedSince, bool isCancellable) = subi.getStream(streamId);
+    //   (uint256 ratePerSecond, uint256 startTime,
+    //     uint256 stopTime, address sender, 
+    //     bool isActive, uint256 streamAccruedSince, bool isCancellable) = subi.getStream(streamId);
 
-      require(isActive, "stream not active");
-      // Make sure stream is active and has accrued UBI
-      if(block.timestamp < startTime || stopTime < streamAccruedSince) return;
+    //   require(isActive, "stream not active");
+    //   // Make sure stream is active and has accrued UBI
+    //   if(block.timestamp < startTime || stopTime < streamAccruedSince) return;
       
-        uint256 streamBalance = subi.balanceOfStream(streamId);
+    //     uint256 streamBalance = subi.balanceOfStream(streamId);
 
-        // Consolidate sender balance
-        uint256 newSupplyFrom;
-        uint256 humanAccruedSince = accruedSince[sender];
+    //     // Consolidate sender balance
+    //     uint256 newSupplyFrom;
+    //     uint256 humanAccruedSince = accruedSince[sender];
         
-        if (humanAccruedSince > 0 && proofOfHumanity.isRegistered(sender)) {
+    //     if (humanAccruedSince > 0 && proofOfHumanity.isRegistered(sender)) {
             
-            newSupplyFrom =  (accruedPerSecond.sub(ubiOutflow[sender])).mul(block.timestamp.sub(humanAccruedSince));
+    //         newSupplyFrom = getTotalDelegatedValue(sender);
+    //         uint256 receivingDelegatedValue = ubiInflow[sender].mul(block.timestamp.sub(humanAccruedSince));
 
-            uint256 receivedAccruedValue = ubiInflow[sender].mul(block.timestamp.sub(humanAccruedSince));
+    //         totalSupply = totalSupply.add(newSupplyFrom).add(receivedAccruedValue);
 
-            totalSupply = totalSupply.add(newSupplyFrom).add(receivedAccruedValue);
+    //         ubiBalance[sender] = balanceOf(sender);
 
-            ubiBalance[sender] = balanceOf(sender);
+    //         // Update accruedSince
+    //         accruedSince[sender] = block.timestamp;
+    //     }        
+    //     // Consolidate stream balance.
+    //     address realRecipient = recipient;
+    //     if(recipient == address(0)) {
+    //       realRecipient = subi.ownerOf(streamId);
+    //     }
 
-            // Update accruedSince
-            accruedSince[sender] = block.timestamp;
-        }        
-        // Consolidate stream balance.
-        address realRecipient = recipient;
-        if(recipient == address(0)) {
-          realRecipient = subi.ownerOf(streamId);
-        }
+    //     ubiBalance[realRecipient] = ubiBalance[realRecipient].add(streamBalance);
+    //     subi.onWithdrawnFromStream(streamId);
+    // }
 
-        ubiBalance[realRecipient] = ubiBalance[realRecipient].add(streamBalance);
-        subi.onWithdrawnFromStream(streamId);
-    }
+    // function getTotalDelegatedValue(address _human) public view returns(uint256) {
+
+    //   uint256 totalDelegatedRate;
+    //   for(uint256 i = 0; i < delegatorImplementations.length; i++) {
+    //       totalDelegatedRate += IUBIDelegator(delegatorImplementations[i]).getTotalDelegatedRate(_human, accruedSince[_human], block.timestamp);
+    //   }
+      
+    //   return totalDelegatedRate;
+    // }
 
     /**
      * @notice Stops the stream
      * @dev Throws if the id does not point to a valid stream.
      *  Throws if the caller is not the sender or the recipient of the stream.
      *  Throws if there is a token transfer failure.
-     * @param streamId The id of the stream to cancel.
+     * @param delegatorImpl the adddress of the UBI Delegator contract
+     * @param delegationId The id of the delegation to cancel.
      */
-    function cancelStream(uint256 streamId) public nonReentrant 
+    function cancelDelegation(address delegatorImpl, uint256 delegationId) public nonReentrant 
     {
-      (uint256 ratePerSecond, uint256 startTime,
-      uint256 stopTime, address sender, 
-      bool isActive, uint256 streamAccruedSince, bool isCancellable) = subi.getStream(streamId);
-      require(msg.sender == sender, "only sender can cancel stream");
-      require(isCancellable, "stream not cancellable");
+      require(delegators[delegatorImpl].implementsDelegator, "implementation not allowed");
+      IUBIDelegator delegator = IUBIDelegator(delegatorImpl);
+      // Get delegation
+      (address sender, address recipient) = delegator.getDelegationNodes(delegationId);
+      updateBalance(sender);
+      updateBalance(recipient);
+      // TODO: add permissions (allow to cancel if implementation is not active).
+      delegator.cancelDelegation(delegationId);
       
-      // Withdraw funds from the stream and delete it
-      _withdrawFromStream(streamId, address(0));
-      if(isActive) {
-        // Delete the stream
-        subi.onCancelStream(streamId);
-      }
+      // (uint256 ratePerSecond, uint256 startTime,
+      // uint256 stopTime, address sender, 
+      // bool isActive, uint256 streamAccruedSince, bool isCancellable) = subi.getStream(streamId);
+      // require(msg.sender == sender, "only sender can cancel stream");
+      // require(isCancellable, "stream not cancellable");
+      
+      // // Withdraw funds from the stream and delete it
+      // _withdrawFromStream(streamId, address(0));
+      // if(isActive) {
+      //   // Delete the stream
+      //   subi.onCancelStream(streamId);
+      // }
     }
 
-    /**
-     * @notice Stops the flow
-     * @dev Throws if the id does not point to a valid flow.
-     *  Throws if the caller is not the sender or the recipient of the flow.
-     *  Throws if there is a token transfer failure.
-     * @param flowId The id of the flow to cancel.
-     */
-    function cancelFlow(uint256 flowId) public nonReentrant 
-    {
-      (uint256 ratePerSecond, uint256 startTime,
-       address sender, bool isActive) = fubi.getFlow(flowId);
-      require(msg.sender == sender, "only sender can cancel flow");
-
-      address recipient = fubi.ownerOf(flowId);
-      _updateBalance(sender);
-      _updateBalance(recipient);
-      ubiOutflow[sender] = ubiOutflow[sender].sub(ratePerSecond);
-      ubiInflow[recipient] = ubiInflow[recipient].sub(ratePerSecond); 
-      if(isActive) {
-        // Delete the stream
-        fubi.onCancelFlow(flowId);
-      }
-    }
-
-    function onFlowTransfer(address _oldOwner, address _newOwner, uint256 ratePerSecond) public onlyFubi{
-      _updateBalance(_oldOwner);
-      _updateBalance(_newOwner);
-      ubiInflow[_oldOwner] = ubiInflow[_oldOwner].sub(ratePerSecond);
-      ubiInflow[_newOwner] = ubiInflow[_newOwner].add(ratePerSecond); 
+    function onDelegationTransfer(address _oldOwner, address _newOwner, uint256 ratePerSecond) public onlyDelegator(msg.sender) {
+      require(isAllowedImplementation[msg.sender], "delegator not allowed");
+      updateBalance(_oldOwner);
+      updateBalance(_newOwner);
     }
 
     /* Setters */
     function setSUBI(address _subi) public onlyByGovernor {
       subi = ISUBI(_subi);
     }
-
-    function setFUBI(address _fubi) public onlyByGovernor {
-      fubi = IFUBI(_fubi);
-    }
-
   /* Getters */
 
-  /** @dev Calculates how much UBI a submission has available for withdrawal.
+  /** @dev Calculates how much UBI a submission has accrued and is pending consolidation..
   *  @param _human The submission ID.
   *  @return accrued The available UBI for withdrawal.
   */
   function getAccruedValue(address _human) public view returns (uint256 accrued) {
-    // If this human have not started to accrue, or is not registered, return 0.
-    if (accruedSince[_human] == 0 || !proofOfHumanity.isRegistered(_human)) return 0;
 
-    else return (accruedPerSecond.sub(ubiOutflow[msg.sender])).mul(block.timestamp.sub(accruedSince[_human]));
+    uint256 totalAccrued = proofOfHumanity.isRegistered(_human) && accruedSince[_human] > 0 ?
+      accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human])) :
+      0;
+
+    // Get the new supply from the delegations.
+    for(uint256 i = 0; i < delegatorImplementations.length; i++) {
+      if(!isAllowedImplementation[delegatorImplementations[i]]) continue;
+      IUBIDelegator delegator = IUBIDelegator(delegatorImplementations[i]);
+      totalAccrued = totalAccrued
+        .sub(delegator.outgoingTotalAccruedValue(_human))
+        .add(delegator.incomingTotalAccruedValue(_human));
+    }
+
+    return totalAccrued;
   }
 
   /// @dev Utility function to avoid error "Stack too deep"
@@ -563,41 +584,39 @@ contract UBI is Initializable {
   * @return The current balance including accrued Universal Basic Income of the user.
   **/
   function balanceOf(address _human) public view returns (uint256) {
-    uint256 pendingDelegatedAccruedValue = 0;
+    return ubiBalance[_human].add(getAccruedValue(_human));
 
-    if(address(subi) != address(0)) {
+    // if(address(subi) != address(0)) {
 
-      uint256[] memory streamIdsOf = subi.getStreamsOf(_human);
-      // Subtract pending value already consolidated
-      for(uint256 i = 0; i < streamIdsOf.length; i++) {
-        Types.Stream memory stream = getStream(streamIdsOf[i]);
-        if(!stream.isActive) continue; // Stream Exists
-        if(!proofOfHumanity.isRegistered(stream.sender)) continue; // Sender is a registered human
+    //   uint256[] memory streamIdsOf = subi.getStreamsOf(_human);
+    //   // Subtract pending value already consolidated
+    //   for(uint256 i = 0; i < streamIdsOf.length; i++) {
+    //     Types.Stream memory stream = getStream(streamIdsOf[i]);
+    //     if(!stream.isActive) continue; // Stream Exists
+    //     if(!proofOfHumanity.isRegistered(stream.sender)) continue; // Sender is a registered human
 
-        // If stream has not started, or it has been accrued all.
-        if(block.timestamp < stream.startTime) continue;
+    //     // If stream has not started, or it has been accrued all.
+    //     if(block.timestamp < stream.startTime) continue;
 
-        // Time delegated to the stream
-        uint256 streamAccumulatedTime = subi.accruedTime(streamIdsOf[i]);
+    //     // Time delegated to the stream
+    //     uint256 streamAccumulatedTime = subi.accruedTime(streamIdsOf[i]);
 
-        // // If there is accumulated time and the human accrued after the stream started, subtract delta of accrued since and startTime
-        uint256 streamAccruingStart = Math.max(stream.startTime, stream.accruedSince);
-        if(streamAccumulatedTime > 0 && accruedSince[_human] >= streamAccruingStart) {
-          uint256 streamAccruingStop = Math.min(accruedSince[_human],Math.min(block.timestamp, stream.stopTime));
-          uint256 toSubtract = streamAccruingStop.sub(streamAccruingStart);
-          // Subtract time already accounted for
-          streamAccumulatedTime = streamAccumulatedTime.sub(Math.min(toSubtract,streamAccumulatedTime));
-        }   
-        // Stream's total accrued value is the accumulated time * stream's ratePerSecond
-        pendingDelegatedAccruedValue += streamAccumulatedTime.mul(stream.ratePerSecond);
-      }  
+    //     // // If there is accumulated time and the human accrued after the stream started, subtract delta of accrued since and startTime
+    //     uint256 streamAccruingStart = Math.max(stream.startTime, stream.accruedSince);
+    //     if(streamAccumulatedTime > 0 && accruedSince[_human] >= streamAccruingStart) {
+    //       uint256 streamAccruingStop = Math.min(accruedSince[_human],Math.min(block.timestamp, stream.stopTime));
+    //       uint256 toSubtract = streamAccruingStop.sub(streamAccruingStart);
+    //       // Subtract time already accounted for
+    //       streamAccumulatedTime = streamAccumulatedTime.sub(Math.min(toSubtract,streamAccumulatedTime));
+    //     }   
+    //     // Stream's total accrued value is the accumulated time * stream's ratePerSecond
+    //     pendingDelegatedAccruedValue += streamAccumulatedTime.mul(stream.ratePerSecond);
+    //   }  
         
-    }
-    uint256 receivedAccruedValue = ubiInflow[_human].mul(block.timestamp.sub(accruedSince[_human]));
-
+    // }
 
       // Total balance is: Last balance + (accrued balance - delegated accrued balance) + received accrued balance
-    return getAccruedValue(_human).add(ubiBalance[_human]).sub(pendingDelegatedAccruedValue).add(receivedAccruedValue);
+    
   }
     
   function getAccruedSince(address _human) public view returns (uint256) {
@@ -611,33 +630,24 @@ contract UBI is Initializable {
   function getAccruedPerSecond() public view returns (uint256) {
     return accruedPerSecond;
   }
+  
 
-  function getUbiOutflow(address _human) public view returns(uint256){
-    return ubiOutflow[_human];
-  }
+  function updateBalance(address _human) internal {
+    uint256 newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
 
-  function getUbiInflow(address _human) public view returns(uint256){
-    return ubiInflow[_human];
-  }
-
-  function getTotalDelegatedValue(address _human) public view returns(uint256){
-    return (subi.getDelegatedValue(_human)).add(ubiOutflow[_human]);
-  }
-
-  function getTotalDelegatedValue(address _human, uint256 startTime, uint256 endTime) public view returns(uint256){
-    return (subi.getDelegatedValue(_human, startTime, endTime)).add(ubiOutflow[_human]);
-  }
-
-  function _updateBalance(address _human) internal {
-    uint256 newSupplyFrom;
-    uint256 pendingDelegatedAccruedValue = address(subi) == address(0) ? 0 : subi.getDelegatedAccruedValue(_human);
-    uint256 lastTimeAccrued = accruedSince[_human];
-    accruedSince[_human] = block.timestamp;
-    if (lastTimeAccrued != 0 && proofOfHumanity.isRegistered(_human)) {
-        newSupplyFrom = (accruedPerSecond.sub(ubiOutflow[_human])).mul(block.timestamp.sub(lastTimeAccrued));
+    // Subtract delegated supply
+    for(uint256 i = 0; i < delegatorImplementations.length; i++) {
+      if(!isAllowedImplementation[delegatorImplementations[i]]) continue;
+      IUBIDelegator delegator = IUBIDelegator(delegatorImplementations[i]);
+      newSupplyFrom = newSupplyFrom
+        .add(delegator.incomingTotalAccruedValue(_human))
+        .sub(delegator.outgoingTotalAccruedValue(_human));
     }
-    uint256 receivedAccruedValue = ubiInflow[_human].mul(block.timestamp.sub(lastTimeAccrued));
-    totalSupply = totalSupply.add(newSupplyFrom).add(receivedAccruedValue);
-    ubiBalance[_human] = ubiBalance[_human].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).add(receivedAccruedValue);
+
+    ubiBalance[_human] = ubiBalance[_human].add(newSupplyFrom);
+    accruedSince[_human] = block.timestamp;
+    // uint256 receivedAccruedValue = ubiInflow[_human].mul(block.timestamp.sub(lastTimeAccrued));
+    // totalSupply = totalSupply.add(newSupplyFrom).add(receivedAccruedValue);
+    // ubiBalance[_human] = ubiBalance[_human].add(newSupplyFrom).sub(pendingDelegatedAccruedValue).add(receivedAccruedValue);
   }
 }
