@@ -4,31 +4,11 @@ const logReader = require("./logReader");
 
 const testUtils = {
   async createCancellableStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, subi, verbose = false) {
-    return await this.createStream(fromAccount, toAddress, streamPerSecond, from, to, true, ubi, subi, verbose, true);
+    return await this.createStream(fromAccount, toAddress, streamPerSecond, from, to, true, ubi, subi, verbose);
   },
 
   async createNonCancellableStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, subi, verbose = false) {
-
-    const fromSecs = testUtils.dateToSeconds(from);
-    const toSecs = testUtils.dateToSeconds(to);
-    const prevStreamId = new BigNumber((await subi.lastTokenId()).toString());
-
-    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, fromSecs, toSecs, false)
-    await tx.wait();
-    const events = await subi.queryFilter(subi.filters.CreateStream(fromAccount.address));
-    const createStreamEvents = logReader.getCreateStreamEvents(events);
-    expect(createStreamEvents && createStreamEvents.length > 0, "createStream should emit event CreateStream");
-    const streamId = createStreamEvents[createStreamEvents.length - 1].args[1];
-    expect(streamId.toNumber()).to.eq(prevStreamId.plus(1).toNumber(), "CreateStream emited with incorrect streamId value")
-
-    if (verbose) {
-      console.log("Created stream:")
-      console.log("Start:", fromSecs)
-      console.log("End:", toSecs);
-      console.log("Time Diff:", toSecs - fromSecs);
-      console.log("Stream per second:", streamPerSecond);
-    }
-    return streamId;
+    return await this.createStream(fromAccount, toAddress, streamPerSecond, from, to, false, ubi, subi, verbose);
   },
 
   async timeForward(seconds, network) {

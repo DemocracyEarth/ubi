@@ -163,6 +163,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
     // revert the locked rate per second
     lockedRatePerSecond[stream.sender] = lockedRatePerSecond[stream.sender].sub(stream.ratePerSecond);
 
+
     for(uint256 i = 0; i < streamIdsOf[stream.sender].length; i++) {
       // If stream is found
       if(streamIdsOf[stream.sender][i] == streamId) {
@@ -179,6 +180,8 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
     
     // Disable the stream
     streams[streamId].isActive = false;
+
+
   }
 
   function _forceDeleteStream(uint256 streamId) private {
@@ -188,7 +191,6 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
   /// @dev Callback for when UBI contract has withdrawn from a Stream.
   function onWithdraw(uint256 streamId) public override onlyUBI returns (uint256) {
     uint256 withdrawnAmount = balanceOfStream(streamId);
-    console.log("withdrawnAmount", withdrawnAmount);
     streams[streamId].accruedSince = Math.min(block.timestamp, streams[streamId].stopTime);
       // DELETE STREAM IF REQUIRED
       // If withdrawing all available balance and stream is completed, remove it from the list of streams
@@ -200,10 +202,13 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
   }
 
     /// @dev Callback for when UBI contract has cancelled a stream.
-    function cancelDelegation(uint256 streamId) public override onlyUBI {
+    function cancelDelegation(uint256 streamId) public override onlyUBI returns(uint256) {
       Types.Stream memory stream = streams[streamId];
+      require(stream.isCancellable, "stream not cancellable");
+      uint256 withdrawnAmount = onWithdraw(streamId);
       deleteStream(streamId);
       emit CancelDelegation(streamId, stream.sender, ownerOf(streamId));
+      return withdrawnAmount;
     }
 
     
@@ -385,7 +390,16 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
 
         // Time delegated to the stream
         uint256 streamAccumulatedTime = accruedTime(streamId);
-        console.log("streamAccumulatedTime", streamAccumulatedTime);
+
+        uint256 senderAccruedSince = IUBI(ubi).getAccruedSince(_human);
+        // // If there is accumulated time and the human accrued after the stream started, subtract delta of accrued since and startTime
+        uint256 streamAccruingStart = Math.max(stream.startTime, stream.accruedSince);
+        if(streamAccumulatedTime > 0 && senderAccruedSince >= streamAccruingStart) {
+          uint256 streamAccruingStop = Math.min(senderAccruedSince, Math.min(block.timestamp, stream.stopTime));
+          uint256 toSubtract = streamAccruingStop.sub(streamAccruingStart);
+          // Subtract time already accounted for
+          streamAccumulatedTime = streamAccumulatedTime.sub(Math.min(toSubtract,streamAccumulatedTime));
+        }   
 
         // Stream's total accrued value is the accumulated time * stream's ratePerSecond
         // Add the stream accrued value to the pending delegated balance
@@ -417,25 +431,25 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       return lockedRatePerSecond[_human];      
     }
 
-    function pendingDelegatedTime(address _human) external override view returns(uint256) {
-      uint256 delegatedAccruedValue;
-      // Iterate on each stream id of the human and calculate the currently delegated accrued value
-      for(uint256 i = 0; i < streamIdsOf[_human].length; i++) {
-        uint256 streamId = streamIdsOf[_human][i];
+    // function pendingDelegatedTime(address _human) external override view returns(uint256) {
+    //   uint256 delegatedAccruedValue;
+    //   // Iterate on each stream id of the human and calculate the currently delegated accrued value
+    //   for(uint256 i = 0; i < streamIdsOf[_human].length; i++) {
+    //     uint256 streamId = streamIdsOf[_human][i];
 
-        Types.Stream memory stream = streams[streamId];
-        if(!IProofOfHumanity(proofOfHumanity).isRegistered(stream.sender)) continue; // Sender is a registered human
+    //     Types.Stream memory stream = streams[streamId];
+    //     if(!IProofOfHumanity(proofOfHumanity).isRegistered(stream.sender)) continue; // Sender is a registered human
 
-        // Time delegated to the stream
-        uint256 streamAccumulatedTime = accruedTime(streamId);
-        console.log("streamAccumulatedTime", streamAccumulatedTime);
+    //     // Time delegated to the stream
+    //     uint256 streamAccumulatedTime = accruedTime(streamId);
+    //     console.log("streamAccumulatedTime", streamAccumulatedTime);
 
-        // Stream's total accrued value is the accumulated time * stream's ratePerSecond
-        // Add the stream accrued value to the pending delegated balance
-        delegatedAccruedValue += streamAccumulatedTime.mul(stream.ratePerSecond);
-      }
-      return delegatedAccruedValue;
-    }
+    //     // Stream's total accrued value is the accumulated time * stream's ratePerSecond
+    //     // Add the stream accrued value to the pending delegated balance
+    //     delegatedAccruedValue += streamAccumulatedTime.mul(stream.ratePerSecond);
+    //   }
+    //   return delegatedAccruedValue;
+    // }
 
     // function newSupplyFrom(address _human) external override view returns (uint256) {
     //   uint256 delegatedBalance;

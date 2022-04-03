@@ -410,6 +410,19 @@ contract UBI is Initializable {
   }
 
   function withdrawFromDelegation(address implementation, uint256 delegationId) public nonReentrant {
+    _withdrawFromDelegation(implementation, delegationId);
+  }
+
+  function withdrawFromDelegations(address implementation, uint256[] calldata delegationIds)
+        public
+        nonReentrant {
+      for (uint256 i = 0; i < delegationIds.length; i++)
+      {
+        _withdrawFromDelegation(implementation, delegationIds[i]);
+      }
+    }
+  
+  function _withdrawFromDelegation(address implementation, uint256 delegationId) private {
     require(delegators.contains(implementation), "implementation not allowed");
     IUBIDelegator delegator = IUBIDelegator(implementation);
     (address sender, address recipient, uint256 rate, bool prevIsActive) =  delegator.getDelegationInfo(delegationId);    
@@ -518,7 +531,10 @@ contract UBI is Initializable {
       updateBalance(sender);
       updateBalance(recipient);
       // TODO: add permissions (allow to cancel if implementation is not active).
-      delegator.cancelDelegation(delegationId);
+      uint256 withdrawnAmount = delegator.cancelDelegation(delegationId);
+
+      ubiBalance[recipient] += withdrawnAmount;
+
       lockedDelegatedValue[msg.sender] -= ratePerSecond;
       
       // (uint256 ratePerSecond, uint256 startTime,
@@ -558,10 +574,8 @@ contract UBI is Initializable {
     for(uint256 i = 0; i < delegatorsLength; i++) {
       IUBIDelegator delegator = IUBIDelegator(delegators.at(i));
       uint256 incoming = delegator.incomingTotalAccruedValue(_human);
-      console.log("incoming", incoming);
       totalAccrued += incoming;
-      uint256 outgoing = delegator.outgoingTotalAccruedValue(_human);
-      console.log("outgoing", outgoing);
+      uint256 outgoing = delegator.outgoingTotalAccruedValue(_human);     
       totalAccrued -= outgoing;
     }
 

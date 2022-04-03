@@ -32,7 +32,7 @@ interface IUBIDelegator {
     );
     function createDelegation(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 endTime, bool cancellable) external virtual returns(uint256);
 
-    function cancelDelegation(uint256 delegationId) external virtual;
+    function cancelDelegation(uint256 delegationId) external virtual returns (uint256);
 
     /// @dev Returns the UBI per second that the human has locked for delegation
     function getDelegatedRate(address _human) external virtual view returns(uint256);
@@ -66,5 +66,5 @@ interface IUBIDelegator {
 
     function getDelegationInfo(uint256 delegationId) external virtual view returns (address sender, address recipient, uint256 ratePerSecond, bool isActive);
     function onWithdraw(uint256 delegationId) external virtual returns(uint256 amountWithdrawn);   
-    function accumulatedTime(uint256 delegationId) external virtual view returns (uint256);
+    // function accumulatedTime(uint256 delegationId) external virtual view returns (uint256);
 }

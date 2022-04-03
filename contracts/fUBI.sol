@@ -238,7 +238,7 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
      *  Throws if there is a token transfer failure.
      * @param flowId The id of the flow to cancel.
      */
-    function cancelDelegation(uint256 flowId) public override nonReentrant onlyUBI
+    function cancelDelegation(uint256 flowId) public override nonReentrant onlyUBI returns (uint256)
     {
       (uint256 ratePerSecond, uint256 startTime,
        address sender, bool isActive) = this.getFlow(flowId);
@@ -251,6 +251,8 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
       
       deleteFlow(flowId);
       emit CancelDelegation(flowId, sender, ownerOf(flowId));
+
+      return 0;
     }
   
   function _beforeTokenTransfer(

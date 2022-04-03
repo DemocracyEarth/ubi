@@ -433,7 +433,6 @@ describe("fUBI.sol", () => {
       // ACT && ASSERT
       // try to create flow with a value greater than available, should revert
       const prevRecipientBalance = await ubi.balanceOf(recipient.address);
-      console.log("PREV RECIPIENT BALANCE", prevRecipientBalance.toString());
       await testUtils.createFlow(sender,
         recipient.address,
         newFlowPaymentPerSecond,
@@ -442,7 +441,6 @@ describe("fUBI.sol", () => {
       await testUtils.timeForward(3600, network); // prev call added 1 second
 
       const newRecipientBalance = await ubi.balanceOf(recipient.address);
-      console.log("NEW RECIPIENT BALANCE", newRecipientBalance.toString());
       await expect(newRecipientBalance).to.eq(prevRecipientBalance.add(newFlowPaymentPerSecond.mul(3600)), "Invalid balance of flow recipient");
 
       const prevTransferRecipientBalance = await ubi.balanceOf(transferRecipient.address);

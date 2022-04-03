@@ -734,9 +734,6 @@ describe("sUBI.sol", () => {
       expect(prevStreamBalance).to.eq(0);
       const prevSenderBalance = await ubi.balanceOf(sender.address);
       const prevRecipientBalance = await ubi.balanceOf(recipient.address);
-      console.log("PREV RECIPIENT BALANCE", prevRecipientBalance.toString());
-      console.log("PREV SENDER BALANCE", prevSenderBalance.toString());
-      console.log("PREV STREAM BALANCE", prevStreamBalance.toString());
       // This steps 1 second on the chain
       await ubi.connect(recipient).withdrawFromDelegation(sUBI.address, streamId);
       // ASSERT
@@ -744,9 +741,7 @@ describe("sUBI.sol", () => {
       const lastStreamBalance = await sUBI.balanceOfStream(streamId);
       const lastSenderBalance = await ubi.balanceOf(sender.address);
       const lastRecipientBalance = await ubi.balanceOf(recipient.address);
-      console.log("LAST RECIPIENT BALANCE", lastRecipientBalance.toString());
-      console.log("LAST SENDER BALANCE", lastSenderBalance.toString());
-
+      
       // Stream balance should be 0 (because it was withdrawn)
       expect(lastStreamBalance).to.eq(0, "Invalid last stream balance");
       // Recipient balance should be the value withdrawn (1 second)
@@ -1022,14 +1017,11 @@ describe("sUBI.sol", () => {
       const account2PrevBalance = await ubi.balanceOf(ubiRecipient.address);
 
       await ubi.connect(sender).transfer(ubiRecipient.address, amountToTransfer);
-      console.log("getting account2NewBalance")
       const account2NewBalance = await ubi.balanceOf(ubiRecipient.address);
       expect(account2NewBalance).to.eq(account2PrevBalance.add(amountToTransfer), "After transfer account 2 should increase");
 
       // New balance of sender should be prevBalance - 1 UBI
-      console.log("getting afterTransferSenderBalance")
       const afterTransferSenderBalance = await ubi.balanceOf(sender.address);
-      console.log("getting expectedBalance")
       const expectedBalance = middleSenderBalance.add(accruedPerSecond.sub(delegatedPerSecond)).sub(amountToTransfer);;
       expect(afterTransferSenderBalance).to.eq(expectedBalance, "After transfer sender's balance should have decreased by 1 UBI (+1 sec of accruance)");
 
@@ -1371,7 +1363,7 @@ describe("sUBI.sol", () => {
       await testUtils.goToEndOfStream(streamId3, sUBI, network);
       
       // ACT
-      await ubi.withdrawFromStreams([streamId1, streamId2, streamId3]);
+      await ubi.withdrawFromDelegations(sUBI.address, [streamId1, streamId2, streamId3]);
 
       // ASSERT
       const newRecipientBalance = await ubi.balanceOf(recipient.address);
@@ -1408,7 +1400,7 @@ describe("sUBI.sol", () => {
       expect(nextStreamCount).to.eq(initialStreamCount.add(1), "Stream count should increase when a stream is created");
 
       // Cancel the stream
-      await ubi.connect(accounts[0]).cancelStream(streamId);
+      await ubi.connect(accounts[0]).cancelDelegation(sUBI.address, streamId);
 
       // Get stream count. It should be equal to the previous count.
       const lastStreamCount = await sUBI.getStreamsCount(sender.address);
@@ -1444,7 +1436,7 @@ describe("sUBI.sol", () => {
       expect(nextStreamCount).to.eq(initialStreamCount.add(1), "Stream count should increase when a stream is created");
 
       // Cancel the stream
-      await ubi.connect(sender).cancelStream(streamId);
+      await ubi.connect(sender).cancelDelegation(sUBI.address, streamId);
 
       // Get stream count. It should be equal to the previous count.
       const lastStreamCount = await sUBI.getStreamsCount(sender.address);
@@ -1477,7 +1469,7 @@ describe("sUBI.sol", () => {
       await testUtils.goToMiddleOfStream(streamId, sUBI, network);
 
       // Cancel the stream
-      await ubi.connect(sender).cancelStream(streamId);
+      await ubi.connect(sender).cancelDelegation(sUBI.address, streamId);
       const newStreamIds = await sUBI.getStreamsOf(sender.address);
 
       // Check that last stream id does not exists
@@ -1526,7 +1518,7 @@ describe("sUBI.sol", () => {
 
 
       // Cancel the stream (mines a block so consolidated balance will add +1 sec of ubi to the stream)
-      await ubi.connect(sender).cancelStream(streamId);
+      await ubi.connect(sender).cancelDelegation(sUBI.address, streamId);
       const recipientBalanceAfterCancel = await ubi.balanceOf(recipient.address);
       expect(recipientBalanceAfterCancel).to.eq(prevRecipientBalance, "Recipient balance should not change if cancelled stream did not start");
 
@@ -1579,7 +1571,7 @@ describe("sUBI.sol", () => {
       const middleStreamBalance = await sUBI.balanceOfStream(streamId);
 
       // Cancel the stream (mines block and moves blocktime 1 second)
-      await ubi.connect(sender).cancelStream(streamId);
+      await ubi.connect(sender).cancelDelegation(sUBI.address, streamId);
 
       // After 30 minutes, stream recipient should have accrued 0.5 UBI
       const newRecipientBalance = await ubi.balanceOf(recipient.address);
@@ -1656,7 +1648,7 @@ describe("sUBI.sol", () => {
       const streamId1 = await testUtils.createNonCancellableStream(sender, recipient.address, 1000, fromDate1, toDate1, ubi, sUBI);
 
       // ACT && ASSERT
-      await expect(ubi.cancelStream(streamId1)).to.be.revertedWith("stream not cancellable");
+      await expect(ubi.cancelDelegation(sUBI.address, streamId1)).to.be.revertedWith("stream not cancellable");
     });
   });
 
@@ -1939,7 +1931,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that delegated accrued value returns 0 (because stream didnt start). 
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(0);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(0);
         })
 
         it("happy path - after moving to middle of stream, getDelegatedValue should return 180000 UBIwei", async () => {
@@ -1966,7 +1958,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that delegated accrued value returns 180000.
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(180000);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(180000);
         })
 
         it("happy path - after stream is finished, getDelegatedAccruedValue should return the 360000 UBIwei.", async () => {
@@ -1994,7 +1986,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that delta of returns 200.
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(360000);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(360000);
         })
       })
 
@@ -2025,7 +2017,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that getDelegatedAccruedValue of returns 0.
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(0);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(0);
         })
 
         it("happy path - creating a stream, withdrawing at the middle and after stream is finished, getDelegatedAccruedValue should return the 179900 UBIwei.", async () => {
@@ -2055,7 +2047,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that getDelegatedAccruedValue return 179900 (because withdraw from stream moves 1 secon further).
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(179900);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(179900);
         })
 
         it("happy path - after stream is finished, and balance is withdrawn, getDelegatedAccruedValue should return the 0 UBIwei.", async () => {
@@ -2085,7 +2077,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that getDelegatedAccruedValue return 179900 (because withdraw from stream moves 1 secon further).
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(0);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(0);
         })
       })
     })
@@ -2118,7 +2110,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that delta of return 0 (because streams didnt start). 
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(0);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(0);
         })
 
         it("happy path - creating 2 streams with 30 mins difference, after moving to the middle of the 1st stream, getDelegatedAccruedValue should return 180000 UBIwei since the 2nd didnt started", async () => {
@@ -2148,7 +2140,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that getDelegatedAccruedValue returns 180000 UBIwei
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(180000);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(180000);
         })
 
         it("happy path - creating 2 streams with 30 mins difference, after moving to the end of 1st stream, getDelegatedAccruedValue should return the 360000 + 180000 UBIwei (because the 2nd stream should be in the middle).", async () => {
@@ -2178,7 +2170,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that delta of returns 360000 + 180000.
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(360000 + 180000);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(360000 + 180000);
         })
 
         it("happy path - creating 2 streams with 30 mins difference, after moving to the end of 2nd stream, getDelegatedAccruedValue should return 360000 + 360000 UBIwei (because the 2nd stream should be in the middle).", async () => {
@@ -2207,7 +2199,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that delta of returns 360000 + 360000.
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(360000 + 360000);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(360000 + 360000);
         })
       })
 
@@ -2242,7 +2234,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // getDelegatedAccruedValue should return 0
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(100);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(100);
         })
 
 
@@ -2278,7 +2270,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that getDelegatedAccruedValue returns 179900 + 180000 (because withdraw from stream moves 1 second further).
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(179900 + 180000);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(179900 + 180000);
 
         })
 
@@ -2311,7 +2303,7 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // Check that getDelegatedAccruedValue returns 179900 + 0 (because withdraw from stream moves 1 secon further).
-          expect((await sUBI.getDelegatedAccruedValue(sender.address)).toNumber()).to.eq(360000 + 0);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(360000 + 0);
         })
 
       })
