@@ -2234,11 +2234,11 @@ describe("sUBI.sol", () => {
 
           // ASSERT 
           // getDelegatedAccruedValue should return 0
-          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(100);
+          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(0);
         })
 
 
-        it("happy path - creating 2 streams, with 30 minutes of difference, moving to middle of 1st and withdrawing, and then moving to the middle of stream 2, in which first stream is finished, getDelegatedAccruedValue should return 180000 + 179900 UBIwei.", async () => {
+        it("happy path - creating 2 streams, with 30 minutes of difference, moving to middle of 1st and withdrawing, and then moving to the middle of stream 2, in which first stream is finished, sum of both streams should return 180000 + 179900 UBIwei.", async () => {
           // ARRANGE
           const sender = accounts[0];
           const recipient1 = accounts[1];
@@ -2267,14 +2267,16 @@ describe("sUBI.sol", () => {
           // ACT         
           // Go to end of stream 2,
           await testUtils.goToMiddleOfStream(streamId2, sUBI, network);
+          const stream1Balance = await sUBI.balanceOfStream(streamId1);
+          const stream2Balance = await sUBI.balanceOfStream(streamId2);
 
           // ASSERT 
-          // Check that getDelegatedAccruedValue returns 179900 + 180000 (because withdraw from stream moves 1 second further).
-          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(179900 + 180000);
+          // Check that getDelegatedAccruedValue returns 180000 + 180000 (because withdraw from stream moves 1 second further).
+          expect(stream1Balance.add(stream2Balance)).to.eq(179900 + 180000);
 
         })
 
-        it("happy path - creating 2 streams, with 30 minutes of difference, moving to the middle of stream 2, and withdrawing from stream 2, getDelegatedAccruedValue should return 360000 + 0 UBIwei.", async () => {
+        it("happy path - creating 2 streams, with 30 minutes of difference, moving to the middle of stream 2, and withdrawing from stream 2, sum of both streams should return 360000 + 0 UBIwei.", async () => {
 
           // ARRANGE
           const sender = accounts[0];
@@ -2301,9 +2303,12 @@ describe("sUBI.sol", () => {
           // Withdraw from stream 2
           await ubi.withdrawFromDelegation(sUBI.address, streamId2);
 
+          const stream1Balance = await sUBI.balanceOfStream(streamId1);
+          const stream2Balance = await sUBI.balanceOfStream(streamId2);
+
           // ASSERT 
           // Check that getDelegatedAccruedValue returns 179900 + 0 (because withdraw from stream moves 1 secon further).
-          expect((await sUBI.outgoingTotalAccruedValue(sender.address)).toNumber()).to.eq(360000 + 0);
+          expect(stream1Balance.add(stream2Balance)).to.eq(360000 + 0);
         })
 
       })

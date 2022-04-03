@@ -69,7 +69,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
   /// @dev Maximum number of streams allowed.
   uint256 private _maxStreamsAllowed;
 
-  mapping(address => uint256) public lockedRatePerSecond;
+  //mapping(address => uint256) public lockedRatePerSecond;
 
   /// @dev Caller can only be UBI contract
   modifier onlyUBI() {
@@ -142,7 +142,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
 
       _safeMint(recipient, lastTokenId);
 
-      lockedRatePerSecond[sender] = lockedRatePerSecond[sender].add(ubiPerSecond);
+      //lockedRatePerSecond[sender] = lockedRatePerSecond[sender].add(ubiPerSecond);
 
       emit CreateDelegation(sender, lastTokenId, ubiPerSecond, startTime, stopTime);
       return lastTokenId;
@@ -161,7 +161,7 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
     uint256 indexOfLastItem = streamIdsOf[stream.sender].length - 1;
 
     // revert the locked rate per second
-    lockedRatePerSecond[stream.sender] = lockedRatePerSecond[stream.sender].sub(stream.ratePerSecond);
+    //lockedRatePerSecond[stream.sender] = lockedRatePerSecond[stream.sender].sub(stream.ratePerSecond);
 
 
     for(uint256 i = 0; i < streamIdsOf[stream.sender].length; i++) {
@@ -426,10 +426,10 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       // TODO: Define reportRemoval behavior
     }
 
-    // THIS MIGHT 
-    function getDelegatedRate(address _human) external override view returns(uint256) {
-      return lockedRatePerSecond[_human];      
-    }
+    // // THIS MIGHT 
+    // function getDelegatedRate(address _human) external override view returns(uint256) {
+    //   return lockedRatePerSecond[_human];      
+    // }
 
     // function pendingDelegatedTime(address _human) external override view returns(uint256) {
     //   uint256 delegatedAccruedValue;
