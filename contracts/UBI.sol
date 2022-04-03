@@ -13,6 +13,7 @@ import "@openzeppelin/contracts/cryptography/ECDSA.sol";
 import "./interfaces/ISUBI.sol";
 import "./interfaces/IFUBI.sol";
 import "./interfaces/IUBIDelegator.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "hardhat/console.sol";
 
 /**
@@ -113,6 +114,8 @@ contract UBI is Initializable {
   /// @dev Stores the reentrancy status for reentrancyGuard
   uint256 private _reentrancyStatus;
   
+  /// @dev Stores the total locked value from delegations.
+  mapping(address => uint256) public lockedDelegatedValue;
   /* Modifiers */
 
   /// @dev non Reentrancy modifier for reentrancy guard
@@ -142,8 +145,8 @@ contract UBI is Initializable {
     _;
   }
 
-  modifier onlyDelegator(address delegator) {
-    require(isAllowedImplementation[delegator], "caller is not an allowed delegator");
+  modifier onlyDelegator() {
+    require(delegators.contains(msg.sender), "caller is not an allowed delegator");
     _;
   }
 
@@ -206,20 +209,10 @@ contract UBI is Initializable {
     ubiBalance[msg.sender] = ubiBalance[msg.sender].add(newSupply);
     totalSupply = totalSupply.add(newSupply);
 
-    for(uint256 i = 0; i < delegatorImplementations.length; i++) {
-      IUBIDelegator(delegatorImplementations[i]).onReportRemoval(msg.sender);
-    }
-    // If fUBI is set
-    if(address(fubi) != address(0)) {
-      // Get active flows of human
-      uint256[] memory activeFlowIds = fubi.getFlowsOf(_human);
-      // On each flow, withdraw and cancel the flow
-      for(uint256 i = 0; i < activeFlowIds.length; i++) {
-        uint256 flowId = activeFlowIds[i];
-        
-        cancelFlow(flowId);
-          
-      }
+    uint256 delegatorsLength = delegators.length();
+    for(uint256 i = 0; i < delegatorsLength; i++) {
+      address thisDelegator = delegators.at(i); // Get delegator cor each iteration
+      IUBIDelegator(thisDelegator).onReportRemoval(msg.sender);
     }
   }
 
@@ -379,58 +372,60 @@ contract UBI is Initializable {
   }
 
   struct Delegator {
+        address implementationAddress;
         bool isAllowed;
         bool implementsDelegator;
     }
 
-  mapping(address => Delegator) public delegators;
-  address[] delegatorImplementations;
+  using EnumerableSet for EnumerableSet.AddressSet;
+  EnumerableSet.AddressSet delegators;
 
-  function setDelegator(address _implementation, bool allowed, bool implementsDelegator) public onlyGovernor {
-    Delegator d = delegators[_implementation];
-    d.isAllowed = allowed;
-    
-    // If the new implementation implements delegator, add it to the `delegatorImplementations` array.
-    if(!d.implementsDelegator && implementsDelegator) {
-      d.implementsDelegator = true;
-      delegatorImplementations.push(_implementation);
+  function setDelegator(address _implementation) public onlyByGovernor {
+    // If the delegator doesnt exist, just crete it with the new data
+    if(!delegators.contains(_implementation)) {
+    // add the new or found delegator to the set.
+      delegators.add(_implementation);
     }
-    // Else, if the old value implemented delegator but this is not, we remove the implementation from the `delegatorImplementations` array.
-    else if(d.implementsDelegator && !implementsDelegator) {
-      d.implementsDelegator = false;
-      delegatorImplementations = delegatorImplementations.filter(x => x != _implementation);
-    }  
-    else if (d.implementsDelegator && !implementsDelegator) {
-      d.implementsDelegator = false;
-      delegatorImplementations = delegatorImplementations.filter(x => x != _implementation);
-    }
+  }
 
-    delegators[_implementation] = d;
+  function removeDelegator(address _implementation) public onlyByGovernor {
+    // If the delegator doesnt exist, just crete it with the new data
+    if(delegators.contains(_implementation)) {
+    // add the new or found delegator to the set.
+      delegators.remove(_implementation);
+    }
   }
 
   function createDelegation(address implementation, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool cancellable) public nonReentrant {
-    require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "Only registered humans accruing UBI can stream UBI.");
+    require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "not registered or not accruing");
     require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
-    require(isAllowedImplementation[implementation], "implementation not allowed");
+    require(delegators.contains(implementation), "implementation not allowed");
+    require(lockedDelegatedValue[msg.sender] + ubiPerSecond <= accruedPerSecond, "not enough value to delegate");
 
     // Update sender and recipient balances.
     updateBalance(msg.sender);
     updateBalance(recipient);
-
     IUBIDelegator(implementation).createDelegation(msg.sender, recipient, ubiPerSecond, startTime, stopTime, cancellable);
+    lockedDelegatedValue[msg.sender] += ubiPerSecond;
   }
 
-  function createStream(address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool cancellable) public nonReentrant {
-    require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "Only registered humans accruing UBI can stream UBI.");
-    require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
-    subi.createDelegation(msg.sender, recipient, ubiPerSecond, startTime, stopTime, cancellable);
-  }
+  function withdrawFromDelegation(address implementation, uint256 delegationId) public nonReentrant {
+    require(delegators.contains(implementation), "implementation not allowed");
+    IUBIDelegator delegator = IUBIDelegator(implementation);
+    (address sender, address recipient, uint256 rate, bool prevIsActive) =  delegator.getDelegationInfo(delegationId);    
 
-  function createFlow(address recipient, uint256 ubiPerSecond) public nonReentrant {
-    require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "Only registered humans accruing UBI can flow UBI.");
-    updateBalance(msg.sender);
     updateBalance(recipient);
-    fubi.createDelegation(msg.sender, recipient, ubiPerSecond, 0, 0, false);
+    updateBalance(sender);
+    uint256 withdrawnAmount = delegator.onWithdraw(delegationId);
+    ubiBalance[recipient] += withdrawnAmount;
+    
+    // If withdrawn action changed the state of the delegation, update the locked delegated value.
+    bool lastIsActive;
+    (sender, recipient, rate, lastIsActive) =  delegator.getDelegationInfo(delegationId);
+
+    if(prevIsActive && !lastIsActive) {
+      lockedDelegatedValue[sender] -= rate;
+    }
   }
 
     // /**
@@ -516,14 +511,15 @@ contract UBI is Initializable {
      */
     function cancelDelegation(address delegatorImpl, uint256 delegationId) public nonReentrant 
     {
-      require(delegators[delegatorImpl].implementsDelegator, "implementation not allowed");
+      require(delegators.contains(delegatorImpl), "implementation not allowed");
       IUBIDelegator delegator = IUBIDelegator(delegatorImpl);
       // Get delegation
-      (address sender, address recipient) = delegator.getDelegationNodes(delegationId);
+      (address sender, address recipient, uint256 ratePerSecond, bool isActive) = delegator.getDelegationInfo(delegationId);
       updateBalance(sender);
       updateBalance(recipient);
       // TODO: add permissions (allow to cancel if implementation is not active).
       delegator.cancelDelegation(delegationId);
+      lockedDelegatedValue[msg.sender] -= ratePerSecond;
       
       // (uint256 ratePerSecond, uint256 startTime,
       // uint256 stopTime, address sender, 
@@ -539,16 +535,11 @@ contract UBI is Initializable {
       // }
     }
 
-    function onDelegationTransfer(address _oldOwner, address _newOwner, uint256 ratePerSecond) public onlyDelegator(msg.sender) {
-      require(isAllowedImplementation[msg.sender], "delegator not allowed");
+    function onDelegationTransfer(address _oldOwner, address _newOwner, uint256 ratePerSecond) public onlyDelegator {
       updateBalance(_oldOwner);
       updateBalance(_newOwner);
     }
 
-    /* Setters */
-    function setSUBI(address _subi) public onlyByGovernor {
-      subi = ISUBI(_subi);
-    }
   /* Getters */
 
   /** @dev Calculates how much UBI a submission has accrued and is pending consolidation..
@@ -557,17 +548,21 @@ contract UBI is Initializable {
   */
   function getAccruedValue(address _human) public view returns (uint256 accrued) {
 
+    // TODO: RESOLVER Calcular el accrued value en SUBI
     uint256 totalAccrued = proofOfHumanity.isRegistered(_human) && accruedSince[_human] > 0 ?
       accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human])) :
       0;
 
     // Get the new supply from the delegations.
-    for(uint256 i = 0; i < delegatorImplementations.length; i++) {
-      if(!isAllowedImplementation[delegatorImplementations[i]]) continue;
-      IUBIDelegator delegator = IUBIDelegator(delegatorImplementations[i]);
-      totalAccrued = totalAccrued
-        .sub(delegator.outgoingTotalAccruedValue(_human))
-        .add(delegator.incomingTotalAccruedValue(_human));
+    uint256 delegatorsLength = delegators.length();
+    for(uint256 i = 0; i < delegatorsLength; i++) {
+      IUBIDelegator delegator = IUBIDelegator(delegators.at(i));
+      uint256 incoming = delegator.incomingTotalAccruedValue(_human);
+      console.log("incoming", incoming);
+      totalAccrued += incoming;
+      uint256 outgoing = delegator.outgoingTotalAccruedValue(_human);
+      console.log("outgoing", outgoing);
+      totalAccrued -= outgoing;
     }
 
     return totalAccrued;
@@ -596,6 +591,10 @@ contract UBI is Initializable {
   * @return The current balance including accrued Universal Basic Income of the user.
   **/
   function balanceOf(address _human) public view returns (uint256) {
+
+    //uint256 accruedValue = getAccruedValue(_human);
+    // console.log("** ACCRUED VALUE", accruedValue);
+    // console.log("** ubiBalance ", ubiBalance[_human]);
     return ubiBalance[_human].add(getAccruedValue(_human));
 
     // if(address(subi) != address(0)) {
@@ -645,16 +644,7 @@ contract UBI is Initializable {
   
 
   function updateBalance(address _human) internal {
-    uint256 newSupplyFrom = accruedPerSecond.mul(block.timestamp.sub(accruedSince[_human]));
-
-    // Subtract delegated supply
-    for(uint256 i = 0; i < delegatorImplementations.length; i++) {
-      if(!isAllowedImplementation[delegatorImplementations[i]]) continue;
-      IUBIDelegator delegator = IUBIDelegator(delegatorImplementations[i]);
-      newSupplyFrom = newSupplyFrom
-        .add(delegator.incomingTotalAccruedValue(_human))
-        .sub(delegator.outgoingTotalAccruedValue(_human));
-    }
+    uint256 newSupplyFrom =  getAccruedValue(_human);
 
     ubiBalance[_human] = ubiBalance[_human].add(newSupplyFrom);
     accruedSince[_human] = block.timestamp;

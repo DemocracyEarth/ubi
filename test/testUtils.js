@@ -4,27 +4,7 @@ const logReader = require("./logReader");
 
 const testUtils = {
   async createCancellableStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, subi, verbose = false) {
-
-    const fromSecs = testUtils.dateToSeconds(from);
-    const toSecs = testUtils.dateToSeconds(to);
-    const prevStreamId = new BigNumber((await subi.lastTokenId()).toString());
-
-    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond, fromSecs, toSecs, true)
-    await tx.wait();
-    const events = await subi.queryFilter(subi.filters.CreateStream(fromAccount.address));
-    const createStreamEvents = logReader.getCreateStreamEvents(events);
-    expect(createStreamEvents && createStreamEvents.length > 0, "createStream should emit event CreateStream");
-    const streamId = createStreamEvents[createStreamEvents.length - 1].args[1];
-    expect(streamId.toNumber()).to.eq(prevStreamId.plus(1).toNumber(), "CreateStream emited with incorrect streamId value")
-
-    if (verbose) {
-      console.log("Created stream:")
-      console.log("Start:", fromSecs)
-      console.log("End:", toSecs);
-      console.log("Time Diff:", toSecs - fromSecs);
-      console.log("Stream per second:", streamPerSecond);
-    }
-    return streamId;
+    return await this.createStream(fromAccount, toAddress, streamPerSecond, from, to, true, ubi, subi, verbose, true);
   },
 
   async createNonCancellableStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, subi, verbose = false) {
@@ -87,7 +67,6 @@ const testUtils = {
    * @returns 
    */
   async ubiConsolidatedBalanceOfWallet(address, ubi) {
-    console.log("****** UBI CONSOLIDATED BALANCE OF WALLET ******")
     const balance = await ubi.balanceOf(address);
     const accrued = await ubi.getAccruedValue(address);
     // console.log("Balance:", balance.toString());
@@ -165,23 +144,34 @@ const testUtils = {
     }
   },
 
-  async createFlow(fromAccount, toAddress, flowPerSecond, ubi, fubi, verbose = false) {
+  async createDelegation(delegatorImplementation, fromAccount, toAddress, ratePerSecond, startTime, endTime, cancellable, ubi, verbose = false) {
 
-    const prevFlowId = new BigNumber((await fubi.lastTokenId()).toString());
+    const startTimeSeconds = testUtils.dateToSeconds(startTime);
+    const endTimeSeconds = testUtils.dateToSeconds(endTime);
+    const prevDelegationId = new BigNumber((await delegatorImplementation.lastTokenId()).toString());
 
-    const tx = await ubi.connect(fromAccount).createFlow(toAddress, flowPerSecond)
+    const tx = await ubi.connect(fromAccount).createDelegation(delegatorImplementation.address, toAddress, ratePerSecond, startTimeSeconds, endTimeSeconds, cancellable);
     await tx.wait();
-    const events = await fubi.queryFilter(fubi.filters.CreateFlow(fromAccount.address));
-    const createFlowEvents = logReader.getCreateFlowEvents(events);
-    expect(createFlowEvents && createFlowEvents.length > 0, "createFlow should emit event CreateFlow");
-    const flowId = createFlowEvents[createFlowEvents.length - 1].args[1];
-    expect(flowId.toNumber()).to.eq(prevFlowId.plus(1).toNumber(), "CreateFlow emited with incorrect flowId value")
+    const events = await delegatorImplementation.queryFilter(delegatorImplementation.filters.CreateDelegation(fromAccount.address));
+    const createDelegationEvents = logReader.getCreateDelegationEvents(events);
+    expect(createDelegationEvents && createDelegationEvents.length > 0, "createDelegationEvents should emit event CreateDelegation");
+    const delegationId = createDelegationEvents[createDelegationEvents.length - 1].args[1];
+    expect(delegationId.toNumber()).to.eq(prevDelegationId.plus(1).toNumber(), "CreateDelegation emited with incorrect flowId value")
 
     if (verbose) {
       console.log("Created flow:");
       console.log("Flow per second:", flowPerSecond);
     }
+    return delegationId;
+  },
+
+  async createFlow(fromAccount, toAddress, flowPerSecond, ubi, fubi, verbose = false) {
+    const flowId = await this.createDelegation(fubi, fromAccount, toAddress, flowPerSecond, new Date(), new Date(), true, ubi, verbose);
     return flowId;
+  },
+  async createStream(fromAccount, toAddress, ratePerSecond, startTime, stopTime, cancellable, ubi, subi, verbose = false) {
+    const streamId = await this.createDelegation(subi, fromAccount, toAddress, ratePerSecond, startTime, stopTime, cancellable, ubi, verbose);
+    return streamId;
   },
 
   

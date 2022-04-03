@@ -27,13 +27,13 @@ contract('UBI.sol', skipAll ? function () { } : function (accounts) {
                 require("../artifacts/contracts/UBI.sol/IProofOfHumanity.json").abi
             )
         ]);
-        setSubmissionIsRegistered = (submissionID, isRegistered) =>
-            mockProofOfHumanity.mock.isRegistered
+        setSubmissionIsRegistered = async (submissionID, isRegistered) =>
+            await mockProofOfHumanity.mock.isRegistered
                 .withArgs(submissionID)
                 .returns(isRegistered);
 
-        setSubmissionInfo = (submissionID, info) => {
-            mockProofOfHumanity.mock.getSubmissionInfo
+        setSubmissionInfo = async (submissionID, info) => {
+            await mockProofOfHumanity.mock.getSubmissionInfo
                 .withArgs(submissionID)
                 .returns({
                     submissionTime: info.submissionTime
@@ -122,6 +122,8 @@ contract('UBI.sol', skipAll ? function () { } : function (accounts) {
         });
 
         it("happy path - a submission with interrupted accruing still keeps consolidated balance.", async () => {
+            await setSubmissionIsRegistered(addresses[0], true);
+            await setSubmissionIsRegistered(addresses[1], false);
             await ubi.transfer(addresses[1], 555);
             // get the consolidated balance of the wallet
             const prevConsolidatedBalance = await testUtils.ubiConsolidatedBalanceOfWallet(addresses[1], ubi);

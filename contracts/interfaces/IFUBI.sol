@@ -10,33 +10,6 @@ import "./IUBIDelegator.sol";
  * @author Sablier - juanu.eth
  */
 interface IFUBI is IERC721, IUBIDelegator  {
-    /**
-     * @notice Emits when a Flow is successfully created.
-     */
-    event CreateFlow(
-        address indexed sender,
-        uint256 FlowId,
-        uint256 ratePerSecond,
-        uint256 startTime
-    );
-
-    // /**
-    //  * @notice Emits when the recipient of a Flow withdraws a portion or all their pro rata share of the Flow.
-    //  */
-    // event WithdrawFromFlow(
-    //     uint256 indexed FlowId,
-    //     address indexed recipient,
-    //     uint256 amount
-    // );
-
-    /**
-     * @notice Emits when a Flow is successfully cancelled.
-     */
-    event CancelFlow(
-        uint256 indexed FlowId,
-        address indexed sender,
-        address indexed recipient
-    );
 
 
     function getFlow(uint256 FlowId)
@@ -50,8 +23,6 @@ interface IFUBI is IERC721, IUBIDelegator  {
     function getFlowsOf(address _human) external view returns (uint256[] memory);
 
     function maxFlowsAllowed() external view returns (uint256); 
-
-    function mintFlow(address sender, address recipient, uint256 ubiPerSecond) external returns (uint256 FlowId);
 
     //function FlowExists(uint256 FlowId) external view returns (bool);
     //function withdrawFromFlow(uint256 FlowId) external;

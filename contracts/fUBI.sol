@@ -84,6 +84,8 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
   /// Streams sin final recibido por el address. No tiene restriccion de valor.
   mapping (address => uint256) public ubiInflow;
 
+  mapping(address => uint256) public delegatedFlow;
+
   /// @dev Caller can only be UBI contract
   modifier onlyUBI() {
     require(msg.sender == ubi, "caller is not UBI contract");
@@ -151,8 +153,8 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
 
       ubiOutflow[sender] = ubiOutflow[sender].add(ubiPerSecond);
       ubiInflow[recipient] = ubiInflow[recipient].add(ubiPerSecond); 
-
-      emit CreateFlow(sender, lastTokenId, ubiPerSecond, block.timestamp);
+      delegatedFlow[sender] = delegatedFlow[sender].add(ubiPerSecond);
+      emit CreateDelegation(sender, lastTokenId, ubiPerSecond, block.timestamp, 0);
       return lastTokenId;
   } 
 
@@ -199,26 +201,28 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
 
   /// @dev Deletes the given Flow from related variables
   function deleteFlow(uint256 FlowId) internal {
-    Types.Flow memory Flow = Flows[FlowId];
+    Types.Flow memory flow = Flows[FlowId];
 
     // DELETE FROM FlowIdsOf
     // Get the index of the last item
-    uint256 indexOfLastItem = FlowIdsOf[Flow.sender].length - 1;
+    uint256 indexOfLastItem = FlowIdsOf[flow.sender].length - 1;
     
     //WE WERE THINKING ABOUT GETTING RID OF THIS FOR
     //BY USING ENUMERABLE SET (OPENZEPPELIN) THAT'S WHY
     // WE DON'T HAVE _maxFlowsAllowed
+    delegatedFlow[flow.sender] = delegatedFlow[flow.sender].sub(flow.ratePerSecond);
+
     
-    for(uint256 i = 0; i < FlowIdsOf[Flow.sender].length; i++) {
+    for(uint256 i = 0; i < FlowIdsOf[flow.sender].length; i++) {
       // If Flow is found
-      if(FlowIdsOf[Flow.sender][i] == FlowId) {
+      if(FlowIdsOf[flow.sender][i] == FlowId) {
         // If it's not the last element on the array
         if(i < indexOfLastItem) {
           // Replace the found Flow with the last element on the array
-          FlowIdsOf[Flow.sender][i] = FlowIdsOf[Flow.sender][indexOfLastItem];
+          FlowIdsOf[flow.sender][i] = FlowIdsOf[flow.sender][indexOfLastItem];
         }
         // Delete the last element on the list
-        FlowIdsOf[Flow.sender].pop();
+        FlowIdsOf[flow.sender].pop();
         break;
       }
     }
@@ -234,11 +238,10 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
      *  Throws if there is a token transfer failure.
      * @param flowId The id of the flow to cancel.
      */
-    function cancelDelegation(uint256 flowId) public override nonReentrant
+    function cancelDelegation(uint256 flowId) public override nonReentrant onlyUBI
     {
       (uint256 ratePerSecond, uint256 startTime,
        address sender, bool isActive) = this.getFlow(flowId);
-      require(msg.sender == sender, "only sender can cancel flow");
 
       address recipient = this.ownerOf(flowId);
       // _updateBalance(sender);
@@ -247,7 +250,7 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
       ubiInflow[recipient] = ubiInflow[recipient].sub(ratePerSecond); 
       
       deleteFlow(flowId);
-      emit CancelFlow(flowId, sender, ownerOf(flowId));
+      emit CancelDelegation(flowId, sender, ownerOf(flowId));
     }
   
   function _beforeTokenTransfer(
@@ -283,9 +286,9 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
     //   return (IUBI(ubi).getAccruedPerSecond(_human).sub(ubiOutflow[_human])).mul(block.timestamp.sub(IUBI(ubi).getAccruedSince(_human)));
     // }
 
-    function getTotalDelegatedRate(address _human, uint256 startTime, uint256 stopTime) external override view returns (uint256) {
-      return ubiOutflow[_human];
-    }
+    // function getTotalDelegatedRate(address _human, uint256 startTime, uint256 stopTime) external override view returns (uint256) {
+    //   return ubiOutflow[_human];
+    // }
 
 
     function getInDelegatedValue(address _recipient) public view returns (uint256) {
@@ -297,9 +300,9 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
     }
 
 
-    function getDelegationNodes(uint256 delegationId) external override view returns(address sender, address recipient) {
+    function getDelegationInfo(uint256 delegationId) external override view returns(address sender, address recipient, uint256 ratePerSecond, bool isActive) {
       Types.Flow memory Flow = Flows[delegationId];
-      return (Flow.sender, ownerOf(delegationId));
+      return (Flow.sender, ownerOf(delegationId), Flow.ratePerSecond, Flow.isActive);
     }
 
 
@@ -382,5 +385,25 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
     return ubiInflow[_human];
   }
 
+  /// @dev Returns the UBI per second that the human has used for delegation.
+    function getDelegatedRate(address _human) external override view returns(uint256) {
+      return delegatedFlow[_human];      
+    }
+
+    function onWithdraw(uint256 flowId) external override returns (uint256 ) {
+      require(false, "fubi does not require withdraw");
+      return 0;
+    }
+
+    function totalAccumulatedTime(address _human) external virtual view returns (uint256) {
+      return 0;
+    }
+
+    // function incomingRatePerSecond(address _human) external override view returns (uint256) {
+    //   return ubiInflow[_human];
+    // }
+    // function outgoingRatePerSecond(address _human) external override view returns (uint256) {
+    //   return ubiOutflow[_human];
+    // }
 
 }

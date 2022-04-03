@@ -12,7 +12,8 @@ async function deploySUBI(ubiInstance, governorAddress) {
   const SUBIFactory = await ethers.getContractFactory("sUBI");
   const sUBI = await SUBIFactory.deploy(ubiInstance.address, governorAddress, deploymentParams.SUBI_MAX_STREAMS_ALLOWED, deploymentParams.SUBI_NAME, deploymentParams.SUBI_SYMBOL);
   await sUBI.deployed();
-  await ubiInstance.setSUBI(sUBI.address);
+  const tx = await ubiInstance.setDelegator(sUBI.address);
+  await tx.wait();
   return sUBI;
 }
 
@@ -49,6 +50,11 @@ describe("sUBI.sol", () => {
     ubi = await deployUBI(mockPoh.address);
     // Get the value of accruedPerSecond
     accruedPerSecond = await ubi.accruedPerSecond();
+
+    // default all accounts to not registered
+    for(let i = 0; i < accounts.length; i++) {
+      await pohMockService.setSubmissionIsRegistered(mockPoh, accounts[i].address, false);
+    }
   })
 
   describe("Basic tests", () => {
@@ -82,13 +88,14 @@ describe("sUBI.sol", () => {
       const dateTo = dateFrom + 20;
 
       // ACT
-      await ubi.connect(accounts[1]).createStream(accounts[2].address, 10000, dateFrom, dateTo, false);
+      await ubi.connect(sender).createDelegation(sUBI.address, accounts[2].address, 10000, dateFrom, dateTo, false);
 
       // // ASSERT
       expect((await sUBI.balanceOf(accounts[2].address)).toNumber()).to.equal(1);
     });
 
-    it("fail path - Executing onWithdrawnFromStream from user should fail", async () => {
+    
+    it("fail path - Executing onWithdraw from user should fail", async () => {
       // ARRANGE
       const sUBI = await deploySUBI(ubi, accounts[0].address);
       const sender = accounts[0];
@@ -115,7 +122,7 @@ describe("sUBI.sol", () => {
       // move to middle of stream
       await testUtils.goToMiddleOfStream(lastStreamId, sUBI, network);
       // execute onWidthdraw from stream should fail
-      await expect(sUBI.onWithdrawnFromStream(lastStreamId)).to.be.revertedWith("caller is not UBI contract");
+      await expect(sUBI.onWithdraw(lastStreamId)).to.be.revertedWith("caller is not UBI contract");
     })
 
     it("require fail - Creating stream of UBI per second higher than UBI.accruedPerSecond should fail.", async () => {
@@ -173,7 +180,7 @@ describe("sUBI.sol", () => {
         fromDate,
         toDate,
         ubi, sUBI))
-        .to.be.revertedWith("Only registered humans accruing UBI can stream UBI.");
+        .to.be.revertedWith("not registered or not accruing.");
 
     });
 
@@ -198,7 +205,7 @@ describe("sUBI.sol", () => {
         fromDate,
         toDate,
         ubi, sUBI))
-        .to.be.revertedWith("Only registered humans accruing UBI can stream UBI.");
+        .to.be.revertedWith("not registered or not accruing.");
     });
 
     it("happy path - After creating a stream with full accrual that starts in the future, human should accrue UBI until stream starts.", async () => {
@@ -223,7 +230,7 @@ describe("sUBI.sol", () => {
         fromDate, toDate,
         ubi, sUBI);
 
-      const blockTimeAfterStreamCreation = await testUtils.getCurrentBlockTime();
+      const afterCreationBlockTime = await testUtils.getCurrentBlockTime();
 
       // Get previous human balance 
       const prevHumanBalance = await ubi.balanceOf(sender.address);
@@ -239,7 +246,7 @@ describe("sUBI.sol", () => {
 
       // Get current human balance 
       const currHumanBalance = await ubi.balanceOf(sender.address);
-      expect(currHumanBalance.toString()).to.eq(prevHumanBalance.add(accruedPerSecond.mul(streamStartBlockTime - blockTimeAfterStreamCreation)).toString(), "Human balance ");
+      expect(currHumanBalance).to.eq(prevHumanBalance.add(accruedPerSecond.mul(streamStartBlockTime - afterCreationBlockTime)), "Human balance ");
 
       const currentStreamBalance = await sUBI.balanceOfStream(lastStreamId);
       expect(currentStreamBalance.toNumber()).to.eq(0, "Current stream balance should still be 0");
@@ -277,7 +284,7 @@ describe("sUBI.sol", () => {
 
 
       // Recipient withdraws balance
-      await ubi.connect(accounts[1]).withdrawFromStream(lastStreamId);
+      await ubi.connect(accounts[1]).withdrawFromDelegation(sUBI.address, lastStreamId);
 
       // Trying to get balance, stream should not exist
       expect((await sUBI.balanceOfStream(lastStreamId)).toNumber()).to.eq(0, "Stream balance should be 0");
@@ -353,7 +360,7 @@ describe("sUBI.sol", () => {
         recipient.address,
         accruedPerSecond.toNumber(),
         fromDate, toDate,
-        ubi, sUBI)).to.be.revertedWith("Only registered humans accruing UBI can stream UBI.");
+        ubi, sUBI)).to.be.revertedWith("not registered or not accruing.");
     })
 
     it("happy path - Creating a new stream after one has finished and has been withdrawn should not increment the number of active streams", async () => {
@@ -383,21 +390,18 @@ describe("sUBI.sol", () => {
       await testUtils.goToEndOfStream(stream1Id, sUBI, network);
 
       // Withdraw the balance from the stream
-      await ubi.connect(recipient).withdrawFromStream(stream1Id);
+      await ubi.connect(recipient).withdrawFromDelegation(sUBI.address, stream1Id);
 
       // Create a 2nd stream
       currentBlockTime = await testUtils.getCurrentBlockTime();
       fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       toDate = moment(fromDate).add(1, "hour").toDate();
 
-      // Delegate half of UBI per second
-      const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
-
       // Create stream with half ubiPerSecond delegation
       const stream2Id = await testUtils.createCancellableStream(
         sender,
         recipient.address,
-        delegatedPerSecond,
+        accruedPerSecond,
         fromDate, toDate,
         ubi, sUBI);
       const currStreamsCount = await sUBI.getStreamsCount(sender.address);
@@ -418,10 +422,13 @@ describe("sUBI.sol", () => {
       let fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       let toDate = moment(fromDate).add(1, "hour").toDate();
 
+      // Delegate half of UBI per second
+      const delegatedPerSecond = accruedPerSecond.div(2);
+
       const stream1Id = await testUtils.createCancellableStream(
         sender,
         recipient.address,
-        accruedPerSecond.toNumber(),
+        delegatedPerSecond,
         fromDate, toDate,
         ubi, sUBI);
 
@@ -435,9 +442,6 @@ describe("sUBI.sol", () => {
       currentBlockTime = await testUtils.getCurrentBlockTime();
       fromDate = moment(new Date(currentBlockTime * 1000)).add(1, "minutes").toDate();
       toDate = moment(fromDate).add(1, "hour").toDate();
-
-      // Delegate half of UBI per second
-      const delegatedPerSecond = accruedPerSecond.div(2).toNumber();
 
       // Create stream with half ubiPerSecond delegation
       const stream2Id = await testUtils.createCancellableStream(
@@ -560,7 +564,7 @@ describe("sUBI.sol", () => {
       const streamId = await testUtils.createCancellableStream(sender, recipient1.address, accruedPerSecond, fromDate, toDate, ubi, sUBI);
 
       // Get the initial pending delegated value
-      const initialPendingDelegatedValue = await sUBI.getDelegatedAccruedValue(sender.address);
+      const initialPendingDelegatedValue = await sUBI.outgoingTotalAccruedValue(sender.address);
 
       // Move blocktime to end of stream
       await testUtils.goToEndOfStream(streamId, sUBI, network);
@@ -570,7 +574,7 @@ describe("sUBI.sol", () => {
       expect(finalStreamBalance).to.eq(accruedPerSecond.mul(60 * 60), "Stream should increase its balance by 1 hour of UBI accruance")
 
       // Get the final pending delegated value
-      const finalPendingDelegatedValue = await sUBI.getDelegatedAccruedValue(sender.address);
+      const finalPendingDelegatedValue = await sUBI.outgoingTotalAccruedValue(sender.address);
 
       // Should be equal to initial + 1 hour of UBI accruance
       expect(finalPendingDelegatedValue).to.eq(initialPendingDelegatedValue.add(finalStreamBalance), "Pending delegated value should account for last finished stream.");
@@ -629,7 +633,7 @@ describe("sUBI.sol", () => {
 
       // Calculate corresponding ubi per second to delegate to each stream 
       const streamsToCreate = await sUBI.maxStreamsAllowed();
-      const ubiPerSecondPerDelegate = accruedPerSecond.div(streamsToCreate);
+      const ubiPerSecondPerDelegate = accruedPerSecond.div(streamsToCreate+1);
 
       // Create a new stream with half ubiPerSecond
       const currentBlockTime = await testUtils.getCurrentBlockTime();
@@ -702,7 +706,7 @@ describe("sUBI.sol", () => {
       const fromDate2 = moment(fromDate1).add(30, "minutes").toDate();
       const toDate2 = moment(fromDate2).add(1, "hour").toDate();
       await expect(testUtils.createCancellableStream(sender, recipient.address, accruedPerSecond, fromDate2, toDate2, ubi, sUBI))
-        .to.be.revertedWith("Delegated value exceeds available balance for the given stream period");
+        .to.be.revertedWith("not enough value to delegate");
     })
 
     it("happy path - after delegating and withdrawing from recipient, getting balance of delegator should work correctly", async () => {
@@ -714,7 +718,7 @@ describe("sUBI.sol", () => {
       await ubi.startAccruing(sender.address);
 
       // Delegate per second
-      const delegatedPerSecond = 10000000000001;
+      const delegatedPerSecond = 101;
 
       // Create a stream with total accrued per second
       const currentBlockTime = await testUtils.getCurrentBlockTime();
@@ -727,16 +731,21 @@ describe("sUBI.sol", () => {
       // Move blocktime to start of stream
       await testUtils.goToStartOfStream(streamId, sUBI, network);
       const prevStreamBalance = await sUBI.balanceOfStream(streamId);
+      expect(prevStreamBalance).to.eq(0);
       const prevSenderBalance = await ubi.balanceOf(sender.address);
       const prevRecipientBalance = await ubi.balanceOf(recipient.address);
+      console.log("PREV RECIPIENT BALANCE", prevRecipientBalance.toString());
+      console.log("PREV SENDER BALANCE", prevSenderBalance.toString());
+      console.log("PREV STREAM BALANCE", prevStreamBalance.toString());
       // This steps 1 second on the chain
-      await ubi.connect(recipient).withdrawFromStream(streamId);
-
+      await ubi.connect(recipient).withdrawFromDelegation(sUBI.address, streamId);
       // ASSERT
       // Get new balances
       const lastStreamBalance = await sUBI.balanceOfStream(streamId);
       const lastSenderBalance = await ubi.balanceOf(sender.address);
       const lastRecipientBalance = await ubi.balanceOf(recipient.address);
+      console.log("LAST RECIPIENT BALANCE", lastRecipientBalance.toString());
+      console.log("LAST SENDER BALANCE", lastSenderBalance.toString());
 
       // Stream balance should be 0 (because it was withdrawn)
       expect(lastStreamBalance).to.eq(0, "Invalid last stream balance");
@@ -809,7 +818,7 @@ describe("sUBI.sol", () => {
 
       // ACT
       // Recipient withdraws balance 
-      await ubi.connect(recipient).withdrawFromStream(streamId);
+      await ubi.connect(recipient).withdrawFromDelegation(sUBI.address, streamId);
 
       // ASSERT
       // Balance was withdrawn from completed stream so it shouldnt exist any more
@@ -852,7 +861,7 @@ describe("sUBI.sol", () => {
       expect(currentStreamBalance).to.eq(initialStreamBalance.add(accruedPerSecond.mul(30 * 60)), "Stream accrued balance should be half a UBI.");
 
       // Withdraw the current stream balance *️⃣(this mines a block and moves blocktime by 1 second)
-      await ubi.connect(sender).withdrawFromStream(streamId);
+      await ubi.connect(sender).withdrawFromDelegation(sUBI.address, streamId);
 
       // New recipient balance should be the same as previous + current stream balance + 1 second (because of *️⃣)
       const newRecipientBalance = await ubi.balanceOf(recipient.address);
@@ -897,7 +906,7 @@ describe("sUBI.sol", () => {
       const prevStreamBalance = await sUBI.balanceOfStream(streamId);
 
       // Recipient withdraws balance 
-      await ubi.connect(recipient).withdrawFromStream(streamId);
+      await ubi.connect(recipient).withdrawFromDelegation(sUBI.address, streamId);
 
       // New balance of recipient should be previous + streamBalance (+1 sec)
       const newRecipientBalance = await ubi.balanceOf(recipient.address);
@@ -911,7 +920,7 @@ describe("sUBI.sol", () => {
       expect(remainingStreamBalance).to.eq(delegatedPerSecond.mul((30 * 60) - 1), "Stream balance should be delegatedPerSecond * 30 minutes");
 
       // Withdraw remaining balance.
-      await ubi.connect(accounts[1]).withdrawFromStream(streamId);
+      await ubi.connect(accounts[1]).withdrawFromDelegation(sUBI.address, streamId);
 
       // Last balance of recipient should be the total of the stream (1 hour of delegatedPerSecond)
       const finalRecipientBalance = await ubi.balanceOf(recipient.address);
@@ -954,7 +963,7 @@ describe("sUBI.sol", () => {
       expect(streamBalance).to.eq(delegatedPerSecond.mul(60 * 60), "Stream balance should be 1 UBI");
 
       // Recipient withdraws balance 
-      await ubi.connect(recipient).withdrawFromStream(streamId);
+      await ubi.connect(recipient).withdrawFromDelegation(sUBI.address, streamId);
 
       //  Get number of stream for the creator of stream 
       const lastStreamCount = await sUBI.getStreamsCount(sender.address);
@@ -1011,12 +1020,16 @@ describe("sUBI.sol", () => {
       // Transfer 1 UBI from account 0 to account 2
       const amountToTransfer = ethers.utils.parseEther("1");
       const account2PrevBalance = await ubi.balanceOf(ubiRecipient.address);
+
       await ubi.connect(sender).transfer(ubiRecipient.address, amountToTransfer);
+      console.log("getting account2NewBalance")
       const account2NewBalance = await ubi.balanceOf(ubiRecipient.address);
       expect(account2NewBalance).to.eq(account2PrevBalance.add(amountToTransfer), "After transfer account 2 should increase");
 
       // New balance of sender should be prevBalance - 1 UBI
+      console.log("getting afterTransferSenderBalance")
       const afterTransferSenderBalance = await ubi.balanceOf(sender.address);
+      console.log("getting expectedBalance")
       const expectedBalance = middleSenderBalance.add(accruedPerSecond.sub(delegatedPerSecond)).sub(amountToTransfer);;
       expect(afterTransferSenderBalance).to.eq(expectedBalance, "After transfer sender's balance should have decreased by 1 UBI (+1 sec of accruance)");
 
@@ -1031,7 +1044,7 @@ describe("sUBI.sol", () => {
       // Should be the delegatedPerSecond * stream duration
       expect(streamBalance).to.eq(delegatedPerSecond.mul(endBlockTime - stream.startTime.toNumber()))
       // Recipient withdraws balance 
-      await ubi.connect(recipient).withdrawFromStream(streamId);
+      await ubi.connect(recipient).withdrawFromDelegation(sUBI.address, streamId);
 
       //  Get number of stream for the creator of stream 
       const lastStreamCount = await sUBI.getStreamsCount(sender.address);
@@ -1111,7 +1124,7 @@ describe("sUBI.sol", () => {
       // Should be the delegatedPerSecond * stream duration
       expect(streamBalance).to.eq(delegatedPerSecond.mul(endBlockTime - stream.startTime.toNumber()));
       // Recipient withdraws balance 
-      await ubi.connect(recipient).withdrawFromStream(streamId);
+      await ubi.connect(recipient).withdrawFromDelegation(sUBI.address, streamId);
 
       //  Get number of stream for the creator of stream 
       const lastStreamCount = await sUBI.getStreamsCount(sender.address);
@@ -1182,7 +1195,7 @@ describe("sUBI.sol", () => {
       // Should be the delegatedPerSecond * stream duration
       expect(streamBalance).to.eq(delegatedPerSecond.mul(endBlockTime - stream.startTime.toNumber()));
       // Recipient withdraws balance 
-      await ubi.connect(recipient).withdrawFromStream(streamId);
+      await ubi.connect(recipient).withdrawFromDelegation(sUBI.address, streamId);
 
       //  Get number of stream for the creator of stream 
       const lastStreamCount = await sUBI.getStreamsCount(sender.address);;
@@ -1255,7 +1268,7 @@ describe("sUBI.sol", () => {
       // Should be the delegatedPerSecond * stream duration
       expect(streamBalance).to.eq(delegatedPerSecond.mul(endBlockTime - stream.startTime.toNumber()))
       // Recipient withdraws balance 
-      await ubi.connect(recipient).withdrawFromStream(streamId);
+      await ubi.connect(recipient).withdrawFromDelegation(sUBI.address, streamId);
 
       //  Get number of stream for the creator of stream 
       const lastStreamCount = await sUBI.getStreamsCount(sender.address);
@@ -1285,7 +1298,7 @@ describe("sUBI.sol", () => {
       // Go to middle of stream and withdraw to current holder
       await testUtils.goToMiddleOfStream(streamId, sUBI, network);
       const prevBalance = await ubi.balanceOf(recipient.address);
-      await ubi.withdrawFromStream(streamId); //+ 1 sec
+      await ubi.withdrawFromDelegation(sUBI.address, streamId); //+ 1 sec
       const newBalance = await ubi.balanceOf(recipient.address);
 
       // calculate expected Accrued value (delegated per second * (elapsed time to middle of stream + 1 sec for withdraw))
@@ -1308,7 +1321,7 @@ describe("sUBI.sol", () => {
       await testUtils.goToEndOfStream(streamId, sUBI, network);
 
       // Withdraw from stream
-      await ubi.withdrawFromStream(streamId); //+ 1 sec
+      await ubi.withdrawFromDelegation(sUBI.address, streamId); //+ 1 sec
 
       // New recipient 2 balance
       const recipient2NewBalance = await ubi.balanceOf(recipient2.address);
@@ -1773,7 +1786,7 @@ describe("sUBI.sol", () => {
       // move to middle of stream
       await testUtils.goToMiddleOfStream(lastStreamId, sUBI, network);
       // widthdraw from stream
-      await ubi.withdrawFromStream(lastStreamId);
+      await ubi.withdrawFromDelegation(sUBI.address, lastStreamId);
 
       // ASSERT 
       // Check that accruedTime returns 0. 
@@ -1806,7 +1819,7 @@ describe("sUBI.sol", () => {
       // move to middle of stream
       await testUtils.goToMiddleOfStream(lastStreamId, sUBI, network);
       // widthdraw from stream
-      await ubi.withdrawFromStream(lastStreamId);
+      await ubi.withdrawFromDelegation(sUBI.address, lastStreamId);
       // Set block time to end of stream
       await testUtils.goToEndOfStream(lastStreamId, sUBI, network);
 
@@ -1842,7 +1855,7 @@ describe("sUBI.sol", () => {
       // Set block time to end of stream
       await testUtils.goToEndOfStream(lastStreamId, sUBI, network);
       // widthdraw from stream
-      await ubi.withdrawFromStream(lastStreamId);
+      await ubi.withdrawFromDelegation(sUBI.address, lastStreamId);
 
       // ASSERT 
       // deltaOf should return 0.
@@ -2008,7 +2021,7 @@ describe("sUBI.sol", () => {
 
           // ACT
           // widthdraw from stream
-          await ubi.withdrawFromStream(lastStreamId);
+          await ubi.withdrawFromDelegation(sUBI.address, lastStreamId);
 
           // ASSERT 
           // Check that getDelegatedAccruedValue of returns 0.
@@ -2034,7 +2047,7 @@ describe("sUBI.sol", () => {
           // move to middle of stream
           await testUtils.goToMiddleOfStream(lastStreamId, sUBI, network);
           // widthdraw from stream
-          await ubi.withdrawFromStream(lastStreamId);
+          await ubi.withdrawFromDelegation(sUBI.address, lastStreamId);
 
           // ACT           
           // Go to end of stream,
@@ -2068,7 +2081,7 @@ describe("sUBI.sol", () => {
           // Go to end of stream,
           await testUtils.goToEndOfStream(lastStreamId, sUBI, network);
           // widthdraw from stream
-          await ubi.withdrawFromStream(lastStreamId);
+          await ubi.withdrawFromDelegation(sUBI.address, lastStreamId);
 
           // ASSERT 
           // Check that getDelegatedAccruedValue return 179900 (because withdraw from stream moves 1 secon further).
@@ -2225,7 +2238,7 @@ describe("sUBI.sol", () => {
           // Move to middle of 1st stream
           await testUtils.goToMiddleOfStream(streamId1, sUBI, network);
           // Withdraw from 1st stream
-          await ubi.withdrawFromStream(streamId1);
+          await ubi.withdrawFromDelegation(sUBI.address, streamId1);
 
           // ASSERT 
           // getDelegatedAccruedValue should return 0
@@ -2256,7 +2269,7 @@ describe("sUBI.sol", () => {
           // Move to middle of 1st stream
           await testUtils.goToMiddleOfStream(streamId1, sUBI, network);
           // Withdraw from 1st stream
-          await ubi.withdrawFromStream(streamId1);
+          await ubi.withdrawFromDelegation(sUBI.address, streamId1);
 
 
           // ACT         
@@ -2294,7 +2307,7 @@ describe("sUBI.sol", () => {
           // Go to end of stream 2,
           await testUtils.goToMiddleOfStream(streamId2, sUBI, network);
           // Withdraw from stream 2
-          await ubi.withdrawFromStream(streamId2);
+          await ubi.withdrawFromDelegation(sUBI.address, streamId2);
 
           // ASSERT 
           // Check that getDelegatedAccruedValue returns 179900 + 0 (because withdraw from stream moves 1 secon further).

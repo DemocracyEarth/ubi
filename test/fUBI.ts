@@ -12,7 +12,7 @@ async function deployFUBI(ubiInstance, governorAddress) {
     const FUBIFactory = await ethers.getContractFactory("fUBI");
     const fUBI = await FUBIFactory.deploy(ubiInstance.address, governorAddress,deploymentParams.FUBI_MAX_STREAMS_ALLOWED ,deploymentParams.FUBI_NAME, deploymentParams.FUBI_SYMBOL);
     await fUBI.deployed();
-    await ubiInstance.setFUBI(fUBI.address);
+    await ubiInstance.setDelegator(fUBI.address);
     return fUBI;
 }
 
@@ -20,7 +20,7 @@ async function deploySUBI(ubiInstance, governorAddress) {
   const SUBIFactory = await ethers.getContractFactory("sUBI");
   const sUBI = await SUBIFactory.deploy(ubiInstance.address, governorAddress, deploymentParams.SUBI_MAX_STREAMS_ALLOWED, deploymentParams.SUBI_NAME, deploymentParams.SUBI_SYMBOL);
   await sUBI.deployed();
-  await ubiInstance.setSUBI(sUBI.address);
+  await ubiInstance.setDelegator(sUBI.address);
   return sUBI;
 }
 
@@ -62,6 +62,12 @@ describe("fUBI.sol", () => {
     accruedPerSecond = await ubi.accruedPerSecond();
     
     fUBI = await deployFUBI(ubi, accounts[0].address);
+    sUBI = await deploySUBI(ubi, accounts[0].address);
+
+    // default all accounts to not registered
+    for(let i = 0; i < accounts.length; i++) {
+      await pohMockService.setSubmissionIsRegistered(mockPoh, accounts[i].address, false);
+    }
   })
 
   describe("Basic tests", () => {
@@ -73,7 +79,7 @@ describe("fUBI.sol", () => {
 
     });
 
-    it("Should correctly mint flow when executing createFlow on UBI", async () => {
+    it("Should correctly mint flow when executing createDelegation on UBI", async () => {
 
       // ARRANGE
       const sender = accounts[1];
@@ -81,7 +87,7 @@ describe("fUBI.sol", () => {
       await ubi.startAccruing(sender.address)
 
       // ACT
-      await ubi.connect(accounts[1]).createFlow(accounts[2].address, 10000);
+      await ubi.connect(accounts[1]).createDelegation(fUBI.address, accounts[2].address, 10000, 0, 0, true);
 
       // // ASSERT
       expect((await fUBI.balanceOf(accounts[2].address)).toNumber()).to.equal(1);
@@ -126,7 +132,7 @@ describe("fUBI.sol", () => {
         recipient.address,
         100,
         ubi, fUBI))
-        .to.be.revertedWith("Only registered humans accruing UBI can flow UBI.");
+        .to.be.revertedWith("not registered or not accruing");
 
     });
 
@@ -143,7 +149,7 @@ describe("fUBI.sol", () => {
         recipient.address,
         100,
         ubi, fUBI))
-        .to.be.revertedWith("Only registered humans accruing UBI can flow UBI.");
+        .to.be.revertedWith("not registered or not accruing");
     });
 
     it("require fail - Creating a flow from a non registerded human should fail", async () => {
@@ -157,7 +163,7 @@ describe("fUBI.sol", () => {
         sender,
         recipient.address,
         accruedPerSecond.toNumber(),
-        ubi, fUBI)).to.be.revertedWith("Only registered humans accruing UBI can flow UBI.");
+        ubi, fUBI)).to.be.revertedWith("not registered or not accruing");
     })
 
     it("happy path - Creating a new flow after one has been canceled should not increment the number of active flows", async () => {
@@ -261,7 +267,7 @@ describe("fUBI.sol", () => {
       await expect(testUtils.createFlow(sender,
         recipient.address,
         newFlowPaymentPerSecond,
-        ubi, fUBI)).to.be.revertedWith("Delegated value exceeds available balance for the given Flow");
+        ubi, fUBI)).to.be.revertedWith("not enough value to delegate");
 
 
     });
@@ -297,7 +303,7 @@ describe("fUBI.sol", () => {
       await expect(testUtils.createFlow(sender,
         recipient.address,
         newFlowPaymentPerSecond,
-        ubi, fUBI)).to.be.revertedWith("Delegated value exceeds available balance for the given Flow");
+        ubi, fUBI)).to.be.revertedWith("not enough value to delegate");
 
 
     });
@@ -348,7 +354,7 @@ describe("fUBI.sol", () => {
       await expect(testUtils.createFlow(sender,
         recipient.address,
         newFlowPaymentPerSecond.mul(3),
-        ubi, fUBI)).to.be.revertedWith("Delegated value exceeds available balance for the given Flow");
+        ubi, fUBI)).to.be.revertedWith("not enough value to delegate");
 
 
     });
@@ -402,7 +408,7 @@ describe("fUBI.sol", () => {
       await expect(testUtils.createFlow(sender,
         recipient.address,
         newFlowPaymentPerSecond.mul(3),
-        ubi, fUBI)).to.be.revertedWith("Delegated value exceeds available balance for the given Flow");
+        ubi, fUBI)).to.be.revertedWith("not enough value to delegate");
 
 
     });
@@ -411,8 +417,10 @@ describe("fUBI.sol", () => {
       // ARRANGE
       const sender = accounts[0];
       const recipient = accounts[1];
+      const transferRecipient = accounts[2];
       await pohMockService.setSubmissionIsRegistered(mockPoh, sender.address, true);
       await pohMockService.setSubmissionIsRegistered(mockPoh, recipient.address, false);
+      await pohMockService.setSubmissionIsRegistered(mockPoh, transferRecipient.address, false);
       await ubi.startAccruing(sender.address);
 
       // Get the value of accruedPerSecond
@@ -424,19 +432,26 @@ describe("fUBI.sol", () => {
 
       // ACT && ASSERT
       // try to create flow with a value greater than available, should revert
-
+      const prevRecipientBalance = await ubi.balanceOf(recipient.address);
+      console.log("PREV RECIPIENT BALANCE", prevRecipientBalance.toString());
       await testUtils.createFlow(sender,
         recipient.address,
         newFlowPaymentPerSecond,
         ubi, fUBI);
 
-      await testUtils.timeForward(3600, network);
+      await testUtils.timeForward(3600, network); // prev call added 1 second
 
-      await expect(await ubi.balanceOf(recipient.address)).to.eq(await ethers.BigNumber.from(newFlowPaymentPerSecond.mul(3600)));
+      const newRecipientBalance = await ubi.balanceOf(recipient.address);
+      console.log("NEW RECIPIENT BALANCE", newRecipientBalance.toString());
+      await expect(newRecipientBalance).to.eq(prevRecipientBalance.add(newFlowPaymentPerSecond.mul(3600)), "Invalid balance of flow recipient");
 
-      await ubi.connect(recipient).transfer(accounts[2].address, ethers.utils.parseUnits("1.008", 18));
+      const prevTransferRecipientBalance = await ubi.balanceOf(transferRecipient.address);
+
+      const transferValue = ethers.utils.parseUnits("1", "ether");
+      
+      await ubi.connect(recipient).transfer(transferRecipient.address, transferValue);
         
-      await expect(await ubi.balanceOf(accounts[2].address)).to.eq(await ethers.BigNumber.from(newFlowPaymentPerSecond.mul(3600)));
+      await expect(await ubi.balanceOf(transferRecipient.address)).to.eq(prevTransferRecipientBalance.add(transferValue), "Invalid balance after transfer");
 
 
     });
