@@ -87,7 +87,7 @@ describe("fUBI.sol", () => {
       await ubi.startAccruing(sender.address)
 
       // ACT
-      await ubi.connect(accounts[1]).createDelegation(fUBI.address, accounts[2].address, 10000, 0, 0, true);
+      await ubi.connect(accounts[1]).createDelegation(fUBI.address, accounts[2].address, 10000, ethers.utils.defaultAbiCoder.encode([],[]));
 
       // // ASSERT
       expect((await fUBI.balanceOf(accounts[2].address)).toNumber()).to.equal(1);

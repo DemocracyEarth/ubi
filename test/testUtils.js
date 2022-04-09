@@ -8,6 +8,8 @@ const testUtils = {
   },
 
   async createNonCancellableStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, subi, verbose = false) {
+    const startTimeSeconds = testUtils.dateToSeconds(from);
+    const endTimeSeconds = testUtils.dateToSeconds(to);
     return await this.createStream(fromAccount, toAddress, streamPerSecond, from, to, false, ubi, subi, verbose);
   },
 
@@ -124,13 +126,12 @@ const testUtils = {
     }
   },
 
-  async createDelegation(delegatorImplementation, fromAccount, toAddress, ratePerSecond, startTime, endTime, cancellable, ubi, verbose = false) {
+  async createDelegation(delegatorImplementation, fromAccount, toAddress, ratePerSecond, data, ubi, verbose = false) {
 
-    const startTimeSeconds = testUtils.dateToSeconds(startTime);
-    const endTimeSeconds = testUtils.dateToSeconds(endTime);
+    
     const prevDelegationId = new BigNumber((await delegatorImplementation.lastTokenId()).toString());
 
-    const tx = await ubi.connect(fromAccount).createDelegation(delegatorImplementation.address, toAddress, ratePerSecond, startTimeSeconds, endTimeSeconds, cancellable);
+    const tx = await ubi.connect(fromAccount).createDelegation(delegatorImplementation.address, toAddress, ratePerSecond, data);
     await tx.wait();
     const events = await delegatorImplementation.queryFilter(delegatorImplementation.filters.CreateDelegation(fromAccount.address));
     const createDelegationEvents = logReader.getCreateDelegationEvents(events);
@@ -146,11 +147,13 @@ const testUtils = {
   },
 
   async createFlow(fromAccount, toAddress, flowPerSecond, ubi, fubi, verbose = false) {
-    const flowId = await this.createDelegation(fubi, fromAccount, toAddress, flowPerSecond, new Date(), new Date(), true, ubi, verbose);
+    const flowId = await this.createDelegation(fubi, fromAccount, toAddress, flowPerSecond, ethers.utils.defaultAbiCoder.encode([],[]), ubi, verbose);
     return flowId;
   },
   async createStream(fromAccount, toAddress, ratePerSecond, startTime, stopTime, cancellable, ubi, subi, verbose = false) {
-    const streamId = await this.createDelegation(subi, fromAccount, toAddress, ratePerSecond, startTime, stopTime, cancellable, ubi, verbose);
+    const startTimeSeconds = testUtils.dateToSeconds(startTime);
+    const endTimeSeconds = testUtils.dateToSeconds(stopTime);
+    const streamId = await this.createDelegation(subi, fromAccount, toAddress, ratePerSecond, ethers.utils.defaultAbiCoder.encode(["uint256", "uint256", "bool"], [startTimeSeconds, endTimeSeconds, cancellable]), ubi, verbose);
     return streamId;
   },
 
