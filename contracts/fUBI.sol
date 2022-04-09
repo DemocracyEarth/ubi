@@ -84,7 +84,7 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
   /// Streams sin final recibido por el address. No tiene restriccion de valor.
   mapping (address => uint256) public ubiInflow;
 
-  mapping(address => uint256) public delegatedFlow;
+  //mapping(address => uint256) public delegatedFlow;
 
   /// @dev Caller can only be UBI contract
   modifier onlyUBI() {
@@ -153,7 +153,7 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
 
       ubiOutflow[sender] = ubiOutflow[sender].add(ubiPerSecond);
       ubiInflow[recipient] = ubiInflow[recipient].add(ubiPerSecond); 
-      delegatedFlow[sender] = delegatedFlow[sender].add(ubiPerSecond);
+      //delegatedFlow[sender] = delegatedFlow[sender].add(ubiPerSecond);
       emit CreateDelegation(sender, lastTokenId, ubiPerSecond, block.timestamp, 0);
       return lastTokenId;
   } 
@@ -210,7 +210,7 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
     //WE WERE THINKING ABOUT GETTING RID OF THIS FOR
     //BY USING ENUMERABLE SET (OPENZEPPELIN) THAT'S WHY
     // WE DON'T HAVE _maxFlowsAllowed
-    delegatedFlow[flow.sender] = delegatedFlow[flow.sender].sub(flow.ratePerSecond);
+    //delegatedFlow[flow.sender] = delegatedFlow[flow.sender].sub(flow.ratePerSecond);
 
     
     for(uint256 i = 0; i < FlowIdsOf[flow.sender].length; i++) {
@@ -388,9 +388,9 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
   }
 
   /// @dev Returns the UBI per second that the human has used for delegation.
-    function getDelegatedRate(address _human) external override view returns(uint256) {
-      return delegatedFlow[_human];      
-    }
+    // function getDelegatedRate(address _human) external override view returns(uint256) {
+    //   return delegatedFlow[_human];      
+    // }
 
     function onWithdraw(uint256 flowId) external override returns (uint256 ) {
       require(false, "fubi does not require withdraw");
