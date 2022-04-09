@@ -102,11 +102,9 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
     *  Throws if there is a token transfer failure.
     * @param recipient The address towards which the stream is minted to
     * @param ubiPerSecond The amount of UBI to be streamed every second. MUST be <= accruedPerSecond
-    * @param startTime The unix timestamp for when the stream starts.
-    * @param stopTime The unix timestamp for when the stream stops.
     * @return The uint256 id of the newly created stream.
     */
-  function createDelegation(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool isCancellable)
+  function createDelegation(address sender, address recipient, uint256 ubiPerSecond, bytes calldata data)
       public
       override
       nonReentrant
@@ -117,6 +115,9 @@ contract sUBI is ERC721, ISUBI, ReentrancyGuard  {
       require(recipient != address(this), "stream to the contract itself");
       require(recipient != sender, "stream to the caller");
       require(ubiPerSecond > 0, "UBI per second is zero");
+
+      (uint256 startTime, uint256 stopTime, bool isCancellable) = abi.decode(data, (uint256, uint256, bool));
+
       require(startTime > block.timestamp, "start time should be in the future");
       require(stopTime > startTime, "stop time before the start time");
 

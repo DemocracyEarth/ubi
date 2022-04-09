@@ -119,7 +119,7 @@ contract fUBI is ERC721, IFUBI, ReentrancyGuard  {
     * @param ubiPerSecond The amount of UBI to be Flowed every second. MUST be <= accruedPerSecond
     * @return The uint256 id of the newly created Flow.
     */
-  function createDelegation(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool isCancellable)
+  function createDelegation(address sender, address recipient, uint256 ubiPerSecond, bytes calldata data)
       public
       override
       nonReentrant

@@ -396,7 +396,7 @@ contract UBI is Initializable {
     }
   }
 
-  function createDelegation(address implementation, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 stopTime, bool cancellable) public nonReentrant {
+  function createDelegation(address implementation, address recipient, uint256 ubiPerSecond, bytes calldata data) public nonReentrant {
     require(proofOfHumanity.isRegistered(msg.sender) && accruedSince[msg.sender] > 0, "not registered or not accruing");
     require(ubiPerSecond <= accruedPerSecond, "Cannot delegate a value higher than accruedPerSecond");
     require(delegators.contains(implementation), "implementation not allowed");
@@ -405,7 +405,7 @@ contract UBI is Initializable {
     // Update sender and recipient balances.
     updateBalance(msg.sender);
     updateBalance(recipient);
-    IUBIDelegator(implementation).createDelegation(msg.sender, recipient, ubiPerSecond, startTime, stopTime, cancellable);
+    IUBIDelegator(implementation).createDelegation(msg.sender, recipient, ubiPerSecond, data);
     lockedDelegatedValue[msg.sender] += ubiPerSecond;
   }
 

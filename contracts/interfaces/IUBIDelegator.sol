@@ -31,7 +31,7 @@ interface IUBIDelegator {
         address indexed recipient
     );
 
-    function createDelegation(address sender, address recipient, uint256 ubiPerSecond, uint256 startTime, uint256 endTime, bool cancellable) external virtual returns(uint256);
+    function createDelegation(address sender, address recipient, uint256 ubiPerSecond, bytes calldata data) external virtual returns(uint256);
     
     function cancelDelegation(uint256 delegationId) external virtual returns (uint256);
 
