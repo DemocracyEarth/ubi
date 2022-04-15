@@ -107,9 +107,10 @@ const testUtils = {
     for (let i = 0; i < streamIds.length; i++) {
       // Move to the end of stream.  `goToEndOfStream` is safe to use if end has passed already
       await testUtils.goToEndOfStream(streamIds[i].toNumber(), ubi, network);
-      //const streamBalance = await testUtils.ubiBalanceOfStream(streamIds[i].toString(), stream.recipient, ubi);
-      await ubi.connect(account).withdrawFromStream(streamIds[i].toString());
     }
+
+    //const streamBalance = await testUtils.ubiBalanceOfStream(streamIds[i].toString(), stream.recipient, ubi);
+    await ubi.withdrawFromStreams(streamIds);
   },
 
   async cancelAllStreamsFrom(account, ubi) {
