@@ -3,59 +3,14 @@ const { ethers, expect } = require("hardhat");
 const logReader = require("./logReader");
 
 const testUtils = {
-  async createStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, verbose = false) {
-    if (verbose) {
-      console.log("Creating stream");
-    }
-    const fromSecs = testUtils.dateToSeconds(from);
-    const toSecs = testUtils.dateToSeconds(to);
-    const prevStreamId = new BigNumber((await ubi.prevStreamId()).toString());
-    const tx = await ubi.connect(fromAccount).createStream(toAddress, streamPerSecond,fromSecs, toSecs)
-    const result = await tx.wait();
-    const createStreamEvents = logReader.getCreateStreamEvents(result.events);
-    expect(createStreamEvents && createStreamEvents.length > 0, "createStream should emit event CreateStream");
-    const streamId = createStreamEvents[0].args[0];
-    expect(streamId.toNumber()).to.eq(prevStreamId.plus(1).toNumber(), "CreateStream emited with incorrect streamId value")
+  async createCancellableStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, subi, verbose = false) {
+    return await this.createStream(fromAccount, toAddress, streamPerSecond, from, to, true, ubi, subi, verbose);
+  },
 
-    if (verbose) {
-      console.log("Created stream:", streamId.toNumber())
-      console.log("Start:", fromSecs)
-      console.log("End:", toSecs);
-      console.log("Time Diff:", toSecs - fromSecs);
-      console.log("Stream per second:", streamPerSecond);
-    }
-    return streamId;
-
-
-    // const previousDelegate = await ubi.getDelegateOf(fromAccount.address);
-    // const prevDelegateAccruingFactor = new BigNumber((await ubi.getAccruingFactor(previousDelegate)).toString());
-    // const newDelegatePrevAccruingFactor = new BigNumber((await ubi.getAccruingFactor(toAddress)).toString());
-
-
-    // // Delegate fromAccount to toAddress
-    // await expect(ubi.connect(fromAccount).delegate(toAddress)).to.emit(ubi, "DelegateChange").withArgs(fromAccount.address, toAddress);
-    // const delegate = await ubi.getDelegateOf(fromAccount.address);
-    // expect(delegate).to.eq(toAddress, "Invalid delegate of");
-
-    // if (delegate === ethers.constants.AddressZero)
-    //   expect(await ubi.getInverseDelegateOf(delegate)).to.eq(ethers.constants.AddressZero, "Invalid inverse delegate of. Should be addres(0)");
-    // else
-    //   expect(await ubi.getInverseDelegateOf(delegate)).to.eq(fromAccount.address, "Invalid inverse delegate of.");
-
-
-    // const newDelegateAccruingFactor = new BigNumber((await ubi.getAccruingFactor(toAddress)).toString());
-
-    // if (toAddress !== ethers.constants.AddressZero) {
-    //   // Human should have an accruing factor of 0
-    //   expect(new BigNumber((await ubi.getAccruingFactor(fromAccount.address)).toString()).toNumber()).to.eq(0, "Human should have an accruing factor of 0 after delegating.");
-    //   // Delegate should have an accruing factor of 1
-    //   expect(newDelegateAccruingFactor.toNumber()).to.eq(newDelegatePrevAccruingFactor.plus(1).toNumber(), `Delegate ${toAddress} should have its accruing factor increased by 1 after being delegated`);
-    // } else {
-    //   // Human should have an accruing factor of 1 restored
-    //   expect(new BigNumber((await ubi.getAccruingFactor(fromAccount.address)).toString()).toNumber()).to.eq(1, "Human should have an accruing factor of 1 after setting delegate as address 0.");
-    //   // Previous delegate should have accruing factor reduced by 1
-    //   expect(new BigNumber((await ubi.getAccruingFactor(previousDelegate)).toString()).toNumber()).to.eq(prevDelegateAccruingFactor.minus(1).toNumber(), "Previous delegate should have its accruing factor reduced by 1 after being removed as delegate.");
-    // }
+  async createNonCancellableStream(fromAccount, toAddress, streamPerSecond, from, to, ubi, subi, verbose = false) {
+    const startTimeSeconds = testUtils.dateToSeconds(from);
+    const endTimeSeconds = testUtils.dateToSeconds(to);
+    return await this.createStream(fromAccount, toAddress, streamPerSecond, from, to, false, ubi, subi, verbose);
   },
 
   async timeForward(seconds, network) {
@@ -94,23 +49,13 @@ const testUtils = {
    * @returns 
    */
   async ubiConsolidatedBalanceOfWallet(address, ubi) {
-    const balance = BigNumber((await ubi["balanceOf(address)"](address)).toString());
-    const accrued = BigNumber((await ubi.getAccruedValue(address)).toString());
-    return balance.minus(accrued);
+    const balance = await ubi.balanceOf(address);
+    const accrued = await ubi.getAccruedValue(address);
+    // console.log("Balance:", balance.toString());
+    // console.log("Accrued:", balance.toString());
+    return balance.sub(accrued);
   },
 
-  /**
-   * Get accumulated balance of a stream
-    * ethers.js dopesnt support overload methods (because of the js nature).
-    * UBI contract has 2 overloads of balanceOf. One for ERC-20 and one for EIP-1620 
-    * @param {*} streamId ID of the stream for which to get the balance.
-    * @param {*} address Address of the sender or recipient for which to get the balance on the stream.
-    * @param {*} ubi 
-    * @returns 
-    */
-  async ubiBalanceOfStream(streamId, ubi) {
-    return BigNumber((await ubi["balanceOf(uint256)"](streamId)).toString());
-  },
   hoursToSeconds(hours) {
     return hours * 3600;
   },
@@ -125,9 +70,9 @@ const testUtils = {
     return block.timestamp;
   },
 
-  async goToStartOfStream(streamId, ubi, network) {
+  async goToStartOfStream(streamId, subi, network) {
     // Get the last created stream
-    const stream = await ubi.getStream(streamId);
+    const stream = await subi.getStream(streamId);
 
     // Move to the end of the stream if needd
     if (await testUtils.getCurrentBlockTime() < stream.startTime.toNumber()) {
@@ -136,8 +81,8 @@ const testUtils = {
     }
   },
 
-  async goToMiddleOfStream(streamId, ubi, network) {
-    const stream = await ubi.getStream(streamId);
+  async goToMiddleOfStream(streamId, subi, network) {
+    const stream = await subi.getStream(streamId);
     // Move to the middle of the stream
     const stopTime = BigNumber(stream.stopTime.toNumber());
     const startTime = BigNumber(stream.startTime.toNumber());
@@ -145,9 +90,9 @@ const testUtils = {
     await testUtils.setNextBlockTime(startTime.plus(duration.div(2)).toNumber(), network);
   },
 
-  async goToEndOfStream(streamId, ubi, network) {
+  async goToEndOfStream(streamId, subi, network) {
     // Get the last created stream
-    const stream = await ubi.getStream(streamId);
+    const stream = await subi.getStream(streamId);
 
     // Move to the end of the stream if needed
     if (await testUtils.getCurrentBlockTime() < stream.stopTime.toNumber()) {
@@ -180,8 +125,40 @@ const testUtils = {
         }
       }
     }
-  }
+  },
 
+  async createDelegation(delegatorImplementation, fromAccount, toAddress, ratePerSecond, data, ubi, verbose = false) {
+
+    
+    const prevDelegationId = new BigNumber((await delegatorImplementation.lastTokenId()).toString());
+
+    const tx = await ubi.connect(fromAccount).createDelegation(delegatorImplementation.address, toAddress, ratePerSecond, data);
+    await tx.wait();
+    const events = await delegatorImplementation.queryFilter(delegatorImplementation.filters.CreateDelegation(fromAccount.address));
+    const createDelegationEvents = logReader.getCreateDelegationEvents(events);
+    expect(createDelegationEvents && createDelegationEvents.length > 0, "createDelegationEvents should emit event CreateDelegation");
+    const delegationId = createDelegationEvents[createDelegationEvents.length - 1].args[1];
+    expect(delegationId.toNumber()).to.eq(prevDelegationId.plus(1).toNumber(), "CreateDelegation emited with incorrect flowId value")
+
+    if (verbose) {
+      console.log("Created flow:");
+      console.log("Flow per second:", flowPerSecond);
+    }
+    return delegationId;
+  },
+
+  async createFlow(fromAccount, toAddress, flowPerSecond, ubi, fubi, verbose = false) {
+    const flowId = await this.createDelegation(fubi, fromAccount, toAddress, flowPerSecond, ethers.utils.defaultAbiCoder.encode([],[]), ubi, verbose);
+    return flowId;
+  },
+  async createStream(fromAccount, toAddress, ratePerSecond, startTime, stopTime, cancellable, ubi, subi, verbose = false) {
+    const startTimeSeconds = testUtils.dateToSeconds(startTime);
+    const endTimeSeconds = testUtils.dateToSeconds(stopTime);
+    const streamId = await this.createDelegation(subi, fromAccount, toAddress, ratePerSecond, ethers.utils.defaultAbiCoder.encode(["uint256", "uint256", "bool"], [startTimeSeconds, endTimeSeconds, cancellable]), ubi, verbose);
+    return streamId;
+  },
+
+  
 }
 
 module.exports = testUtils;
